@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link, useNavigate } from "react-router";
 import {
   AppBar,
   Avatar,
@@ -23,6 +24,7 @@ const pages = ["Products", "Pricing", "Blog"];
 const settings = ["Profile", "Account", "Dashboard", "Logout"];
 
 export default function AppNavbar() {
+  const navigate = useNavigate();
   const [auth, setAuth] = useState(false);
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
   const [openRegisterModal, setOpenRegisterModal] = useState(false);
@@ -51,7 +53,7 @@ export default function AppNavbar() {
             variant="h5"
             noWrap
             component="a"
-            href="#app-bar-with-responsive-menu"
+            href="/"
             sx={{
               mr: 2,
               display: "flex",
@@ -148,7 +150,7 @@ export default function AppNavbar() {
                     boxShadow: 6,
                   },
                 }}
-                onClick={() => console.log("Registro como dueño de mascota")}
+                onClick={() => navigate("/registrar-dueno-mascota")}
               >
                 <Cat size={48} strokeWidth={1.5} color="#1976d2" />
                 <Typography variant="h6" sx={{ mt: 2 }}>
@@ -182,7 +184,7 @@ export default function AppNavbar() {
                     boxShadow: 6,
                   },
                 }}
-                onClick={() => console.log("Registro como clínica veterinaria")}
+                onClick={() => navigate("/registrar-clinica")}
               >
                 <Hospital size={48} strokeWidth={1.5} color="#1976d2" />
                 <Typography variant="h6" sx={{ mt: 2 }}>
