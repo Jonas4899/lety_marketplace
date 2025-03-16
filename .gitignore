@@ -13,6 +13,7 @@ yarn-error.log*
 
 # Environment variables
 .env
+backend/.env
 
 # Optional npm cache directory
 .npm
