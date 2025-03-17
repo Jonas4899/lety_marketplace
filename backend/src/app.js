@@ -23,16 +23,16 @@ const supabaseClient = createClient(supabaseUrl, supabaseServiceRolKey);
 //Configurar multer para subir archivos
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Guardar temporalmente en /uploads
+    cb(null, 'uploads/'); // Guardar temporalmente en la carpeta local /uploads
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+    const ext = path.extname(file.originalname); // Obtener la extensión del archivo
+    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`; // Crear un nombre único
     cb(null, uniqueName);
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({ storage }); //Inicializar multer con la configuración de storage
 
 //Endpoint para registrar usuarios dueños de las mascotas junto con su mascota ---------------------------
 app.post(
@@ -50,8 +50,11 @@ app.post(
       especie,
     } = req.body;
 
-    const fotoMascotaFile = req.files.foto_mascota?.[0];
-    const historialMedicoFile = req.files.historial_medico?.[0];
+    //req.files contiene los archivos subidos en un objeto con arrays de archivos
+    //"foto_mascota": [ { "file1_data" } ], foto mascota es un array de archivos
+
+    const fotoMascotaFile = req.files.foto_mascota?.[0]; // Obtener el primer archivol array
+    const historialMedicoFile = req.files.historial_medico?.[0]; // Obtener el primer archivol array
 
     console.log('Foto mascota file:', fotoMascotaFile);
     console.log('Historial médico file:', historialMedicoFile);
@@ -68,7 +71,7 @@ app.post(
       const uploadFile = async (file, bucket) => {
         if (!file) return null; // Verifica si hay archivo antes de continuar
 
-        const filePath = `${bucket}/${Date.now()}-${file.originalname}`;
+        const filePath = `${bucket}/${Date.now()}-${file.originalname}`; // Ruta de donde se guardará el archivo
 
         const { data, error } = await supabaseClient.storage
           .from(bucket)
