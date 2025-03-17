@@ -150,7 +150,7 @@ export default function AppNavbar() {
                     boxShadow: 6,
                   },
                 }}
-                onClick={() => navigate("/registrar-dueno-mascota")}
+                onClick={() => navigate("/registrar-dueño-mascota")}
               >
                 <Cat size={48} strokeWidth={1.5} color="#1976d2" />
                 <Typography variant="h6" sx={{ mt: 2 }}>
