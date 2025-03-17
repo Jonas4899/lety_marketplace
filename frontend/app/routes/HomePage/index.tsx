@@ -40,7 +40,7 @@ export default function Home() {
         <div className="container flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
             <span className="text-xl font-bold tracking-tight">
-              PETVET MARKETPLACE
+              LETY MARKETPLACE
             </span>
           </Link>
 
@@ -61,10 +61,10 @@ export default function Home() {
               variant="outline"
               onClick={() => setIsUserTypeModalOpen(true)}
             >
-              Sign Up
+              Registrarse
             </Button>
             <Button asChild>
-              <Link to="/login">Sign In</Link>
+              <Link to="/login">Iniciar sesion</Link>
             </Button>
           </div>
         </div>
