@@ -54,13 +54,13 @@ export function ServiceItem({
 
       <div className="col-span-6 sm:col-span-3">
         <Label htmlFor={`service-price-${id}`} className="text-xs">
-          Precio (MXN)
+          Precio (COP)
         </Label>
         <Input
           id={`service-price-${id}`}
           value={price}
           onChange={(e) => onChange(id, "price", e.target.value)}
-          placeholder="Ej: 500"
+          placeholder="Ej: 25000"
           className="mt-1"
           type="number"
           min="0"
