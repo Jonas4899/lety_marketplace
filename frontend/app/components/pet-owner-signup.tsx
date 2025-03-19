@@ -23,12 +23,20 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import {z} from 'zod';
+import { ownerFormSchema } from "~/zodSchemas/ownerFormSchema";
+import { petFormSchema } from "~/zodSchemas/petFormSchema";
 
 interface PetOwnerSignupProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onBack: () => void;
 }
+
+type OwnerFormData = z.infer<typeof ownerFormSchema>;
+type PetFormData = z.infer<typeof  petFormSchema>;
 
 export function PetOwnerSignup({
   open,
@@ -489,7 +497,7 @@ export function PetOwnerSignup({
                 <div className="relative">
                   <Select name="petBreed" required onValueChange={(value) => setFormData({...formData, petBreed: value})}>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Especie" />
+                      <SelectValue placeholder="Raza" />
                     </SelectTrigger>
                     <SelectContent>
                       {
