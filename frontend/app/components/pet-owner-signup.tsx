@@ -37,8 +37,7 @@ export function PetOwnerSignup({
 }: PetOwnerSignupProps) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    userName: "",
     email: "",
     phone: "",
     password: "",
@@ -52,7 +51,8 @@ export function PetOwnerSignup({
   });
 
   const dogBreeds = [
-      "affenpinscher",
+    "Criollo",
+    "affenpinscher",
   "africano",
   "airedale terrier",
   "akita",
@@ -217,6 +217,7 @@ export function PetOwnerSignup({
   ];
 
   const catBreeds = [
+  "Criollo",
   "abisinio",
   "americano de pelo corto",
   "americano de pelo rizado",
@@ -349,15 +350,15 @@ export function PetOwnerSignup({
           {step === 1 ? (
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="firstName">Nombre y Apellido</Label>
+                <Label htmlFor="userName">Nombre y Apellido</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="firstName"
-                    name="firstName"
+                    id="userName"
+                    name="userName"
                     placeholder="Tu nombre"
                     className="pl-9"
-                    value={formData.firstName}
+                    value={formData.userName}
                     onChange={handleChange}
                     required
                   />
@@ -459,6 +460,8 @@ export function PetOwnerSignup({
                     placeholder="Edad de tu mascota"
                     className="pl-9"
                     type="number"
+                    min={0}
+                    max={50}
                     value={formData.petAge}
                     onChange={handleChange}
                     required
