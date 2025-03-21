@@ -24,7 +24,7 @@ import {
 } from "~/components/ui/select";
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { set, useForm } from 'react-hook-form';
 import {z} from 'zod';
 import { ownerFormSchema } from "~/zodSchemas/ownerFormSchema";
 
@@ -328,21 +328,58 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     }
   };
 
+    const [isLoading, setIsLoading] = useState(false);
+
   const onSubmit = async (data: OwnerFormData) => {
     if (step === 1) {
       handleNextStep();
     } else {
-      const formData = new FormData();
-      Object.entries(data).forEach(([key, value]) => {
-        formData.append(key, value.toString());;
-      });
+      try {
+        //objeto formData para enviar datos y archivos
+        const formData = new FormData();
 
-      // Añadir los archivos si existen
-      if (petFiles.petHistory) {
-        formData.append('petHistory', petFiles.petHistory);
-      }
-      if (petFiles.petPhoto) {
-        formData.append('petPhoto', petFiles.petPhoto);
+        // Agregar todos los campos de texto al FormData
+        formData.append('userName', data.userName);
+        formData.append('email', data.email);
+        formData.append('phone', data.phone);
+        formData.append('password', data.password);
+        formData.append('petName', data.petName);
+        formData.append('petAge', data.petAge.toString());
+        formData.append('petSpecies', data.petSpecies);
+        formData.append('petBreed', data.petBreed);
+
+        // Añadir los archivos si existen
+        if (petFiles.petHistory) {
+          formData.append('petHistory', petFiles.petHistory);
+        }
+        if (petFiles.petPhoto) {
+          formData.append('petPhoto', petFiles.petPhoto);
+        }
+
+        setIsLoading(true);
+
+        // Enviar solicitud al backend
+        const response = await fetch('http://localhost:3001/register/user', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error('Error al enviar los datos: '+ errorData.message);
+        }
+
+        const result = await response.json();
+        console.log('Respuesta del servidor:', result);
+
+        //Notificar al usuario
+        alert("¡Registro exitoso! Tu cuenta ha sido creada.");
+
+      } catch (error) {
+        console.error("Error al registrar:", error);
+        alert("Error al registrar, por favor intenta nuevamente.");
+      } finally {
+        setIsLoading(false);
       }
 
       // Enviar al backend
@@ -619,8 +656,14 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                   Continuar
                 </Button>
               ) : (
-                <Button type="submit">
-                  Crear cuenta
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <span className="mr-2">Procesando...</span>
+                    </>
+                  ) : (
+                    "Crear cuenta"
+                  )}
                 </Button>
               )}
           </DialogFooter>
