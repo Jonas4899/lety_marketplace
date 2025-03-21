@@ -23,6 +23,8 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 
+import { StatusDialog } from "./StatusDialog";
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { set, useForm } from 'react-hook-form';
 import {z} from 'zod';
@@ -278,6 +280,15 @@ export function PetOwnerSignup({
   onOpenChange,
   onBack,
 }: PetOwnerSignupProps) {
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [statusDialog, setStatusDialog] = useState({
+    open: false,
+    type: "" as "loading" | "error" | "success",
+    message: ""
+  });
+
   const [step, setStep] = useState(1);
 
   const {register, handleSubmit, formState: { errors, touchedFields }, trigger, setValue, watch} = useForm<OwnerFormData>({
@@ -303,17 +314,17 @@ export function PetOwnerSignup({
 
   const formValues = watch();
 
-const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  if (!e.target.files || !e.target.name) return;
-  const file = e.target.files[0];
-  const name = e.target.name;
-  
-  console.log(e.target.files);
-  setPetFiles({
-    ...petFiles,
-    [name]: file,
-  });
-};
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.name) return;
+    const file = e.target.files[0];
+    const name = e.target.name;
+    
+    console.log(e.target.files);
+    setPetFiles({
+      ...petFiles,
+      [name]: file,
+    });
+  };
 
   const handleNextStep = async () => {
     const isValid = await trigger([
@@ -328,13 +339,18 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     }
   };
 
-    const [isLoading, setIsLoading] = useState(false);
-
   const onSubmit = async (data: OwnerFormData) => {
     if (step === 1) {
       handleNextStep();
     } else {
       try {
+
+        setStatusDialog({
+          open: true,
+          type: "loading",
+          message: "Procesando registro..."
+        });
+
         //objeto formData para enviar datos y archivos
         const formData = new FormData();
 
@@ -365,19 +381,35 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error('Error al enviar los datos: '+ errorData.message);
+          if (response.status === 400) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Datos inválidos');
+          } else if (response.status === 409) {
+            throw new Error('El correo electrónico ya está registrado');
+          } else {
+            throw new Error('Error en el servidor');
+          }
         }
 
         const result = await response.json();
         console.log('Respuesta del servidor:', result);
 
-        //Notificar al usuario
-        alert("¡Registro exitoso! Tu cuenta ha sido creada.");
+        // Mostrar diálogo de éxito
+        setStatusDialog({
+          open: true,
+          type: "success",
+          message: "Tu cuenta ha sido creada exitosamente. ¡Bienvenido a nuestra plataforma!"
+        });
 
-      } catch (error) {
-        console.error("Error al registrar:", error);
-        alert("Error al registrar, por favor intenta nuevamente.");
+      } catch (Error) {
+        console.error("Error al registrar:", Error);
+
+        setStatusDialog({
+          open: true,
+          type: "error",
+          message: "Ha ocurrió un error en el registro.",
+        });
+
       } finally {
         setIsLoading(false);
       }
@@ -575,7 +607,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                       <div className="flex items-center justify-between px-3 py-2 border rounded-md">
                         <div className="flex items-center">
                           <Paw className="h-4 w-4 text-primary mr-2" />
-                          <span className="text-sm font-medium">{petFiles.petHistory.name}</span>
+                          <span className="text-sm font-medium text-blue-500">{petFiles.petHistory.name}</span>
                         </div>
                         <Button
                           type="button"
@@ -609,7 +641,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                       <div className="flex items-center justify-between px-3 py-2 border rounded-md">
                         <div className="flex items-center">
                           <Paw className="h-4 w-4 text-primary mr-2" />
-                          <span className="text-sm font-medium">{petFiles.petPhoto.name}</span>
+                          <span className="text-sm font-medium text-blue-500">{petFiles.petPhoto.name}</span>
                           {petFiles.petPhoto.type.startsWith('image/') && (
                             <div className="ml-2 h-8 w-8 overflow-hidden rounded-md">
                               <img 
@@ -669,6 +701,14 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           </DialogFooter>
         </form>
       </DialogContent>
+      <StatusDialog
+        open={statusDialog.open}
+        onOpenChange={(open) => setStatusDialog(prev => ({ ...prev, open }))}
+        onSuccess={() => onOpenChange(false)}
+        type={statusDialog.type}
+        message={statusDialog.message}
+      />
     </Dialog>
+    
   );
 }
