@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
@@ -27,6 +28,64 @@ export function ServiceItem({
   onRemove,
   onChange,
 }: ServiceItemProps) {
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [priceError, setPriceError] = useState<string | null>(null);
+
+  // Validar nombre cuando cambia
+  const validateName = (value: string) => {
+    if (!value.trim()) {
+      setNameError("El nombre es requerido");
+      return false;
+    }
+    setNameError(null);
+    return true;
+  };
+
+  // Validar precio cuando cambia
+  const validatePrice = (value: string) => {
+    if (!value.trim()) {
+      setPriceError("El precio es requerido");
+      return false;
+    }
+
+    const numericValue = parseFloat(value);
+    if (isNaN(numericValue) || numericValue <= 0) {
+      setPriceError("Ingrese un precio válido mayor a 0");
+      return false;
+    }
+
+    setPriceError(null);
+    return true;
+  };
+
+  // Manejar cambio de nombre con validación
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    onChange(id, "name", newValue);
+    if (newValue.trim()) {
+      validateName(newValue);
+    } else {
+      setNameError(null); // No mostrar error mientras está vacío (hasta que intente avanzar)
+    }
+  };
+
+  // Manejar cambio de precio con validación
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    onChange(id, "price", newValue);
+    if (newValue.trim()) {
+      validatePrice(newValue);
+    } else {
+      setPriceError(null); // No mostrar error mientras está vacío (hasta que intente avanzar)
+    }
+  };
+
+  // Validar nombre y precio al iniciar el componente si ya tienen valores
+  useEffect(() => {
+    if (name.trim()) validateName(name);
+    if (price.trim()) validatePrice(price);
+  }, []);
+
   return (
     <div className="relative grid grid-cols-12 gap-2 rounded-md border p-3">
       <Button
@@ -46,10 +105,11 @@ export function ServiceItem({
         <Input
           id={`service-name-${id}`}
           value={name}
-          onChange={(e) => onChange(id, "name", e.target.value)}
+          onChange={handleNameChange}
           placeholder="Ej: Consulta general"
-          className="mt-1"
+          className={`mt-1 ${nameError ? "border-red-500" : ""}`}
         />
+        {nameError && <p className="text-xs text-red-500 mt-1">{nameError}</p>}
       </div>
 
       <div className="col-span-6 sm:col-span-3">
@@ -59,13 +119,16 @@ export function ServiceItem({
         <Input
           id={`service-price-${id}`}
           value={price}
-          onChange={(e) => onChange(id, "price", e.target.value)}
+          onChange={handlePriceChange}
           placeholder="Ej: 25000"
-          className="mt-1"
+          className={`mt-1 ${priceError ? "border-red-500" : ""}`}
           type="number"
           min="0"
           step="10"
         />
+        {priceError && (
+          <p className="text-xs text-red-500 mt-1">{priceError}</p>
+        )}
       </div>
 
       <div className="col-span-6 sm:col-span-4">

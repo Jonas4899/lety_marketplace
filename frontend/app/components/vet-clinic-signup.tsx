@@ -36,7 +36,14 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { v4 as uuidv4 } from "uuid";
-// import { useAuth } from "@/context/auth-context"
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {
+  vetClinicSchema,
+  type VetClinicFormData,
+} from "~/zodSchemas/vetClinic";
+import { useNavigate } from "react-router";
 
 // Actualizar la interfaz Service para incluir los nuevos campos
 interface Service {
@@ -84,20 +91,9 @@ export function VetClinicSignup({
   onBack,
 }: VetClinicSignupProps) {
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    clinicName: "",
-    address: "",
-    phone: "",
-    description: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    agreeTerms: false,
-    businessLicense: false,
-    nit: "", // Nuevo campo para el NIT
-  });
-
-  // Inicializar los horarios operativos
+  const [services, setServices] = useState<Service[]>([
+    { id: uuidv4(), name: "", price: "", category: "general" },
+  ]);
   const [operationalHours, setOperationalHours] = useState<OperationalHours>({
     monday: { open: "09:00", close: "18:00", is24Hours: false, closed: false },
     tuesday: { open: "09:00", close: "18:00", is24Hours: false, closed: false },
@@ -122,47 +118,40 @@ export function VetClinicSignup({
     },
     sunday: { open: "00:00", close: "00:00", is24Hours: false, closed: true },
   });
-
-  const [services, setServices] = useState<Service[]>([
-    { id: uuidv4(), name: "", price: "", category: "general" },
-  ]);
   const [isRegistering, setIsRegistering] = useState(false);
   const [registrationError, setRegistrationError] = useState<string | null>(
     null
   );
-  const [nitError, setNitError] = useState<string | null>(null);
+  const [healthCertificateFile, setHealthCertificateFile] =
+    useState<File | null>(null);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value, type } = e.target;
-
-    // Validación específica para el NIT
-    if (name === "nit") {
-      // Limpiar cualquier error previo
-      setNitError(null);
-
-      // Validar formato del NIT (solo números y guiones, 9-12 caracteres)
-      const nitRegex = /^[0-9-]{9,12}$/;
-      if (value && !nitRegex.test(value)) {
-        setNitError(
-          "El NIT debe contener entre 9-12 caracteres (números y guiones)"
-        );
-      }
-    }
-
-    setFormData({
-      ...formData,
-      [name]:
-        type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
-    });
-  };
+  // Initialize react-hook-form with Zod validation
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    formState: { errors },
+    control,
+    trigger,
+    getValues,
+    setValue,
+  } = useForm({
+    resolver: zodResolver(vetClinicSchema),
+    defaultValues: {
+      clinicName: "",
+      address: "",
+      phone: "",
+      description: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      agreeTerms: false,
+      businessLicense: false,
+      nit: "",
+    },
+  });
 
   const handleCheckboxChange = (name: string, checked: boolean) => {
-    setFormData({
-      ...formData,
-      [name]: checked,
-    });
+    setValue(name as any, checked);
   };
 
   // Manejar cambios en los horarios operativos
@@ -218,36 +207,72 @@ export function VetClinicSignup({
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setHealthCertificateFile(e.target.files[0]);
+    }
+  };
 
-    // Validar NIT antes de continuar
-    if (step === 1 && formData.nit) {
-      const nitRegex = /^[0-9-]{9,12}$/;
-      if (!nitRegex.test(formData.nit)) {
-        setNitError(
-          "El NIT debe contener entre 9-12 caracteres (números y guiones)"
+  // Function to handle form navigation
+  const handleNext = async () => {
+    if (step === 1) {
+      // Validate fields for step 1
+      const isValid = await trigger([
+        "clinicName",
+        "nit",
+        "address",
+        "phone",
+        "description",
+        "businessLicense",
+      ]);
+
+      if (!isValid) return;
+
+      // Check if health certificate file is uploaded
+      if (!healthCertificateFile) {
+        setRegistrationError(
+          "Por favor, cargue el Certificado de la Secretaría Distrital de Salud"
         );
         return;
       }
-    }
 
-    if (step === 1) {
+      setRegistrationError(null); // Clear any previous errors
       setStep(2);
     } else if (step === 2) {
+      // Validar que al menos un servicio tenga nombre y precio
+      const hasValidService = services.some(
+        (service) => service.name.trim() && service.price.trim()
+      );
+
+      if (!hasValidService) {
+        setRegistrationError(
+          "Por favor, agregue al menos un servicio con nombre y precio"
+        );
+        return;
+      }
+
+      // Limpiar servicios vacíos antes de continuar
+      setServices(
+        services.filter(
+          (service) => service.name.trim() || service.price.trim()
+        )
+      );
+
+      setRegistrationError(null);
       setStep(3);
     } else if (step === 3) {
-      setStep(4); // Nuevo paso para horarios operativos
-    } else {
-      // Aquí enviarías todos los datos, incluyendo horarios operativos
-      console.log("Submitting vet clinic registration:", {
-        ...formData,
-        services,
-        operationalHours,
-      });
-      // Cerrar el diálogo y redirigir al dashboard
-      onOpenChange(false);
-      registerClinic({ ...formData, services, operationalHours });
+      // Validate fields for step 3
+      const isValid = await trigger([
+        "email",
+        "password",
+        "confirmPassword",
+        "agreeTerms",
+      ]);
+
+      if (!isValid) return;
+
+      setRegistrationError(null); // Clear any previous errors
+      setStep(4);
     }
   };
 
@@ -259,38 +284,114 @@ export function VetClinicSignup({
     }
   };
 
-  // const { login } = useAuth();
-
-  const registerClinic = async (clinicData: any) => {
+  // Function to submit the form to the backend
+  const submitVetRegistration = async (
+    formData: z.infer<typeof vetClinicSchema>
+  ) => {
     try {
-      // En una aplicación real, harías una llamada a la API para registrar la clínica
-      // Para fines de demostración, simularemos un registro exitoso
-
-      // Simular llamada a la API con un breve retraso
       setIsRegistering(true);
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      setRegistrationError(null);
 
-      // Crear objeto de datos de la clínica
-      const clinicAuthData = {
-        id: "clinic-" + Date.now(),
-        name: clinicData.clinicName,
-        email: clinicData.email,
-        isAuthenticated: true,
-      };
+      // Filtrar servicios válidos antes de enviar
+      const validServices = services.filter(
+        (service) => service.name.trim() && service.price.trim()
+      );
 
-      // Usar el contexto de autenticación para iniciar sesión
-      // login(clinicAuthData);
+      // Create FormData object to send to the backend
+      const apiFormData = new FormData();
 
-      // Redirigir al dashboard
-      window.location.href = "/dashboard";
-    } catch (error) {
-      console.error("Registration error:", error);
+      // Add form fields to FormData
+      apiFormData.append("nombre", formData.clinicName);
+      apiFormData.append("direccion", formData.address);
+      apiFormData.append("telefono", formData.phone);
+      apiFormData.append("correo", formData.email);
+      apiFormData.append("contrasena", formData.password);
+      apiFormData.append("descripcion", formData.description || "");
+      apiFormData.append("NIT", formData.nit);
+
+      // Add certificate file
+      if (healthCertificateFile) {
+        apiFormData.append("certificado_ss", healthCertificateFile);
+      }
+
+      // Add services as JSON string only if there are valid services
+      if (validServices.length > 0) {
+        apiFormData.append("servicios", JSON.stringify(validServices));
+        console.log("Enviando servicios:", validServices);
+      } else {
+        console.log("No hay servicios válidos para enviar");
+      }
+
+      // Add operational hours as JSON string
+      apiFormData.append("horarios", JSON.stringify(operationalHours));
+
+      console.log("Enviando datos al servidor...");
+
+      try {
+        // Keep port 3001 since that's where your server is running
+        const response = await fetch(
+          `http://localhost:3001/register/veterinary`,
+          {
+            method: "POST",
+            body: apiFormData,
+          }
+        );
+
+        console.log("Respuesta del servidor:", response.status);
+
+        let data;
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          data = await response.json();
+          console.log("Datos de respuesta:", data);
+        } else {
+          const text = await response.text();
+          console.log("Respuesta del servidor (texto):", text);
+          data = { message: text || "Error del servidor" };
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            data.message || `Error ${response.status}: ${response.statusText}`
+          );
+        }
+
+        console.log("Registro exitoso:", data);
+
+        // Mostrar mensaje de éxito con información de los servicios registrados
+        if (data.servicios && data.servicios.length > 0) {
+          console.log(`Se registraron ${data.servicios.length} servicios`);
+        }
+
+        // Close dialog and redirect
+        onOpenChange(false);
+        window.location.href = "/dashboard";
+      } catch (fetchError: any) {
+        console.error("Error de fetch:", fetchError);
+        throw new Error(
+          fetchError.message ||
+            "Error de conexión con el servidor. Asegúrate de que el servidor esté configurado correctamente."
+        );
+      }
+    } catch (error: any) {
+      console.error("Error durante el registro:", error);
       setRegistrationError(
-        "Hubo un problema al registrar la clínica. Por favor intenta de nuevo."
+        error.message || "Ocurrió un error durante el registro"
       );
     } finally {
       setIsRegistering(false);
     }
+  };
+
+  // Handle final form submission
+  const onSubmit = (data: z.infer<typeof vetClinicSchema>) => {
+    if (step < 4) {
+      // This shouldn't be called for steps 1-3, but just in case
+      handleNext();
+      return;
+    }
+    // Only submit the data on the final step
+    submitVetRegistration(data);
   };
 
   // Función para renderizar el día de la semana en español
@@ -309,7 +410,7 @@ export function VetClinicSignup({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <div className="flex items-center">
             {step > 1 && (
@@ -340,30 +441,38 @@ export function VetClinicSignup({
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
+        <form
+          // Only use form submission for the final step
+          onSubmit={handleFormSubmit(onSubmit)}
+          className="flex flex-col flex-1 overflow-hidden"
+        >
           {step === 1 ? (
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-4 py-4 overflow-y-auto pl-1 pr-1 max-h-[60vh]">
               <div className="grid gap-2">
                 <Label htmlFor="clinicName">Nombre de la clínica</Label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="clinicName"
-                    name="clinicName"
+                    {...register("clinicName")}
                     placeholder="Nombre de tu clínica"
-                    className="pl-9"
-                    value={formData.clinicName}
-                    onChange={handleChange}
-                    required
+                    className={`pl-9 ${
+                      errors.clinicName ? "border-red-500" : ""
+                    }`}
                   />
                 </div>
+                {errors.clinicName && (
+                  <p className="text-xs text-red-500">
+                    {errors.clinicName.message as string}
+                  </p>
+                )}
               </div>
 
               <div className="grid gap-2">
+                <Label htmlFor="nit">
+                  NIT (Número de Identificación Tributaria)
+                </Label>
                 <div className="flex items-center">
-                  <Label htmlFor="nit">
-                    NIT (Número de Identificación Tributaria)
-                  </Label>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -388,15 +497,42 @@ export function VetClinicSignup({
                 <div className="relative">
                   <Input
                     id="nit"
-                    name="nit"
+                    {...register("nit")}
                     placeholder="Ej. 900-123456-7"
-                    className={nitError ? "border-red-500" : ""}
-                    value={formData.nit}
-                    onChange={handleChange}
-                    required
+                    className={errors.nit ? "border-red-500" : ""}
                   />
                 </div>
-                {nitError && <p className="text-xs text-red-500">{nitError}</p>}
+                {errors.nit && (
+                  <p className="text-xs text-red-500">
+                    {errors.nit.message as string}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="healthCertificate">
+                  Certificado vigente expedido por la Secretaría Distrital de
+                  Salud
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="healthCertificate"
+                    name="healthCertificate"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileChange}
+                    required
+                    className="cursor-pointer"
+                  />
+                </div>
+                {healthCertificateFile && (
+                  <p className="text-xs text-muted-foreground">
+                    Archivo seleccionado: {healthCertificateFile.name}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Formatos aceptados: PDF, JPG, JPEG, PNG. Tamaño máximo: 5MB.
+                </p>
               </div>
 
               <div className="grid gap-2">
@@ -405,14 +541,16 @@ export function VetClinicSignup({
                   <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="address"
-                    name="address"
+                    {...register("address")}
                     placeholder="Dirección de la clínica"
-                    className="pl-9"
-                    value={formData.address}
-                    onChange={handleChange}
-                    required
+                    className={`pl-9 ${errors.address ? "border-red-500" : ""}`}
                   />
                 </div>
+                {errors.address && (
+                  <p className="text-xs text-red-500">
+                    {errors.address.message as string}
+                  </p>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -421,15 +559,17 @@ export function VetClinicSignup({
                   <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="phone"
-                    name="phone"
+                    {...register("phone")}
                     type="tel"
                     placeholder="Número de teléfono"
-                    className="pl-9"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    required
+                    className={`pl-9 ${errors.phone ? "border-red-500" : ""}`}
                   />
                 </div>
+                {errors.phone && (
+                  <p className="text-xs text-red-500">
+                    {errors.phone.message as string}
+                  </p>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -438,32 +578,38 @@ export function VetClinicSignup({
                   <Clipboard className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Textarea
                     id="description"
-                    name="description"
+                    {...register("description")}
                     placeholder="Describe brevemente tu clínica y especialidades"
                     className="min-h-[100px] pl-9"
-                    value={formData.description}
-                    onChange={handleChange}
                   />
                 </div>
               </div>
 
               <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="businessLicense"
-                  checked={formData.businessLicense}
-                  onCheckedChange={(checked) =>
-                    handleCheckboxChange("businessLicense", checked as boolean)
-                  }
-                  required
+                <Controller
+                  name="businessLicense"
+                  control={control}
+                  render={({ field }) => (
+                    <Checkbox
+                      id="businessLicense"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
                 />
                 <Label htmlFor="businessLicense" className="text-sm">
                   Confirmo que tengo licencia para operar como clínica
                   veterinaria
                 </Label>
               </div>
+              {errors.businessLicense && (
+                <p className="text-xs text-red-500">
+                  {errors.businessLicense.message as string}
+                </p>
+              )}
             </div>
           ) : step === 2 ? (
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-4 py-4 overflow-y-auto pr-1 max-h-[60vh]">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium">Servicios ofrecidos</h3>
                 <Button
@@ -509,22 +655,24 @@ export function VetClinicSignup({
               </div>
             </div>
           ) : step === 3 ? (
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-4 py-4 overflow-y-auto pr-1 max-h-[60vh]">
               <div className="grid gap-2">
                 <Label htmlFor="email">Correo electrónico</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
-                    name="email"
+                    {...register("email")}
                     type="email"
                     placeholder="clinica@email.com"
-                    className="pl-9"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
+                    className={`pl-9 ${errors.email ? "border-red-500" : ""}`}
                   />
                 </div>
+                {errors.email && (
+                  <p className="text-xs text-red-500">
+                    {errors.email.message as string}
+                  </p>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -533,15 +681,19 @@ export function VetClinicSignup({
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
-                    name="password"
+                    {...register("password")}
                     type="password"
                     placeholder="Crea una contraseña"
-                    className="pl-9"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
+                    className={`pl-9 ${
+                      errors.password ? "border-red-500" : ""
+                    }`}
                   />
                 </div>
+                {errors.password && (
+                  <p className="text-xs text-red-500">
+                    {errors.password.message as string}
+                  </p>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -550,34 +702,46 @@ export function VetClinicSignup({
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="confirmPassword"
-                    name="confirmPassword"
+                    {...register("confirmPassword")}
                     type="password"
                     placeholder="Confirma tu contraseña"
-                    className="pl-9"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    required
+                    className={`pl-9 ${
+                      errors.confirmPassword ? "border-red-500" : ""
+                    }`}
                   />
                 </div>
+                {errors.confirmPassword && (
+                  <p className="text-xs text-red-500">
+                    {errors.confirmPassword.message as string}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="agreeTerms"
-                  checked={formData.agreeTerms}
-                  onCheckedChange={(checked) =>
-                    handleCheckboxChange("agreeTerms", checked as boolean)
-                  }
-                  required
+                <Controller
+                  name="agreeTerms"
+                  control={control}
+                  render={({ field }) => (
+                    <Checkbox
+                      id="agreeTerms"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
                 />
                 <Label htmlFor="agreeTerms" className="text-sm">
                   Acepto los términos y condiciones y la política de privacidad
                 </Label>
               </div>
+              {errors.agreeTerms && (
+                <p className="text-xs text-red-500">
+                  {errors.agreeTerms.message as string}
+                </p>
+              )}
             </div>
           ) : (
             // Paso 4: Horarios operativos
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-4 py-4 overflow-y-auto pr-1 max-h-[60vh]">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium">Horarios de atención</h3>
                 <div className="flex items-center space-x-2">
@@ -721,7 +885,7 @@ export function VetClinicSignup({
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="mt-2 pt-2 border-t">
             {registrationError && (
               <div className="mb-4 w-full rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                 {registrationError}
@@ -735,21 +899,30 @@ export function VetClinicSignup({
             >
               {step === 1 ? "Volver" : "Anterior"}
             </Button>
-            <Button
-              type="submit"
-              disabled={isRegistering || (step === 1 && !!nitError)}
-            >
-              {isRegistering ? (
-                <>
-                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
-                  {step === 4 ? "Registrando..." : "Continuar"}
-                </>
-              ) : step === 4 ? (
-                "Crear cuenta"
-              ) : (
-                "Continuar"
-              )}
-            </Button>
+            {step < 4 ? (
+              // For steps 1-3, use a button that calls handleNext directly
+              <Button
+                type="button"
+                onClick={handleNext}
+                disabled={
+                  isRegistering || (step === 1 && !healthCertificateFile)
+                }
+              >
+                Continuar
+              </Button>
+            ) : (
+              // Only on step 4, use a submit button to submit the form
+              <Button type="submit" disabled={isRegistering}>
+                {isRegistering ? (
+                  <>
+                    <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                    Registrando...
+                  </>
+                ) : (
+                  "Crear cuenta"
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>
