@@ -27,7 +27,242 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import {z} from 'zod';
 import { ownerFormSchema } from "~/zodSchemas/ownerFormSchema";
-import { petFormSchema } from "~/zodSchemas/petFormSchema";
+
+const dogBreeds = [
+  "Criollo",
+  "affenpinscher",
+"africano",
+"airedale terrier",
+"akita",
+"appenzeller",
+"kelpie australiano",
+"pastor australiano",
+"bakharwal indio",
+"basenji",
+"beagle",
+"bluetick",
+"borzoi",
+"bouvier",
+"boxer",
+"brabanzón",
+"briard",
+"buhund noruego",
+"bulldog de Boston",
+"bulldog inglés",
+"bulldog francés",
+"bullterrier de Staffordshire",
+"perro boyero australiano",
+"cavapoo",
+"chihuahua",
+"chippiparai indio",
+"chow chow",
+"clumber spaniel",
+"cockapoo",
+"collie border",
+"coonhound",
+"corgi galés de Cardigan",
+"coton de Tulear",
+"dachshund (teckel)",
+"dálmata",
+"gran danés",
+"perro danés-sueco",
+"lebrel escocés",
+"dhole",
+"dingo",
+"dóberman",
+"elkhound noruego",
+"entlebucher",
+"perro esquimal americano",
+"perro lapphund finlandés",
+"bichón frisé",
+"gaddi indio",
+"pastor alemán",
+"galgo indio",
+"galgo italiano",
+"groenendael",
+"habanero",
+"lebrel afgano",
+"basset hound",
+"bloodhound",
+"foxhound inglés",
+"podenco ibicenco",
+"plott hound",
+"coonhound de Walker",
+"husky siberiano",
+"keeshond",
+"kelpie",
+"kombai",
+"komondor",
+"kuvasz",
+"labradoodle",
+"labrador retriever",
+"leonberger",
+"lhasa apso",
+"malamute de Alaska",
+"pastor belga malinois",
+"maltés",
+"bullmastiff",
+"mastín inglés",
+"mastín indio",
+"mastín tibetano",
+"perro sin pelo mexicano",
+"mestizo",
+"boyero de Berna",
+"boyero suizo",
+"mudhol indio",
+"terranova",
+"otterhound",
+"caucásico ovcharka",
+"papillón",
+"perro paria indio",
+"pequinés",
+"pembroke corgi galés",
+"pinscher miniatura",
+"pitbull",
+"braco alemán",
+"braco alemán de pelo largo",
+"pomerania",
+"caniche mediano",
+"caniche miniatura",
+"caniche estándar",
+"caniche toy",
+"pug",
+"puggle",
+"montaña de los Pirineos",
+"rajapalayam indio",
+"redbone coonhound",
+"retriever de Chesapeake",
+"retriever de pelo rizado",
+"retriever de pelo liso",
+"golden retriever",
+"perro crestado rodesiano",
+"rottweiler",
+"saluki",
+"samoyedo",
+"schipperke",
+"schnauzer gigante",
+"schnauzer miniatura",
+"segugio italiano",
+"setter inglés",
+"setter Gordon",
+"setter irlandés",
+"shar pei",
+"perro ovejero inglés",
+"perro ovejero indio",
+"shetland sheepdog",
+"shiba inu",
+"shih tzu",
+"spaniel Blenheim",
+"spaniel bretón",
+"cocker spaniel",
+"spaniel irlandés",
+"spaniel japonés",
+"spaniel de Sussex",
+"spaniel galés",
+"spitz indio",
+"spitz japonés",
+"springer spaniel inglés",
+"san Bernardo",
+"terrier americano",
+"terrier australiano",
+"terrier bedlington",
+"terrier border",
+"terrier cairn",
+"terrier dandie dinmont",
+"fox terrier",
+"terrier irlandés",
+"terrier azul de Kerry",
+"terrier lakeland",
+"terrier norfolk",
+"terrier norwich",
+"terrier patterdale",
+"terrier russell",
+"terrier escocés",
+"terrier sealyham",
+"terrier sedoso",
+"terrier tibetano",
+"terrier toy",
+"terrier galés",
+"terrier west highland",
+"terrier wheaten",
+"terrier yorkshire",
+"pastor belga tervuren",
+"vizsla",
+"perro de agua español",
+"weimaraner",
+"whippet",
+"lobero irlandés"
+];
+
+const catBreeds = [
+"Criollo",
+"abisinio",
+"americano de pelo corto",
+"americano de pelo rizado",
+"american bobtail",
+"american curl",
+"angora turco",
+"asiático",
+"balinés",
+"bengalí",
+"birmano",
+"bombay",
+"bosque de noruega",
+"británico de pelo corto",
+"británico de pelo largo",
+"burmilla",
+"californiano brillante",
+"cartujo",
+"ceilanés",
+"chantilly-tiffany",
+"colorpoint de pelo corto",
+"cornish rex",
+"cymric",
+"devon rex",
+"don sphynx",
+"europeo de pelo corto",
+"fold escocés",
+"gato egipcio",
+"gato exótico",
+"gato hawaiano",
+"havana brown",
+"himalayo",
+"japonés bobtail",
+"javanés",
+"khao manee",
+"korat",
+"kurilian bobtail",
+"laPerm",
+"maine coon",
+"manx",
+"mau egipcio",
+"munchkin",
+"nebelung",
+"ocicat",
+"oriental de pelo corto",
+"oriental de pelo largo",
+"persa",
+"peterbald",
+"pixie-bob",
+"ragamuffin",
+"ragdoll",
+"ruso azul",
+"sagrado de birmania",
+"savannah",
+"selkirk rex",
+"serengeti",
+"siberiano",
+"siamés",
+"singapura",
+"snowshoe",
+"somalí",
+"sphynx",
+"thai",
+"tonkinés",
+"toyger",
+"turkish van",
+"york chocolate"
+];
 
 interface PetOwnerSignupProps {
   open: boolean;
@@ -36,7 +271,7 @@ interface PetOwnerSignupProps {
 }
 
 type OwnerFormData = z.infer<typeof ownerFormSchema>;
-type PetFormData = z.infer<typeof  petFormSchema>;
+//type PetFormData = z.infer<typeof  petFormSchema>;
 
 export function PetOwnerSignup({
   open,
@@ -44,286 +279,79 @@ export function PetOwnerSignup({
   onBack,
 }: PetOwnerSignupProps) {
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    userName: "",
-    email: "",
-    phone: "",
-    password: "",
-    agreeTerms: false,
-    petName: "",
-    petAge: "",
-    petSpecies: "",
-    petBreed: "",
-    petHistory: null,
-    petPhoto: null,
+
+  const {register, handleSubmit, formState: { errors, touchedFields }, trigger, setValue, watch} = useForm<OwnerFormData>({
+    resolver: zodResolver(ownerFormSchema),
+    mode: 'onTouched',
+    defaultValues: {
+      userName: "",
+      email: "",
+      phone: "",
+      password: "",
+      agreeTerms: false,
+      petName: "",
+      petAge: 0,
+      petSpecies: "",
+      petBreed: "",
+    }
   });
 
-  const dogBreeds = [
-    "Criollo",
-    "affenpinscher",
-  "africano",
-  "airedale terrier",
-  "akita",
-  "appenzeller",
-  "kelpie australiano",
-  "pastor australiano",
-  "bakharwal indio",
-  "basenji",
-  "beagle",
-  "bluetick",
-  "borzoi",
-  "bouvier",
-  "boxer",
-  "brabanzón",
-  "briard",
-  "buhund noruego",
-  "bulldog de Boston",
-  "bulldog inglés",
-  "bulldog francés",
-  "bullterrier de Staffordshire",
-  "perro boyero australiano",
-  "cavapoo",
-  "chihuahua",
-  "chippiparai indio",
-  "chow chow",
-  "clumber spaniel",
-  "cockapoo",
-  "collie border",
-  "coonhound",
-  "corgi galés de Cardigan",
-  "coton de Tulear",
-  "dachshund (teckel)",
-  "dálmata",
-  "gran danés",
-  "perro danés-sueco",
-  "lebrel escocés",
-  "dhole",
-  "dingo",
-  "dóberman",
-  "elkhound noruego",
-  "entlebucher",
-  "perro esquimal americano",
-  "perro lapphund finlandés",
-  "bichón frisé",
-  "gaddi indio",
-  "pastor alemán",
-  "galgo indio",
-  "galgo italiano",
-  "groenendael",
-  "habanero",
-  "lebrel afgano",
-  "basset hound",
-  "bloodhound",
-  "foxhound inglés",
-  "podenco ibicenco",
-  "plott hound",
-  "coonhound de Walker",
-  "husky siberiano",
-  "keeshond",
-  "kelpie",
-  "kombai",
-  "komondor",
-  "kuvasz",
-  "labradoodle",
-  "labrador retriever",
-  "leonberger",
-  "lhasa apso",
-  "malamute de Alaska",
-  "pastor belga malinois",
-  "maltés",
-  "bullmastiff",
-  "mastín inglés",
-  "mastín indio",
-  "mastín tibetano",
-  "perro sin pelo mexicano",
-  "mestizo",
-  "boyero de Berna",
-  "boyero suizo",
-  "mudhol indio",
-  "terranova",
-  "otterhound",
-  "caucásico ovcharka",
-  "papillón",
-  "perro paria indio",
-  "pequinés",
-  "pembroke corgi galés",
-  "pinscher miniatura",
-  "pitbull",
-  "braco alemán",
-  "braco alemán de pelo largo",
-  "pomerania",
-  "caniche mediano",
-  "caniche miniatura",
-  "caniche estándar",
-  "caniche toy",
-  "pug",
-  "puggle",
-  "montaña de los Pirineos",
-  "rajapalayam indio",
-  "redbone coonhound",
-  "retriever de Chesapeake",
-  "retriever de pelo rizado",
-  "retriever de pelo liso",
-  "golden retriever",
-  "perro crestado rodesiano",
-  "rottweiler",
-  "saluki",
-  "samoyedo",
-  "schipperke",
-  "schnauzer gigante",
-  "schnauzer miniatura",
-  "segugio italiano",
-  "setter inglés",
-  "setter Gordon",
-  "setter irlandés",
-  "shar pei",
-  "perro ovejero inglés",
-  "perro ovejero indio",
-  "shetland sheepdog",
-  "shiba inu",
-  "shih tzu",
-  "spaniel Blenheim",
-  "spaniel bretón",
-  "cocker spaniel",
-  "spaniel irlandés",
-  "spaniel japonés",
-  "spaniel de Sussex",
-  "spaniel galés",
-  "spitz indio",
-  "spitz japonés",
-  "springer spaniel inglés",
-  "san Bernardo",
-  "terrier americano",
-  "terrier australiano",
-  "terrier bedlington",
-  "terrier border",
-  "terrier cairn",
-  "terrier dandie dinmont",
-  "fox terrier",
-  "terrier irlandés",
-  "terrier azul de Kerry",
-  "terrier lakeland",
-  "terrier norfolk",
-  "terrier norwich",
-  "terrier patterdale",
-  "terrier russell",
-  "terrier escocés",
-  "terrier sealyham",
-  "terrier sedoso",
-  "terrier tibetano",
-  "terrier toy",
-  "terrier galés",
-  "terrier west highland",
-  "terrier wheaten",
-  "terrier yorkshire",
-  "pastor belga tervuren",
-  "vizsla",
-  "perro de agua español",
-  "weimaraner",
-  "whippet",
-  "lobero irlandés"
-  ];
+  const [petFiles, setPetFiles] = useState({
+    petHistory: null as File | null,
+    petPhoto: null as File | null,
+  });
 
-  const catBreeds = [
-  "Criollo",
-  "abisinio",
-  "americano de pelo corto",
-  "americano de pelo rizado",
-  "american bobtail",
-  "american curl",
-  "angora turco",
-  "asiático",
-  "balinés",
-  "bengalí",
-  "birmano",
-  "bombay",
-  "bosque de noruega",
-  "británico de pelo corto",
-  "británico de pelo largo",
-  "burmilla",
-  "californiano brillante",
-  "cartujo",
-  "ceilanés",
-  "chantilly-tiffany",
-  "colorpoint de pelo corto",
-  "cornish rex",
-  "cymric",
-  "devon rex",
-  "don sphynx",
-  "europeo de pelo corto",
-  "fold escocés",
-  "gato egipcio",
-  "gato exótico",
-  "gato hawaiano",
-  "havana brown",
-  "himalayo",
-  "japonés bobtail",
-  "javanés",
-  "khao manee",
-  "korat",
-  "kurilian bobtail",
-  "laPerm",
-  "maine coon",
-  "manx",
-  "mau egipcio",
-  "munchkin",
-  "nebelung",
-  "ocicat",
-  "oriental de pelo corto",
-  "oriental de pelo largo",
-  "persa",
-  "peterbald",
-  "pixie-bob",
-  "ragamuffin",
-  "ragdoll",
-  "ruso azul",
-  "sagrado de birmania",
-  "savannah",
-  "selkirk rex",
-  "serengeti",
-  "siberiano",
-  "siamés",
-  "singapura",
-  "snowshoe",
-  "somalí",
-  "sphynx",
-  "thai",
-  "tonkinés",
-  "toyger",
-  "turkish van",
-  "york chocolate"
-  ];
+  const formValues = watch();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
-    });
-  };
+const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  if (!e.target.files || !e.target.name) return;
+  const file = e.target.files[0];
+  const name = e.target.name;
+  
+  console.log(e.target.files);
+  setPetFiles({
+    ...petFiles,
+    [name]: file,
+  });
+};
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-
-    if (!e.target.files || e.target.name) return;
-    const file = e.target.files[0]; // Obtiene el archivo seleccionado
-    const name = e.target.name; // Obtiene el atributo 'name' del input
-
-    console.log(e.target.files);
-    setFormData((formData) => ({
-      ...formData,
-      [name]: file,
-    }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (step === 1) {
+  const handleNextStep = async () => {
+    const isValid = await trigger([
+      'userName', 
+      'email', 
+      'phone', 
+      'password',
+      'agreeTerms', 
+    ]);
+    if (isValid) {
       setStep(2);
+    }
+  };
+
+  const onSubmit = async (data: OwnerFormData) => {
+    if (step === 1) {
+      handleNextStep();
     } else {
-      // Here you would typically send the data to your backend
-      console.log("Submitting pet owner registration:", formData);
-      // Close the dialog after successful submission
+      const formData = new FormData();
+      Object.entries(data).forEach(([key, value]) => {
+        formData.append(key, value.toString());;
+      });
+
+      // Añadir los archivos si existen
+      if (petFiles.petHistory) {
+        formData.append('petHistory', petFiles.petHistory);
+      }
+      if (petFiles.petPhoto) {
+        formData.append('petPhoto', petFiles.petPhoto);
+      }
+
+      // Enviar al backend
+      console.log("Datos de solicitud:", data, petFiles);
+      //lógica para enviar al backend...
+      
+      // Cerrar el diálogo después del envío exitoso
       onOpenChange(false);
+
     }
   };
 
@@ -354,7 +382,7 @@ export function PetOwnerSignup({
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           {step === 1 ? (
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
@@ -363,14 +391,12 @@ export function PetOwnerSignup({
                   <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="userName"
-                    name="userName"
                     placeholder="Tu nombre"
                     className="pl-9"
-                    value={formData.userName}
-                    onChange={handleChange}
-                    required
+                    {...register('userName')}
                   />
                 </div>
+                {errors.userName && (<p className="text-sm text-red-500">{errors.userName.message}</p>)}
               </div>
 
               <div className="grid gap-2">
@@ -379,15 +405,13 @@ export function PetOwnerSignup({
                   <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
-                    name="email"
                     type="email"
                     placeholder="tu@email.com"
                     className="pl-9"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
+                    {...register('email')}
                   />
                 </div>
+                {errors.email && (<p className="text-sm text-red-500">{errors.email.message}</p>)}
               </div>
 
               <div className="grid gap-2">
@@ -396,15 +420,13 @@ export function PetOwnerSignup({
                   <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="phone"
-                    name="phone"
                     type="tel"
                     placeholder="321 1234567"
                     className="pl-9"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    required
+                    {...register('phone')}
                   />
                 </div>
+                {errors.phone && (<p className="text-sm text-red-500">{errors.phone.message}</p>)}
               </div>
               
               <div className="grid gap-2">
@@ -413,31 +435,29 @@ export function PetOwnerSignup({
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
-                    name="password"
                     type="password"
                     placeholder="Crea una contraseña"
                     className="pl-9"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
+                    {...register('password')}
                   />
                 </div>
+                {errors.password && (<p className="text-sm text-red-500">{errors.password.message}</p>)}
               </div>
 
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="agreeTerms"
-                  name="agreeTerms"
-                  checked={formData.agreeTerms}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, agreeTerms: checked as boolean })
-                  }
-                  required
+                  className="mr-2"
+                  onCheckedChange={(checked) => {
+                    setValue('agreeTerms', checked === true);
+                  }}
+                  {...register('agreeTerms')} 
                 />
-                <Label htmlFor="agreeTerms" className="text-sm">
-                  Acepto los términos y condiciones y la política de privacidad
-                </Label>
+                <label htmlFor="agreeTerms" className="text-sm">
+                    Acepto los términos y condiciones de la política de privacidad
+                </label>
               </div>
+              {errors.agreeTerms && (<p className="text-sm text-red-500 mt-1.5">{errors.agreeTerms.message}</p>)}
             </div>
           ) : (
             <div className="grid gap-4 py-4">
@@ -447,15 +467,13 @@ export function PetOwnerSignup({
                   <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="petName"
-                    name="petName"
                     placeholder="Nombre de tu mascota"
                     className="pl-9"
                     type="text"
-                    value={formData.petName}
-                    onChange={handleChange}
-                    required
+                    {...register('petName')}
                   />
                 </div>
+                {errors.petName && touchedFields.petName && (<p className="text-sm text-red-500 mt-1.5">{errors.petName.message}</p>)}
               </div>
 
               <div className="grid gap-2">
@@ -464,44 +482,43 @@ export function PetOwnerSignup({
                   <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="petAge"
-                    name="petAge"
                     placeholder="Edad de tu mascota"
                     className="pl-9"
                     type="number"
                     min={0}
                     max={50}
-                    value={formData.petAge}
-                    onChange={handleChange}
-                    required
+                    {...register('petAge', { valueAsNumber: true })}
                   />
                 </div>
+                {errors.petAge && touchedFields.petName && (<p className="text-sm text-red-500 mt-1.5">{errors.petAge.message}</p>)}
               </div>
 
               <div className="grid gap-2">
                 <Label htmlFor="petSpecies">Especie</Label>
                 <div className="relative">
-                  <Select name="petSpecies" required onValueChange={(value) => setFormData({...formData, petSpecies: value})}>
+                  <Select name="petSpecies" onValueChange={(value) => setValue('petSpecies', value)}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Especie" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem  value="canino">Canino</SelectItem>
-                      <SelectItem value="fenilo">Felino</SelectItem>
+                      <SelectItem value="felino">Felino</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                {errors.petSpecies && touchedFields.petName && (<p className="text-sm text-red-500 mt-1.5">{errors.petSpecies.message}</p>)}
               </div>
 
               <div className="grid gap-2">
                 <Label htmlFor="petBreed">Raza</Label>
                 <div className="relative">
-                  <Select name="petBreed" required onValueChange={(value) => setFormData({...formData, petBreed: value})}>
+                  <Select name="petBreed" onValueChange={(value) => setValue('petBreed', value)}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Raza" />
                     </SelectTrigger>
                     <SelectContent>
                       {
-                        formData.petSpecies === "canino" ? dogBreeds.map((breed) => (
+                        formValues.petSpecies === "canino" ? dogBreeds.map((breed) => (
                             <SelectItem value={breed}>{breed}</SelectItem>
                         )) : ( catBreeds.map((breed) => (
                           <SelectItem value={breed}>{breed}</SelectItem>
@@ -510,50 +527,102 @@ export function PetOwnerSignup({
                     </SelectContent>
                   </Select>
                 </div>
+                {errors.petBreed && touchedFields.petName && (<p className="text-sm text-red-500 mt-1.5">{errors.petBreed.message}</p>)}
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="petHistory">Historial medico (opcional)</Label>
-                <p className="text-sm text-gray-600">Puedes adjuntar el historial medico de tu mascota</p>
-                <div className="relative">
-                  <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="petHistory"
-                    name="petHistory"
-                    className="pl-9"
-                    type="file"
-                    onChange={handleFileChange}
-                    accept=".pdf"
-                  />
+                <div className="grid gap-2">
+                  <Label htmlFor="petHistory">Historial médico (opcional)</Label>
+                  <p className="text-sm text-gray-600">Puedes adjuntar el historial médico de tu mascota</p>
+                  <div className="relative">
+                    {petFiles.petHistory ? (
+                      <div className="flex items-center justify-between px-3 py-2 border rounded-md">
+                        <div className="flex items-center">
+                          <Paw className="h-4 w-4 text-primary mr-2" />
+                          <span className="text-sm font-medium">{petFiles.petHistory.name}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPetFiles({...petFiles, petHistory: null})}
+                        >
+                          <span className="text-red-600">eliminar</span>
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="petHistory"
+                          name="petHistory"
+                          className="pl-9"
+                          type="file"
+                          onChange={handleFileChange}
+                          accept=".pdf"
+                        />
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="petPhoto">Foto (Opcional)</Label>
-                <div className="relative">
-                  <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="petPhoto"
-                    name="petPhoto"
-                    className="pl-9"
-                    type="file"
-                    onChange={handleFileChange}
-                    accept="image/*"
-                  />
+                <div className="grid gap-2">
+                  <Label htmlFor="petPhoto">Foto (Opcional)</Label>
+                  <div className="relative">
+                    {petFiles.petPhoto ? (
+                      <div className="flex items-center justify-between px-3 py-2 border rounded-md">
+                        <div className="flex items-center">
+                          <Paw className="h-4 w-4 text-primary mr-2" />
+                          <span className="text-sm font-medium">{petFiles.petPhoto.name}</span>
+                          {petFiles.petPhoto.type.startsWith('image/') && (
+                            <div className="ml-2 h-8 w-8 overflow-hidden rounded-md">
+                              <img 
+                                src={URL.createObjectURL(petFiles.petPhoto)} 
+                                alt="Vista previa" 
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPetFiles({...petFiles, petPhoto: null})}
+                        >
+                          <span className="text-red-600">eliminar</span>
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="petPhoto"
+                          name="petPhoto"
+                          className="pl-9"
+                          type="file"
+                          onChange={handleFileChange}
+                          accept="image/*"
+                        />
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-
             </div>
           )}
-
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onBack}>
               Volver
             </Button>
-            <Button type="submit">
-              {step === 1 ? "Continuar" : "Crear cuenta"}
-            </Button>
+              {step === 1 ? (
+                <Button type="button" onClick={handleNextStep}>
+                  Continuar
+                </Button>
+              ) : (
+                <Button type="submit">
+                  Crear cuenta
+                </Button>
+              )}
           </DialogFooter>
         </form>
       </DialogContent>
