@@ -29,10 +29,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { set, useForm } from 'react-hook-form';
 import {z} from 'zod';
 import { ownerFormSchema } from "~/zodSchemas/ownerFormSchema";
+import { useNavigate } from "react-router";
 
 const dogBreeds = [
-  "Criollo",
-  "affenpinscher",
+"Criollo (Sin raza)",
+"affenpinscher",
 "africano",
 "airedale terrier",
 "akita",
@@ -86,6 +87,7 @@ const dogBreeds = [
 "lebrel afgano",
 "basset hound",
 "bloodhound",
+"fresh puddle",
 "foxhound inglés",
 "podenco ibicenco",
 "plott hound",
@@ -97,6 +99,7 @@ const dogBreeds = [
 "komondor",
 "kuvasz",
 "labradoodle",
+"labrador",
 "labrador retriever",
 "leonberger",
 "lhasa apso",
@@ -197,7 +200,7 @@ const dogBreeds = [
 ];
 
 const catBreeds = [
-"Criollo",
+"Criollo (Sin raza)",
 "abisinio",
 "americano de pelo corto",
 "americano de pelo rizado",
@@ -273,7 +276,6 @@ interface PetOwnerSignupProps {
 }
 
 type OwnerFormData = z.infer<typeof ownerFormSchema>;
-//type PetFormData = z.infer<typeof  petFormSchema>;
 
 export function PetOwnerSignup({
   open,
@@ -291,7 +293,7 @@ export function PetOwnerSignup({
 
   const [step, setStep] = useState(1);
 
-  const {register, handleSubmit, formState: { errors, touchedFields }, trigger, setValue, watch} = useForm<OwnerFormData>({
+  const {register, handleSubmit, formState: { errors, touchedFields }, trigger, setValue, watch, reset} = useForm<OwnerFormData>({
     resolver: zodResolver(ownerFormSchema),
     mode: 'onTouched',
     defaultValues: {
@@ -401,26 +403,27 @@ export function PetOwnerSignup({
           message: "Tu cuenta ha sido creada exitosamente. ¡Bienvenido a nuestra plataforma!"
         });
 
-      } catch (Error) {
-        console.error("Error al registrar:", Error);
+      } catch (error: unknown) {
+        console.error("Error al registrar:", error);
+        const errorMessage = error instanceof Error ? error.message : "Ha ocurrido un error en el registro.";
 
         setStatusDialog({
           open: true,
           type: "error",
-          message: "Ha ocurrió un error en el registro.",
+          message: errorMessage,
         });
 
       } finally {
+        reset();
+        petFiles.petHistory = null;
+        petFiles.petPhoto = null;
+        setStep(1);
         setIsLoading(false);
       }
 
-      // Enviar al backend
       console.log("Datos de solicitud:", data, petFiles);
-      //lógica para enviar al backend...
-      
-      // Cerrar el diálogo después del envío exitoso
+    
       onOpenChange(false);
-
     }
   };
 
@@ -559,7 +562,7 @@ export function PetOwnerSignup({
                     {...register('petAge', { valueAsNumber: true })}
                   />
                 </div>
-                {errors.petAge && touchedFields.petName && (<p className="text-sm text-red-500 mt-1.5">{errors.petAge.message}</p>)}
+                {errors.petAge && touchedFields.petAge && (<p className="text-sm text-red-500 mt-1.5">{errors.petAge.message}</p>)}
               </div>
 
               <div className="grid gap-2">
@@ -575,7 +578,7 @@ export function PetOwnerSignup({
                     </SelectContent>
                   </Select>
                 </div>
-                {errors.petSpecies && touchedFields.petName && (<p className="text-sm text-red-500 mt-1.5">{errors.petSpecies.message}</p>)}
+                {errors.petSpecies && touchedFields.petSpecies && (<p className="text-sm text-red-500 mt-1.5">{errors.petSpecies.message}</p>)}
               </div>
 
               <div className="grid gap-2">
@@ -596,7 +599,7 @@ export function PetOwnerSignup({
                     </SelectContent>
                   </Select>
                 </div>
-                {errors.petBreed && touchedFields.petName && (<p className="text-sm text-red-500 mt-1.5">{errors.petBreed.message}</p>)}
+                {errors.petBreed && touchedFields.petBreed && (<p className="text-sm text-red-500 mt-1.5">{errors.petBreed.message}</p>)}
               </div>
 
                 <div className="grid gap-2">
@@ -709,6 +712,5 @@ export function PetOwnerSignup({
         message={statusDialog.message}
       />
     </Dialog>
-    
   );
 }

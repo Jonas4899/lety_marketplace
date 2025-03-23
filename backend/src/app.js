@@ -108,6 +108,27 @@ app.post(
         .single();
 
       if (errorUsuario) {
+        // Verificar si es un error de duplicado de correo electrónico
+        if (
+          errorUsuario.code === '23505' &&
+          errorUsuario.details.includes('correo')
+        ) {
+          return res.status(409).json({
+            message:
+              'Ya existe un usuario registrado con este correo electrónico',
+          });
+        }
+        // Verificar si es un error de duplicado de teléfono
+        else if (
+          errorUsuario.code === '23505' &&
+          errorUsuario.details.includes('telefono')
+        ) {
+          return res.status(409).json({
+            message:
+              'Ya existe un usuario registrado con este número de teléfono',
+          });
+        }
+
         return res.status(400).json({
           message: 'Error al registrar el usuario:' + errorUsuario.message,
         });

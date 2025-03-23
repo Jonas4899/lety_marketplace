@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { useNavigate } from "react-router";
 
 export interface StatusDialogProps {
   open: boolean;
@@ -33,6 +34,8 @@ export const StatusDialog = ({
         ? "Error"
         : "Procesando"
   );
+
+  const navigate = useNavigate();
 
   // Manejar el cierre del diálogo
   const handleClose = () => {
@@ -79,15 +82,15 @@ export const StatusDialog = ({
           {message}
         </DialogDescription>
         
-        <DialogFooter className="flex justify-center">
+        <DialogFooter className="flex justify-center w-full">
           {type === "loading" ? (
-            <Button disabled>Procesando...</Button>
+            <Button disabled className="hidden">Procesando...</Button>
           ) : type === "error" ? (
-            <Button onClick={handleClose}>  
+            <Button onClick={handleClose} className="mx-auto">  
               Entendido
             </Button>
           ) : (
-            <Button onClick={handleClose}>
+            <Button className="mx-auto  " onClick={() => navigate("/dashboard-client")}>
               Continuar
             </Button>
           )}

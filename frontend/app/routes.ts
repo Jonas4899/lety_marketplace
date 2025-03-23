@@ -18,5 +18,7 @@ export default [
       "registrar-horarios-pagos",
       "routes/RegisterVeterinary/VetSchedulePaymentForm.tsx"
     ),
+
   ]),
+  route("dashboard-client", "routes/DashboardClient/DashboardClient.tsx"),
 ] satisfies RouteConfig;
