@@ -410,7 +410,7 @@ export function PetOwnerSignup({
         setStatusDialog({
           open: true,
           type: "error",
-          message: errorMessage,
+          message: errorMessage,  
         });
 
       } finally {

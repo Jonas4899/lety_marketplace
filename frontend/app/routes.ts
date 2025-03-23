@@ -9,7 +9,7 @@ export default [
   index("routes/home.tsx"),
   layout("layouts/AuthLayout/index.tsx", [
     route("registrar-clinica", "routes/RegisterVeterinary/BasicVetInfo.tsx"),
-    route("registrar-dueño-mascota", "routes/RegisterOwner/BasicOwnerInfo.tsx"),
+    route("registrar-dueño-mascota", "routes/RegisterOwner/index.tsx"),
     route(
       "registro-servicios",
       "routes/RegisterVeterinary/VetServicesForm.tsx"
@@ -20,5 +20,5 @@ export default [
     ),
 
   ]),
-  route("dashboard-client", "routes/DashboardClient/DashboardClient.tsx"),
+  route("dashboard-client", "routes/DashboardClient/index.tsx"),
 ] satisfies RouteConfig;
