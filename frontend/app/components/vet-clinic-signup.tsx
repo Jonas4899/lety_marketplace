@@ -43,7 +43,6 @@ import {
   vetClinicSchema,
   type VetClinicFormData,
 } from "~/zodSchemas/vetClinic";
-import { useNavigate } from "react-router";
 
 // Actualizar la interfaz Service para incluir los nuevos campos
 interface Service {
@@ -239,26 +238,7 @@ export function VetClinicSignup({
       setRegistrationError(null); // Clear any previous errors
       setStep(2);
     } else if (step === 2) {
-      // Validar que al menos un servicio tenga nombre y precio
-      const hasValidService = services.some(
-        (service) => service.name.trim() && service.price.trim()
-      );
-
-      if (!hasValidService) {
-        setRegistrationError(
-          "Por favor, agregue al menos un servicio con nombre y precio"
-        );
-        return;
-      }
-
-      // Limpiar servicios vacíos antes de continuar
-      setServices(
-        services.filter(
-          (service) => service.name.trim() || service.price.trim()
-        )
-      );
-
-      setRegistrationError(null);
+      // For step 2, just move to the next step (no validation required for services yet)
       setStep(3);
     } else if (step === 3) {
       // Validate fields for step 3
@@ -292,11 +272,6 @@ export function VetClinicSignup({
       setIsRegistering(true);
       setRegistrationError(null);
 
-      // Filtrar servicios válidos antes de enviar
-      const validServices = services.filter(
-        (service) => service.name.trim() && service.price.trim()
-      );
-
       // Create FormData object to send to the backend
       const apiFormData = new FormData();
 
@@ -314,15 +289,10 @@ export function VetClinicSignup({
         apiFormData.append("certificado_ss", healthCertificateFile);
       }
 
-      // Add services as JSON string only if there are valid services
-      if (validServices.length > 0) {
-        apiFormData.append("servicios", JSON.stringify(validServices));
-        console.log("Enviando servicios:", validServices);
-      } else {
-        console.log("No hay servicios válidos para enviar");
-      }
+      // Add services as JSON string (for future implementation)
+      apiFormData.append("servicios", JSON.stringify(services));
 
-      // Add operational hours as JSON string
+      // Add operational hours as JSON string (for future implementation)
       apiFormData.append("horarios", JSON.stringify(operationalHours));
 
       console.log("Enviando datos al servidor...");
@@ -357,11 +327,6 @@ export function VetClinicSignup({
         }
 
         console.log("Registro exitoso:", data);
-
-        // Mostrar mensaje de éxito con información de los servicios registrados
-        if (data.servicios && data.servicios.length > 0) {
-          console.log(`Se registraron ${data.servicios.length} servicios`);
-        }
 
         // Close dialog and redirect
         onOpenChange(false);
