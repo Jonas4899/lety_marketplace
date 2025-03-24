@@ -6,6 +6,7 @@ import multer from 'multer';
 import bcrypt from 'bcrypt';
 import path from 'path';
 import fs from 'fs';
+import e from 'express';
 
 // Configurar variables de entorno
 dotenv.config();
@@ -37,24 +38,24 @@ const upload = multer({ storage }); //Inicializar multer con la configuración d
 //Endpoint para registrar usuarios dueños de las mascotas junto con su mascota ---------------------------
 app.post(
   '/register/user',
-  upload.fields([{ name: 'foto_mascota' }, { name: 'historial_medico' }]),
+  upload.fields([{ name: 'petPhoto' }, { name: 'petHistory' }]),
   async (req, res) => {
     const {
-      nombre,
-      correo,
-      telefono,
-      contrasena,
-      nombremascota,
-      edad,
-      raza,
-      especie,
+      userName,
+      email,
+      phone,
+      password,
+      petName,
+      petAge,
+      petBreed,
+      petSpecies,
     } = req.body;
 
     //req.files contiene los archivos subidos en un objeto con arrays de archivos
     //"foto_mascota": [ { "file1_data" } ], foto mascota es un array de archivos
 
-    const fotoMascotaFile = req.files.foto_mascota?.[0]; // Obtener el primer archivol array
-    const historialMedicoFile = req.files.historial_medico?.[0]; // Obtener el primer archivol array
+    const fotoMascotaFile = req.files.petPhoto?.[0]; // Obtener el primer archivol array
+    const historialMedicoFile = req.files.petHistory?.[0]; // Obtener el primer archivol array
 
     console.log('Foto mascota file:', fotoMascotaFile);
     console.log('Historial médico file:', historialMedicoFile);
@@ -62,7 +63,7 @@ app.post(
     try {
       console.log('Datos recibidos:', req.body);
       const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash(contrasena, saltRounds);
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
 
       //Guardar la fecha de registro
       const fecha_registro = new Date();
@@ -96,10 +97,10 @@ app.post(
         .from('usuarios')
         .insert([
           {
-            nombre,
-            correo,
+            nombre: userName,
+            correo: email,
             contrasena: hashedPassword,
-            telefono,
+            telefono: phone,
             fecha_registro,
           },
         ])
@@ -107,6 +108,27 @@ app.post(
         .single();
 
       if (errorUsuario) {
+        // Verificar si es un error de duplicado de correo electrónico
+        if (
+          errorUsuario.code === '23505' &&
+          errorUsuario.details.includes('correo')
+        ) {
+          return res.status(409).json({
+            message:
+              'Ya existe un usuario registrado con este correo electrónico',
+          });
+        }
+        // Verificar si es un error de duplicado de teléfono
+        else if (
+          errorUsuario.code === '23505' &&
+          errorUsuario.details.includes('telefono')
+        ) {
+          return res.status(409).json({
+            message:
+              'Ya existe un usuario registrado con este número de teléfono',
+          });
+        }
+
         return res.status(400).json({
           message: 'Error al registrar el usuario:' + errorUsuario.message,
         });
@@ -132,10 +154,10 @@ app.post(
         .from('mascotas')
         .insert([
           {
-            nombre: nombremascota,
-            edad: parseInt(edad), // Asegúrate de que sea un número
-            raza,
-            especie,
+            nombre: petName,
+            edad: parseInt(petAge), // Asegúrate de que sea un número
+            raza: petBreed,
+            especie: petSpecies,
             historial_medico: historial_medicoUrl || null,
             foto_url: foto_mascotaUrl || null,
             id_usuario: usuario.id_usuario, // Verifica que usuario.id_usuario exista
