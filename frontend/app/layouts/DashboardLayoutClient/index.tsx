@@ -1,9 +1,7 @@
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect } from "react"
-import {Link} from "react-router"
-import { usePathname, useRouter } from "next/navigation"
-import { Outlet , useNavigate} from "react-router"
+import { useState, useEffect } from "react";
+import { Link, Outlet, useNavigate, useLocation } from "react-router";
 import {
   PawPrint,
   Settings,
@@ -18,54 +16,57 @@ import {
   Bell,
   Heart,
   Clipboard,
-} from "lucide-react"
-import { Button } from "~/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/sheet"
+} from "lucide-react";
+import { Button } from "~/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/sheet";
 //import { useAuth } from "@/context/auth-context"
 
 interface SidebarNavProps {
   items: {
-    href: string
-    title: string
-    icon: React.ReactNode
-  }[]
+    href: string;
+    title: string;
+    icon: React.ReactNode;
+  }[];
 }
 
 function SidebarNav({ items }: SidebarNavProps) {
-  const pathname = usePathname()
+  const location = useLocation();
+  const pathname = location.pathname;
 
   return (
     <nav className="grid gap-1">
       {items.map((item) => {
-        const isActive = pathname === item.href
+        const isActive = pathname === item.href;
         return (
           <Link
             key={item.href}
             to={item.href}
             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent ${
-              isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+              isActive
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground"
             }`}
           >
             {item.icon}
             {item.title}
           </Link>
-        )
+        );
       })}
     </nav>
-  )
+  );
 }
 
 export default function PetDashboardLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
-  const [isClient, setIsClient] = useState(false)
-  const router = useNavigate()
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  const router = useNavigate();
   //const { user, logout, isAuthenticated } = useAuth()
-/*
+  /*
   useEffect(() => {
     setIsClient(true)
 
@@ -126,7 +127,7 @@ export default function PetDashboardLayout({
       href: "/pet-dashboard/settings",
       icon: <Settings className="h-4 w-4" />,
     },
-  ]
+  ];
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -146,7 +147,12 @@ export default function PetDashboardLayout({
                   <PawPrint className="h-6 w-6" />
                   <span>PETVET MARKETPLACE</span>
                 </Link>
-                <Button variant="ghost" size="icon" className="ml-auto" onClick={() => setIsMobileNavOpen(false)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="ml-auto"
+                  onClick={() => setIsMobileNavOpen(false)}
+                >
                   <X className="h-5 w-5" />
                   <span className="sr-only">Close navigation menu</span>
                 </Button>
@@ -161,7 +167,7 @@ export default function PetDashboardLayout({
                   className="w-full justify-start gap-2"
                   onClick={() => {
                     //logout()
-                    router("/")
+                    router("/");
                   }}
                 >
                   <LogOut className="h-4 w-4" />
@@ -171,11 +177,17 @@ export default function PetDashboardLayout({
             </div>
           </SheetContent>
         </Sheet>
-        <Link to="/" className="flex items-center gap-2 font-semibold md:hidden">
+        <Link
+          to="/"
+          className="flex items-center gap-2 font-semibold md:hidden"
+        >
           <PawPrint className="h-6 w-6" />
           <span>PETVET</span>
         </Link>
-        <Link to="/" className="hidden items-center gap-2 font-semibold md:flex">
+        <Link
+          to="/"
+          className="hidden items-center gap-2 font-semibold md:flex"
+        >
           <PawPrint className="h-6 w-6" />
           <span>PETVET MARKETPLACE</span>
         </Link>
@@ -215,7 +227,7 @@ export default function PetDashboardLayout({
                 className="w-full justify-start gap-2"
                 onClick={() => {
                   //logout()
-                  router("/")
+                  router("/");
                 }}
               >
                 <LogOut className="h-4 w-4" />
@@ -226,11 +238,11 @@ export default function PetDashboardLayout({
         </aside>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto">{children}
-            <Outlet />
+        <main className="flex-1 overflow-auto">
+          {children}
+          <Outlet />
         </main>
       </div>
     </div>
-  )
+  );
 }
-

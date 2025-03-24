@@ -1,7 +1,5 @@
-import { useState, useEffect } from "react"
-import { Link } from "react-router";
-import { usePathname } from "next/navigation"
-import { Outlet , useNavigate} from "react-router"
+import { useState, useEffect } from "react";
+import { Link, Outlet, useNavigate, useLocation } from "react-router";
 import {
   Building2,
   Settings,
@@ -16,60 +14,99 @@ import {
   Users,
   BarChart2,
   Loader2,
-} from "lucide-react"
-import { Button } from "~/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/sheet"
+} from "lucide-react";
+import { Button } from "~/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/sheet";
 //import { useAuth } from "~/context/auth-context"
 
 interface SidebarNavProps {
   items: {
-    href: string
-    title: string
-    icon: React.ReactNode
-  }[]
+    href: string;
+    title: string;
+    icon: React.ReactNode;
+  }[];
 }
 
 function SidebarNav({ items }: SidebarNavProps) {
-  const pathname = usePathname()
+  const location = useLocation();
+  const pathname = location.pathname;
 
   return (
     <nav className="grid gap-1">
       {items.map((item) => {
-        const isActive = pathname === item.href
+        const isActive = pathname === item.href;
         return (
           <Link
             key={item.href}
             to={item.href}
             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent ${
-              isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+              isActive
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground"
             }`}
           >
             {item.icon}
             {item.title}
           </Link>
-        )
+        );
       })}
     </nav>
-  )
+  );
 }
 
 export default function DashboardLayout() {
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
-  const [isClient, setIsClient] = useState(false)
-  const router = useNavigate()
-  
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  const router = useNavigate();
+
   const navItems = [
-    { title: "Dashboard", href: "/dashboard-vet", icon: <Home className="h-4 w-4" /> },
-    { title: "Información General", href: "/dashboard/profile", icon: <Building2 className="h-4 w-4" /> },
-    { title: "Fotos", href: "/dashboard/photos", icon: <ImageIcon className="h-4 w-4" /> },
-    { title: "Servicios y Precios", href: "/dashboard/services", icon: <DollarSign className="h-4 w-4" /> },
-    { title: "Citas", href: "/dashboard/appointments", icon: <Calendar className="h-4 w-4" /> },
-    { title: "Mensajes", href: "/dashboard/messages", icon: <MessageSquare className="h-4 w-4" /> },
-    { title: "Clientes", href: "/dashboard/clients", icon: <Users className="h-4 w-4" /> },
-    { title: "Estadísticas", href: "/dashboard/analytics", icon: <BarChart2 className="h-4 w-4" /> },
-    { title: "Configuración", href: "/dashboard/settings", icon: <Settings className="h-4 w-4" /> },
-  ]
+    {
+      title: "Dashboard",
+      href: "/dashboard-vet",
+      icon: <Home className="h-4 w-4" />,
+    },
+    {
+      title: "Información General",
+      href: "/dashboard/profile",
+      icon: <Building2 className="h-4 w-4" />,
+    },
+    {
+      title: "Fotos",
+      href: "/dashboard/photos",
+      icon: <ImageIcon className="h-4 w-4" />,
+    },
+    {
+      title: "Servicios y Precios",
+      href: "/dashboard/services",
+      icon: <DollarSign className="h-4 w-4" />,
+    },
+    {
+      title: "Citas",
+      href: "/dashboard/appointments",
+      icon: <Calendar className="h-4 w-4" />,
+    },
+    {
+      title: "Mensajes",
+      href: "/dashboard/messages",
+      icon: <MessageSquare className="h-4 w-4" />,
+    },
+    {
+      title: "Clientes",
+      href: "/dashboard/clients",
+      icon: <Users className="h-4 w-4" />,
+    },
+    {
+      title: "Estadísticas",
+      href: "/dashboard/analytics",
+      icon: <BarChart2 className="h-4 w-4" />,
+    },
+    {
+      title: "Configuración",
+      href: "/dashboard/settings",
+      icon: <Settings className="h-4 w-4" />,
+    },
+  ];
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -88,7 +125,12 @@ export default function DashboardLayout() {
                   <Building2 className="h-6 w-6" />
                   <span>PETVET MARKETPLACE</span>
                 </Link>
-                <Button variant="ghost" size="icon" className="ml-auto" onClick={() => setIsMobileNavOpen(false)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="ml-auto"
+                  onClick={() => setIsMobileNavOpen(false)}
+                >
                   <X className="h-5 w-5" />
                   <span className="sr-only">Close navigation menu</span>
                 </Button>
@@ -103,7 +145,7 @@ export default function DashboardLayout() {
                   className="w-full justify-start gap-2"
                   onClick={() => {
                     //logout()
-                    window.location.href = "/"
+                    window.location.href = "/";
                   }}
                 >
                   <LogOut className="h-4 w-4" />
@@ -113,7 +155,10 @@ export default function DashboardLayout() {
             </div>
           </SheetContent>
         </Sheet>
-        <Link to="/" className="hidden items-center gap-2 font-semibold md:flex">
+        <Link
+          to="/"
+          className="hidden items-center gap-2 font-semibold md:flex"
+        >
           <Building2 className="h-6 w-6" />
           <span>PETVET MARKETPLACE</span>
         </Link>
@@ -130,7 +175,7 @@ export default function DashboardLayout() {
                 className="w-full justify-start gap-2"
                 onClick={() => {
                   //logout()
-                  router("/")
+                  router("/");
                 }}
               >
                 <LogOut className="h-4 w-4" />
@@ -146,5 +191,5 @@ export default function DashboardLayout() {
         </main>
       </div>
     </div>
-  )
+  );
 }
