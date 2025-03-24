@@ -20,5 +20,10 @@ export default [
     ),
 
   ]),
-  route("dashboard-client", "routes/DashboardClient/index.tsx"),
+  layout("layouts/DashboardLayoutVet/index.tsx",[
+    route("dashboard-vet", "routes/DashboardVet/index.tsx"), // Agregamos la nueva ruta
+  ]),
+  layout("layouts/DashboardLayoutClient/index.tsx",[
+    route("dashboard-client", "routes/DashboardClient/index.tsx"), // Agregamos la nueva ruta
+  ]),
 ] satisfies RouteConfig;
