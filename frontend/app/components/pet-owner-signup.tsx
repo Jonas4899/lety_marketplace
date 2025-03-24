@@ -15,43 +15,414 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+
+import { StatusDialog } from "./StatusDialog";
+
+import { zodResolver } from '@hookform/resolvers/zod';
+import { set, useForm } from 'react-hook-form';
+import {z} from 'zod';
+import { ownerFormSchema } from "~/zodSchemas/ownerFormSchema";
+import { useNavigate } from "react-router";
+
+const dogBreeds = [
+"Criollo (Sin raza)",
+"affenpinscher",
+"africano",
+"airedale terrier",
+"akita",
+"appenzeller",
+"kelpie australiano",
+"pastor australiano",
+"bakharwal indio",
+"basenji",
+"beagle",
+"bluetick",
+"borzoi",
+"bouvier",
+"boxer",
+"brabanzón",
+"briard",
+"buhund noruego",
+"bulldog de Boston",
+"bulldog inglés",
+"bulldog francés",
+"bullterrier de Staffordshire",
+"perro boyero australiano",
+"cavapoo",
+"chihuahua",
+"chippiparai indio",
+"chow chow",
+"clumber spaniel",
+"cockapoo",
+"collie border",
+"coonhound",
+"corgi galés de Cardigan",
+"coton de Tulear",
+"dachshund (teckel)",
+"dálmata",
+"gran danés",
+"perro danés-sueco",
+"lebrel escocés",
+"dhole",
+"dingo",
+"dóberman",
+"elkhound noruego",
+"entlebucher",
+"perro esquimal americano",
+"perro lapphund finlandés",
+"bichón frisé",
+"gaddi indio",
+"pastor alemán",
+"galgo indio",
+"galgo italiano",
+"groenendael",
+"habanero",
+"lebrel afgano",
+"basset hound",
+"bloodhound",
+"fresh puddle",
+"foxhound inglés",
+"podenco ibicenco",
+"plott hound",
+"coonhound de Walker",
+"husky siberiano",
+"keeshond",
+"kelpie",
+"kombai",
+"komondor",
+"kuvasz",
+"labradoodle",
+"labrador",
+"labrador retriever",
+"leonberger",
+"lhasa apso",
+"malamute de Alaska",
+"pastor belga malinois",
+"maltés",
+"bullmastiff",
+"mastín inglés",
+"mastín indio",
+"mastín tibetano",
+"perro sin pelo mexicano",
+"mestizo",
+"boyero de Berna",
+"boyero suizo",
+"mudhol indio",
+"terranova",
+"otterhound",
+"caucásico ovcharka",
+"papillón",
+"perro paria indio",
+"pequinés",
+"pembroke corgi galés",
+"pinscher miniatura",
+"pitbull",
+"braco alemán",
+"braco alemán de pelo largo",
+"pomerania",
+"caniche mediano",
+"caniche miniatura",
+"caniche estándar",
+"caniche toy",
+"pug",
+"puggle",
+"montaña de los Pirineos",
+"rajapalayam indio",
+"redbone coonhound",
+"retriever de Chesapeake",
+"retriever de pelo rizado",
+"retriever de pelo liso",
+"golden retriever",
+"perro crestado rodesiano",
+"rottweiler",
+"saluki",
+"samoyedo",
+"schipperke",
+"schnauzer gigante",
+"schnauzer miniatura",
+"segugio italiano",
+"setter inglés",
+"setter Gordon",
+"setter irlandés",
+"shar pei",
+"perro ovejero inglés",
+"perro ovejero indio",
+"shetland sheepdog",
+"shiba inu",
+"shih tzu",
+"spaniel Blenheim",
+"spaniel bretón",
+"cocker spaniel",
+"spaniel irlandés",
+"spaniel japonés",
+"spaniel de Sussex",
+"spaniel galés",
+"spitz indio",
+"spitz japonés",
+"springer spaniel inglés",
+"san Bernardo",
+"terrier americano",
+"terrier australiano",
+"terrier bedlington",
+"terrier border",
+"terrier cairn",
+"terrier dandie dinmont",
+"fox terrier",
+"terrier irlandés",
+"terrier azul de Kerry",
+"terrier lakeland",
+"terrier norfolk",
+"terrier norwich",
+"terrier patterdale",
+"terrier russell",
+"terrier escocés",
+"terrier sealyham",
+"terrier sedoso",
+"terrier tibetano",
+"terrier toy",
+"terrier galés",
+"terrier west highland",
+"terrier wheaten",
+"terrier yorkshire",
+"pastor belga tervuren",
+"vizsla",
+"perro de agua español",
+"weimaraner",
+"whippet",
+"lobero irlandés"
+];
+
+const catBreeds = [
+"Criollo (Sin raza)",
+"abisinio",
+"americano de pelo corto",
+"americano de pelo rizado",
+"american bobtail",
+"american curl",
+"angora turco",
+"asiático",
+"balinés",
+"bengalí",
+"birmano",
+"bombay",
+"bosque de noruega",
+"británico de pelo corto",
+"británico de pelo largo",
+"burmilla",
+"californiano brillante",
+"cartujo",
+"ceilanés",
+"chantilly-tiffany",
+"colorpoint de pelo corto",
+"cornish rex",
+"cymric",
+"devon rex",
+"don sphynx",
+"europeo de pelo corto",
+"fold escocés",
+"gato egipcio",
+"gato exótico",
+"gato hawaiano",
+"havana brown",
+"himalayo",
+"japonés bobtail",
+"javanés",
+"khao manee",
+"korat",
+"kurilian bobtail",
+"laPerm",
+"maine coon",
+"manx",
+"mau egipcio",
+"munchkin",
+"nebelung",
+"ocicat",
+"oriental de pelo corto",
+"oriental de pelo largo",
+"persa",
+"peterbald",
+"pixie-bob",
+"ragamuffin",
+"ragdoll",
+"ruso azul",
+"sagrado de birmania",
+"savannah",
+"selkirk rex",
+"serengeti",
+"siberiano",
+"siamés",
+"singapura",
+"snowshoe",
+"somalí",
+"sphynx",
+"thai",
+"tonkinés",
+"toyger",
+"turkish van",
+"york chocolate"
+];
+
 interface PetOwnerSignupProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onBack: () => void;
 }
 
+type OwnerFormData = z.infer<typeof ownerFormSchema>;
+
 export function PetOwnerSignup({
   open,
   onOpenChange,
   onBack,
 }: PetOwnerSignupProps) {
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    agreeTerms: false,
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [statusDialog, setStatusDialog] = useState({
+    open: false,
+    type: "" as "loading" | "error" | "success",
+    message: ""
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
+  const [step, setStep] = useState(1);
+
+  const {register, handleSubmit, formState: { errors, touchedFields }, trigger, setValue, watch, reset} = useForm<OwnerFormData>({
+    resolver: zodResolver(ownerFormSchema),
+    mode: 'onTouched',
+    defaultValues: {
+      userName: "",
+      email: "",
+      phone: "",
+      password: "",
+      agreeTerms: false,
+      petName: "",
+      petAge: 0,
+      petSpecies: "",
+      petBreed: "",
+    }
+  });
+
+  const [petFiles, setPetFiles] = useState({
+    petHistory: null as File | null,
+    petPhoto: null as File | null,
+  });
+
+  const formValues = watch();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.name) return;
+    const file = e.target.files[0];
+    const name = e.target.name;
+    
+    console.log(e.target.files);
+    setPetFiles({
+      ...petFiles,
+      [name]: file,
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (step === 1) {
+  const handleNextStep = async () => {
+    const isValid = await trigger([
+      'userName', 
+      'email', 
+      'phone', 
+      'password',
+      'agreeTerms', 
+    ]);
+    if (isValid) {
       setStep(2);
+    }
+  };
+
+  const onSubmit = async (data: OwnerFormData) => {
+    if (step === 1) {
+      handleNextStep();
     } else {
-      // Here you would typically send the data to your backend
-      console.log("Submitting pet owner registration:", formData);
-      // Close the dialog after successful submission
+      try {
+
+        setStatusDialog({
+          open: true,
+          type: "loading",
+          message: "Procesando registro..."
+        });
+
+        //objeto formData para enviar datos y archivos
+        const formData = new FormData();
+
+        // Agregar todos los campos de texto al FormData
+        formData.append('userName', data.userName);
+        formData.append('email', data.email);
+        formData.append('phone', data.phone);
+        formData.append('password', data.password);
+        formData.append('petName', data.petName);
+        formData.append('petAge', data.petAge.toString());
+        formData.append('petSpecies', data.petSpecies);
+        formData.append('petBreed', data.petBreed);
+
+        // Añadir los archivos si existen
+        if (petFiles.petHistory) {
+          formData.append('petHistory', petFiles.petHistory);
+        }
+        if (petFiles.petPhoto) {
+          formData.append('petPhoto', petFiles.petPhoto);
+        }
+
+        setIsLoading(true);
+
+        // Enviar solicitud al backend
+        const response = await fetch('http://localhost:3001/register/user', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          if (response.status === 400) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Datos inválidos');
+          } else if (response.status === 409) {
+            throw new Error('El correo electrónico ya está registrado');
+          } else {
+            throw new Error('Error en el servidor');
+          }
+        }
+
+        const result = await response.json();
+        console.log('Respuesta del servidor:', result);
+
+        // Mostrar diálogo de éxito
+        setStatusDialog({
+          open: true,
+          type: "success",
+          message: "Tu cuenta ha sido creada exitosamente. ¡Bienvenido a nuestra plataforma!"
+        });
+
+      } catch (error: unknown) {
+        console.error("Error al registrar:", error);
+        const errorMessage = error instanceof Error ? error.message : "Ha ocurrido un error en el registro.";
+
+        setStatusDialog({
+          open: true,
+          type: "error",
+          message: errorMessage,  
+        });
+
+      } finally {
+        reset();
+        petFiles.petHistory = null;
+        petFiles.petPhoto = null;
+        setStep(1);
+        setIsLoading(false);
+      }
+
+      console.log("Datos de solicitud:", data, petFiles);
+    
       onOpenChange(false);
     }
   };
@@ -77,114 +448,237 @@ export function PetOwnerSignup({
               </div>
               <DialogTitle>Registro como Dueño de Mascota</DialogTitle>
               <DialogDescription>
-                {step === 1 ? "Información personal" : "Información de cuenta"}
+                {step === 1 ? "Información personal" : "Información de la mascota"}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           {step === 1 ? (
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="firstName">Nombre</Label>
+                <Label htmlFor="userName">Nombre y Apellido</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="firstName"
-                    name="firstName"
+                    id="userName"
                     placeholder="Tu nombre"
                     className="pl-9"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    required
+                    {...register('userName')}
                   />
                 </div>
+                {errors.userName && (<p className="text-sm text-red-500">{errors.userName.message}</p>)}
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="lastName">Apellido</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="lastName"
-                    name="lastName"
-                    placeholder="Tu apellido"
-                    className="pl-9"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="email">Correo electrónico</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
-                    name="email"
                     type="email"
                     placeholder="tu@email.com"
                     className="pl-9"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
+                    {...register('email')}
                   />
                 </div>
+                {errors.email && (<p className="text-sm text-red-500">{errors.email.message}</p>)}
               </div>
 
+              <div className="grid gap-2">
+                <Label htmlFor="phone">Telefono</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="321 1234567"
+                    className="pl-9"
+                    {...register('phone')}
+                  />
+                </div>
+                {errors.phone && (<p className="text-sm text-red-500">{errors.phone.message}</p>)}
+              </div>
+              
               <div className="grid gap-2">
                 <Label htmlFor="password">Contraseña</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
-                    name="password"
                     type="password"
                     placeholder="Crea una contraseña"
                     className="pl-9"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
+                    {...register('password')}
                   />
                 </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    placeholder="Confirma tu contraseña"
-                    className="pl-9"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
+                {errors.password && (<p className="text-sm text-red-500">{errors.password.message}</p>)}
               </div>
 
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="agreeTerms"
-                  name="agreeTerms"
-                  checked={formData.agreeTerms}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, agreeTerms: checked as boolean })
-                  }
-                  required
+                  className="mr-2"
+                  onCheckedChange={(checked) => {
+                    setValue('agreeTerms', checked === true);
+                  }}
+                  {...register('agreeTerms')} 
                 />
-                <Label htmlFor="agreeTerms" className="text-sm">
-                  Acepto los términos y condiciones y la política de privacidad
-                </Label>
+                <label htmlFor="agreeTerms" className="text-sm">
+                    Acepto los términos y condiciones de la política de privacidad
+                </label>
               </div>
+              {errors.agreeTerms && (<p className="text-sm text-red-500 mt-1.5">{errors.agreeTerms.message}</p>)}
+            </div>
+          ) : (
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="petName">Nombre de tu mascota</Label>
+                <div className="relative">
+                  <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="petName"
+                    placeholder="Nombre de tu mascota"
+                    className="pl-9"
+                    type="text"
+                    {...register('petName')}
+                  />
+                </div>
+                {errors.petName && touchedFields.petName && (<p className="text-sm text-red-500 mt-1.5">{errors.petName.message}</p>)}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="petAge">Edad</Label>
+                <div className="relative">
+                  <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="petAge"
+                    placeholder="Edad de tu mascota"
+                    className="pl-9"
+                    type="number"
+                    min={0}
+                    max={50}
+                    {...register('petAge', { valueAsNumber: true })}
+                  />
+                </div>
+                {errors.petAge && touchedFields.petAge && (<p className="text-sm text-red-500 mt-1.5">{errors.petAge.message}</p>)}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="petSpecies">Especie</Label>
+                <div className="relative">
+                  <Select name="petSpecies" onValueChange={(value) => setValue('petSpecies', value)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Especie" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem  value="canino">Canino</SelectItem>
+                      <SelectItem value="felino">Felino</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {errors.petSpecies && touchedFields.petSpecies && (<p className="text-sm text-red-500 mt-1.5">{errors.petSpecies.message}</p>)}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="petBreed">Raza</Label>
+                <div className="relative">
+                  <Select name="petBreed" onValueChange={(value) => setValue('petBreed', value)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Raza" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {
+                        formValues.petSpecies === "canino" ? dogBreeds.map((breed) => (
+                            <SelectItem value={breed}>{breed}</SelectItem>
+                        )) : ( catBreeds.map((breed) => (
+                          <SelectItem value={breed}>{breed}</SelectItem>
+                        )))
+                      }
+                    </SelectContent>
+                  </Select>
+                </div>
+                {errors.petBreed && touchedFields.petBreed && (<p className="text-sm text-red-500 mt-1.5">{errors.petBreed.message}</p>)}
+              </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="petHistory">Historial médico (opcional)</Label>
+                  <p className="text-sm text-gray-600">Puedes adjuntar el historial médico de tu mascota</p>
+                  <div className="relative">
+                    {petFiles.petHistory ? (
+                      <div className="flex items-center justify-between px-3 py-2 border rounded-md">
+                        <div className="flex items-center">
+                          <Paw className="h-4 w-4 text-primary mr-2" />
+                          <span className="text-sm font-medium text-blue-500">{petFiles.petHistory.name}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPetFiles({...petFiles, petHistory: null})}
+                        >
+                          <span className="text-red-600">eliminar</span>
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="petHistory"
+                          name="petHistory"
+                          className="pl-9"
+                          type="file"
+                          onChange={handleFileChange}
+                          accept=".pdf"
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="petPhoto">Foto (Opcional)</Label>
+                  <div className="relative">
+                    {petFiles.petPhoto ? (
+                      <div className="flex items-center justify-between px-3 py-2 border rounded-md">
+                        <div className="flex items-center">
+                          <Paw className="h-4 w-4 text-primary mr-2" />
+                          <span className="text-sm font-medium text-blue-500">{petFiles.petPhoto.name}</span>
+                          {petFiles.petPhoto.type.startsWith('image/') && (
+                            <div className="ml-2 h-8 w-8 overflow-hidden rounded-md">
+                              <img 
+                                src={URL.createObjectURL(petFiles.petPhoto)} 
+                                alt="Vista previa" 
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPetFiles({...petFiles, petPhoto: null})}
+                        >
+                          <span className="text-red-600">eliminar</span>
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="petPhoto"
+                          name="petPhoto"
+                          className="pl-9"
+                          type="file"
+                          onChange={handleFileChange}
+                          accept="image/*"
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
             </div>
           )}
 
@@ -192,12 +686,31 @@ export function PetOwnerSignup({
             <Button type="button" variant="outline" onClick={onBack}>
               Volver
             </Button>
-            <Button type="submit">
-              {step === 1 ? "Continuar" : "Crear cuenta"}
-            </Button>
+              {step === 1 ? (
+                <Button type="button" onClick={handleNextStep}>
+                  Continuar
+                </Button>
+              ) : (
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <span className="mr-2">Procesando...</span>
+                    </>
+                  ) : (
+                    "Crear cuenta"
+                  )}
+                </Button>
+              )}
           </DialogFooter>
         </form>
       </DialogContent>
+      <StatusDialog
+        open={statusDialog.open}
+        onOpenChange={(open) => setStatusDialog(prev => ({ ...prev, open }))}
+        onSuccess={() => onOpenChange(false)}
+        type={statusDialog.type}
+        message={statusDialog.message}
+      />
     </Dialog>
   );
 }

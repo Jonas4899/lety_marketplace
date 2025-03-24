@@ -35,13 +35,13 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex items-center justify-center min-h-screen flex-col w-full ">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="flex justify-center sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
             <span className="text-xl font-bold tracking-tight">
-              PETVET MARKETPLACE
+              LETY MARKETPLACE
             </span>
           </Link>
 
@@ -62,10 +62,10 @@ export default function Home() {
               variant="outline"
               onClick={() => setIsUserTypeModalOpen(true)}
             >
-              Sign Up
+              Registrarse
             </Button>
             <Button asChild>
-              <Link to="/login">Sign In</Link>
+              <Link to="/login">Iniciar sesion</Link>
             </Button>
           </div>
         </div>
@@ -132,7 +132,7 @@ export default function Home() {
       </section>
 
       {/* Search and Filter Section */}
-      <section className="border-b bg-muted/40 py-4">
+      <section className="w-full flex justify-around border-b bg-muted/40 py-4">
         <div className="container">
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
             <div className="flex items-center gap-2">
