@@ -46,7 +46,7 @@ export default function AppNavbar() {
   };
 
   return (
-    <AppBar position="static" sx={{ bgcolor: "background.paper" }}>
+    <AppBar className=" flex items-center justify-center  w-full" position="static" sx={{ bgcolor: "background.paper" }}>
       <Container maxWidth="xl">
         <Toolbar disableGutters>
           <Typography
