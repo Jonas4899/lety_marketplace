@@ -38,8 +38,8 @@ const upload = multer({ storage }); //Inicializar multer con la configuración d
 
 //Endpoint para registrar usuarios dueños de las mascotas junto con su mascota ---------------------------
 app.post(
-  '/register/user',
-  upload.fields([{ name: 'petPhoto' }, { name: 'petHistory' }]),
+  "/register/user",
+  upload.fields([{ name: "petPhoto" }, { name: "petHistory" }]),
   async (req, res) => {
     const {
       userName,
@@ -87,22 +87,22 @@ app.post(
       if (errorUsuario) {
         // Verificar si es un error de duplicado de correo electrónico
         if (
-          errorUsuario.code === '23505' &&
-          errorUsuario.details.includes('correo')
+          errorUsuario.code === "23505" &&
+          errorUsuario.details.includes("correo")
         ) {
           return res.status(409).json({
             message:
-              'Ya existe un usuario registrado con este correo electrónico',
+              "Ya existe un usuario registrado con este correo electrónico",
           });
         }
         // Verificar si es un error de duplicado de teléfono
         else if (
-          errorUsuario.code === '23505' &&
-          errorUsuario.details.includes('telefono')
+          errorUsuario.code === "23505" &&
+          errorUsuario.details.includes("telefono")
         ) {
           return res.status(409).json({
             message:
-              'Ya existe un usuario registrado con este número de teléfono',
+              "Ya existe un usuario registrado con este número de teléfono",
           });
         }
 
@@ -828,6 +828,9 @@ app.post("/register/schedules", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en el puerto ${PORT}`);
-});
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`Servidor corriendo en el puerto ${PORT}`);
+  });
+}
+export default app;
