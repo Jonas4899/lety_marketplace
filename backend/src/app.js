@@ -179,7 +179,6 @@ app.post(
         descripcion,
         NIT,
         servicios: serviciosString,
-        horarios: horariosString,
       } = req.body;
 
       console.log("Datos recibidos:", {
@@ -191,7 +190,6 @@ app.post(
         descripcion,
         NIT,
         serviciosRecibidos: !!serviciosString,
-        horariosRecibidos: !!horariosString,
       });
 
       // Validación de campos vacios
@@ -219,20 +217,6 @@ app.post(
           console.error("Error al parsear servicios:", parseError);
           return res.status(400).json({
             message: "Error al procesar los servicios: formato inválido",
-          });
-        }
-      }
-
-      // Parsear los horarios si existen
-      let horarios = {};
-      if (horariosString) {
-        try {
-          horarios = JSON.parse(horariosString);
-          console.log("Horarios parseados:", horarios);
-        } catch (parseError) {
-          console.error("Error al parsear horarios:", parseError);
-          return res.status(400).json({
-            message: "Error al procesar los horarios: formato inválido",
           });
         }
       }
@@ -368,78 +352,6 @@ app.post(
         }
       }
 
-      // Registrar horarios si existen
-      let horariosRegistrados = [];
-      if (horarios && Object.keys(horarios).length > 0) {
-        console.log(
-          `Registrando horarios para la clínica ${clinica.id_clinica}`
-        );
-
-        try {
-          const horariosAInsertar = [];
-
-          // Procesar cada día de la semana
-          for (const [dia, horario] of Object.entries(horarios)) {
-            // Verificar que es un día válido
-            const diasValidos = [
-              "monday",
-              "tuesday",
-              "wednesday",
-              "thursday",
-              "friday",
-              "saturday",
-              "sunday",
-            ];
-            if (!diasValidos.includes(dia)) {
-              console.warn(`Día de la semana inválido: ${dia}, será omitido`);
-              continue;
-            }
-
-            // Crear objeto horario
-            let horarioData = {
-              id_clinica: clinica.id_clinica,
-              dia_semana: dia,
-              es_24h: horario.is24Hours || false,
-              esta_cerrado: horario.closed || false,
-            };
-
-            // Asignar horas según el caso
-            if (horario.is24Hours) {
-              horarioData.hora_apertura = "00:00:00";
-              horarioData.hora_cierre = "23:59:59";
-            } else if (horario.closed) {
-              horarioData.hora_apertura = null;
-              horarioData.hora_cierre = null;
-            } else {
-              horarioData.hora_apertura = horario.open;
-              horarioData.hora_cierre = horario.close;
-            }
-
-            horariosAInsertar.push(horarioData);
-          }
-
-          if (horariosAInsertar.length > 0) {
-            // Insertar horarios
-            const { data, error } = await supabaseClient
-              .from("horarios_atencion")
-              .insert(horariosAInsertar)
-              .select();
-
-            if (error) {
-              console.error("Error al registrar horarios:", error);
-            } else {
-              console.log(`${data.length} horarios registrados con éxito`);
-              horariosRegistrados = data;
-            }
-          } else {
-            console.log("No hay horarios válidos para registrar");
-          }
-        } catch (horariosError) {
-          console.error("Error al procesar los horarios:", horariosError);
-          // No interrumpimos el flujo por un error en los horarios
-        }
-      }
-
       // Limpiar el archivo temporal
       if (certificadoFile) {
         try {
@@ -453,7 +365,6 @@ app.post(
         message: "Clínica registrada exitosamente",
         datosClinica: clinica,
         servicios: serviciosRegistrados,
-        horarios: horariosRegistrados,
       });
     } catch (error) {
       console.error("Error interno del servidor:", error);
