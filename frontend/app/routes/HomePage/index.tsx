@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import VetMap from "~/components/vet-map";
 import FeaturedVets from "~/components/featured-vets";
 import FilterPanel from "~/components/filter-panel";
+import { VetClinicSignup } from "~/components/vet-clinic-signup";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
@@ -520,6 +521,12 @@ export default function Home() {
       <PetOwnerSignup
         open={isPetOwnerSignupOpen}
         onOpenChange={setIsPetOwnerSignupOpen}
+        onBack={handleBackToUserType}
+      />
+
+      <VetClinicSignup
+        open={isVetClinicSignupOpen}
+        onOpenChange={setIsVetClinicSignupOpen}
         onBack={handleBackToUserType}
       />
     </div>

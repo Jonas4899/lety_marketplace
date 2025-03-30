@@ -1,12 +1,13 @@
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-import express from 'express';
-import cors from 'cors';
-import multer from 'multer';
-import bcrypt from 'bcrypt';
-import path from 'path';
-import fs from 'fs';
-import e from 'express';
+import { createClient } from "@supabase/supabase-js";
+import dotenv from "dotenv";
+import express from "express";
+import cors from "cors";
+import multer from "multer";
+import bcrypt from "bcrypt";
+import path from "path";
+import fs from "fs";
+
+import uploadFile from "./utils.js";
 
 // Configurar variables de entorno
 dotenv.config();
@@ -24,7 +25,7 @@ const supabaseClient = createClient(supabaseUrl, supabaseServiceRolKey);
 //Configurar multer para subir archivos
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Guardar temporalmente en la carpeta local /uploads
+    cb(null, "uploads/"); // Guardar temporalmente en la carpeta local /uploads
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname); // Obtener la extensión del archivo
@@ -37,8 +38,8 @@ const upload = multer({ storage }); //Inicializar multer con la configuración d
 
 //Endpoint para registrar usuarios dueños de las mascotas junto con su mascota ---------------------------
 app.post(
-  '/register/user',
-  upload.fields([{ name: 'petPhoto' }, { name: 'petHistory' }]),
+  "/register/user",
+  upload.fields([{ name: "petPhoto" }, { name: "petHistory" }]),
   async (req, res) => {
     const {
       userName,
@@ -57,44 +58,20 @@ app.post(
     const fotoMascotaFile = req.files.petPhoto?.[0]; // Obtener el primer archivol array
     const historialMedicoFile = req.files.petHistory?.[0]; // Obtener el primer archivol array
 
-    console.log('Foto mascota file:', fotoMascotaFile);
-    console.log('Historial médico file:', historialMedicoFile);
+    console.log("Foto mascota file:", fotoMascotaFile);
+    console.log("Historial médico file:", historialMedicoFile);
 
     try {
-      console.log('Datos recibidos:', req.body);
+      console.log("Datos recibidos:", req.body);
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
       //Guardar la fecha de registro
       const fecha_registro = new Date();
 
-      // Función para subir archivos a Supabase Storage
-      const uploadFile = async (file, bucket) => {
-        if (!file) return null; // Verifica si hay archivo antes de continuar
-
-        const filePath = `${bucket}/${Date.now()}-${file.originalname}`; // Ruta de donde se guardará el archivo
-
-        const { data, error } = await supabaseClient.storage
-          .from(bucket)
-          .upload(filePath, fs.createReadStream(file.path), {
-            contentType: file.mimetype,
-            cacheControl: '3600',
-            upsert: false,
-            duplex: 'half',
-          });
-
-        if (error) throw error;
-
-        // Obtener la URL pública del archivo subido
-        const { data: urlData } = supabaseClient.storage
-          .from(bucket)
-          .getPublicUrl(filePath);
-        return urlData.publicUrl;
-      };
-
       //Registrar el usuario
       const { data: usuario, error: errorUsuario } = await supabaseClient
-        .from('usuarios')
+        .from("usuarios")
         .insert([
           {
             nombre: userName,
@@ -104,54 +81,54 @@ app.post(
             fecha_registro,
           },
         ])
-        .select('id_usuario')
+        .select("id_usuario")
         .single();
 
       if (errorUsuario) {
         // Verificar si es un error de duplicado de correo electrónico
         if (
-          errorUsuario.code === '23505' &&
-          errorUsuario.details.includes('correo')
+          errorUsuario.code === "23505" &&
+          errorUsuario.details.includes("correo")
         ) {
           return res.status(409).json({
             message:
-              'Ya existe un usuario registrado con este correo electrónico',
+              "Ya existe un usuario registrado con este correo electrónico",
           });
         }
         // Verificar si es un error de duplicado de teléfono
         else if (
-          errorUsuario.code === '23505' &&
-          errorUsuario.details.includes('telefono')
+          errorUsuario.code === "23505" &&
+          errorUsuario.details.includes("telefono")
         ) {
           return res.status(409).json({
             message:
-              'Ya existe un usuario registrado con este número de teléfono',
+              "Ya existe un usuario registrado con este número de teléfono",
           });
         }
 
         return res.status(400).json({
-          message: 'Error al registrar el usuario:' + errorUsuario.message,
+          message: "Error al registrar el usuario:" + errorUsuario.message,
         });
       }
 
-      console.log('Usuario registrado:', usuario);
+      console.log("Usuario registrado:", usuario);
 
       //Arhivos para el registro de la mascota
       const foto_mascotaUrl = await uploadFile(
         fotoMascotaFile,
-        'fotos-mascotas'
+        "fotos-mascotas"
       );
       const historial_medicoUrl = await uploadFile(
         historialMedicoFile,
-        'historiales-mascotas'
+        "historiales-mascotas"
       );
 
-      console.log('URL de la foto:', foto_mascotaUrl);
-      console.log('URL del historial:', historial_medicoUrl);
+      console.log("URL de la foto:", foto_mascotaUrl);
+      console.log("URL del historial:", historial_medicoUrl);
 
       //Registrar la mascota
       const { error: errorMascota } = await supabaseClient
-        .from('mascotas')
+        .from("mascotas")
         .insert([
           {
             nombre: petName,
@@ -163,12 +140,12 @@ app.post(
             id_usuario: usuario.id_usuario, // Verifica que usuario.id_usuario exista
           },
         ])
-        .select('id_mascota')
+        .select("id_mascota")
         .single();
 
       if (errorMascota) {
         return res.status(400).json({
-          message: 'Error al registrar la mascota:' + errorMascota.message,
+          message: "Error al registrar la mascota:" + errorMascota.message,
         });
       }
 
@@ -177,7 +154,7 @@ app.post(
 
       // Enviar una respuesta con la información del usuario y mascota
       res.status(201).json({
-        message: 'Usuario y mascota registrados exitosamente',
+        message: "Usuario y mascota registrados exitosamente",
         datosUsuario: usuario,
       });
     } catch (error) {
@@ -186,7 +163,585 @@ app.post(
   }
 );
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en el puerto ${PORT}`);
+app.post(
+  "/register/veterinary",
+  upload.single("certificadoSalud"),
+  async (req, res) => {
+    try {
+      console.log("Recibiendo solicitud de registro de veterinaria");
+
+      const {
+        nombre,
+        direccion,
+        telefono,
+        correo,
+        contrasena,
+        descripcion,
+        NIT,
+        servicios: serviciosString,
+      } = req.body;
+
+      console.log("Datos recibidos:", {
+        nombre,
+        direccion,
+        telefono,
+        correo,
+        contrasenaRecibida: !!contrasena,
+        descripcion,
+        NIT,
+        serviciosRecibidos: !!serviciosString,
+      });
+
+      // Validación de campos vacios
+      if (
+        !nombre ||
+        !direccion ||
+        !telefono ||
+        !correo ||
+        !contrasena ||
+        !NIT
+      ) {
+        console.log("Campos obligatorios faltantes");
+        return res.status(400).json({
+          message: "Todos los campos obligatorios deben ser proporcionados.",
+        });
+      }
+
+      // Parsear los servicios si existen
+      let servicios = [];
+      if (serviciosString) {
+        try {
+          servicios = JSON.parse(serviciosString);
+          console.log("Servicios parseados:", servicios);
+        } catch (parseError) {
+          console.error("Error al parsear servicios:", parseError);
+          return res.status(400).json({
+            message: "Error al procesar los servicios: formato inválido",
+          });
+        }
+      }
+
+      // Obtener el archivo del certificado
+      const certificadoFile = req.file;
+      console.log(
+        "Certificado file:",
+        certificadoFile
+          ? {
+              filename: certificadoFile.filename,
+              size: certificadoFile.size,
+              mimetype: certificadoFile.mimetype,
+            }
+          : "No se recibió archivo"
+      );
+
+      // Verificar las variables de entorno de Supabase
+      console.log("Variables de Supabase:", {
+        urlDefinida: !!supabaseUrl,
+        keyDefinida: !!supabaseServiceRolKey,
+        clienteDefinido: !!supabaseClient,
+      });
+
+      // Verificar que supabaseClient esté definido
+      if (!supabaseClient) {
+        console.error("Error: supabaseClient no está definido");
+        return res.status(500).json({
+          message:
+            "Error de configuración del servidor: Cliente de base de datos no disponible",
+        });
+      }
+
+      // Hash de la contraseña
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(contrasena, saltRounds);
+
+      const estado = "confirmado";
+      const fecha_registro = new Date();
+
+      // Subir el archivo del certificado a Supabase
+      let certificado_url = null;
+      if (certificadoFile) {
+        try {
+          certificado_url = await uploadFile(
+            certificadoFile,
+            "certificados-secretaria-salud"
+          );
+          console.log("URL del certificado:", certificado_url);
+        } catch (uploadError) {
+          console.error("Error al subir el archivo:", uploadError);
+          return res.status(500).json({
+            message: "Error al procesar el archivo: " + uploadError.message,
+          });
+        }
+      }
+
+      // Insercion en la tabla clinicas
+      console.log("Insertando datos en Supabase...");
+      const { data: clinica, error: errorClinica } = await supabaseClient
+        .from("clinicas")
+        .insert([
+          {
+            nombre,
+            direccion,
+            telefono,
+            correo,
+            contrasena: hashedPassword,
+            descripcion,
+            NIT,
+            estado,
+            fecha_registro,
+            certificado_url,
+          },
+        ])
+        .select("id_clinica")
+        .single();
+
+      if (errorClinica) {
+        console.error("Error de Supabase:", errorClinica);
+        return res.status(400).json({
+          message: "Error al registrar la clínica: " + errorClinica.message,
+        });
+      }
+
+      console.log("Clínica registrada con éxito:", clinica);
+
+      // Registrar servicios si existen
+      let serviciosRegistrados = [];
+      if (servicios && servicios.length > 0) {
+        console.log(
+          `Registrando ${servicios.length} servicios para la clínica ${clinica.id_clinica}`
+        );
+
+        try {
+          // Filtrar servicios válidos (con nombre y precio)
+          const serviciosValidos = servicios.filter(
+            (servicio) => servicio.name && servicio.price
+          );
+
+          if (serviciosValidos.length > 0) {
+            // Preparar servicios para inserción
+            const serviciosAInsertar = serviciosValidos.map((servicio) => {
+              const precioNumerico = parseFloat(servicio.price);
+              return {
+                id_clinica: clinica.id_clinica,
+                nombre: servicio.name,
+                descripcion: "",
+                precio: isNaN(precioNumerico) ? 0 : precioNumerico,
+                categoria: servicio.category || "general",
+                disponible: true,
+              };
+            });
+
+            // Insertar servicios
+            const { data, error } = await supabaseClient
+              .from("servicios")
+              .insert(serviciosAInsertar)
+              .select();
+
+            if (error) {
+              console.error("Error al registrar servicios:", error);
+            } else {
+              console.log(`${data.length} servicios registrados con éxito`);
+              serviciosRegistrados = data;
+            }
+          } else {
+            console.log("No hay servicios válidos para registrar");
+          }
+        } catch (serviciosError) {
+          console.error("Error al procesar los servicios:", serviciosError);
+          // No interrumpimos el flujo por un error en los servicios
+        }
+      }
+
+      // Limpiar el archivo temporal
+      if (certificadoFile) {
+        try {
+          fs.unlinkSync(certificadoFile.path);
+        } catch (unlinkError) {
+          console.warn("No se pudo eliminar el archivo temporal:", unlinkError);
+        }
+      }
+
+      res.status(201).json({
+        message: "Clínica registrada exitosamente",
+        datosClinica: clinica,
+        servicios: serviciosRegistrados,
+      });
+    } catch (error) {
+      console.error("Error interno del servidor:", error);
+
+      // Limpiar el archivo temporal en caso de error
+      try {
+        const certificadoFile = req.file;
+        if (certificadoFile && fs.existsSync(certificadoFile.path)) {
+          fs.unlinkSync(certificadoFile.path);
+        }
+      } catch (cleanupError) {
+        console.warn("Error al limpiar archivos temporales:", cleanupError);
+      }
+
+      res.status(500).json({
+        message: "Error interno del servidor: " + error.message,
+        stack: process.env.NODE_ENV !== "production" ? error.stack : undefined,
+      });
+    }
+  }
+);
+
+// Endpoint para registrar un servicio de una clínica veterinaria
+app.post("/register/service", async (req, res) => {
+  try {
+    console.log("Recibiendo solicitud para registrar servicio");
+
+    const { id_clinica, nombre, precio, categoria } = req.body;
+
+    // Validación de campos requeridos
+    if (!id_clinica || !nombre || !precio || !categoria) {
+      return res.status(400).json({
+        message:
+          "Todos los campos obligatorios deben ser proporcionados (id_clinica, nombre, precio, categoria).",
+      });
+    }
+
+    // Validar que el precio sea un número
+    const precioNumerico = parseFloat(precio);
+    if (isNaN(precioNumerico)) {
+      return res.status(400).json({
+        message: "El precio debe ser un valor numérico.",
+      });
+    }
+
+    // Por defecto los servicios están disponibles y descripción vacía
+    const descripcion = "";
+    const disponible = true;
+
+    console.log("Insertando servicio en la base de datos...");
+    const { data: servicio, error: errorServicio } = await supabaseClient
+      .from("servicios")
+      .insert([
+        {
+          id_clinica,
+          nombre,
+          descripcion,
+          precio: precioNumerico,
+          categoria,
+          disponible,
+        },
+      ])
+      .select()
+      .single();
+
+    if (errorServicio) {
+      console.error("Error de Supabase:", errorServicio);
+      return res.status(400).json({
+        message: "Error al registrar el servicio: " + errorServicio.message,
+      });
+    }
+
+    console.log("Servicio registrado con éxito:", servicio);
+
+    res.status(201).json({
+      message: "Servicio registrado exitosamente",
+      servicio,
+    });
+  } catch (error) {
+    console.error("Error interno del servidor:", error);
+    res.status(500).json({
+      message: "Error interno del servidor: " + error.message,
+      stack: process.env.NODE_ENV !== "production" ? error.stack : undefined,
+    });
+  }
 });
+
+// Endpoint para registrar múltiples servicios de una clínica veterinaria
+app.post("/register/services", async (req, res) => {
+  try {
+    console.log("Recibiendo solicitud para registrar múltiples servicios");
+
+    const { id_clinica, servicios } = req.body;
+
+    // Validación de campos requeridos
+    if (
+      !id_clinica ||
+      !servicios ||
+      !Array.isArray(servicios) ||
+      servicios.length === 0
+    ) {
+      return res.status(400).json({
+        message:
+          "Se requiere un id_clinica válido y un array de servicios no vacío.",
+      });
+    }
+
+    // Preparar array para inserción múltiple
+    const serviciosAInsertar = servicios.map((servicio) => {
+      // Validar cada servicio
+      if (!servicio.nombre || !servicio.precio || !servicio.categoria) {
+        throw new Error("Cada servicio debe tener nombre, precio y categoría");
+      }
+
+      // Convertir precio a número
+      const precioNumerico = parseFloat(servicio.precio);
+      if (isNaN(precioNumerico)) {
+        throw new Error(
+          `El precio '${servicio.precio}' para el servicio '${servicio.nombre}' no es válido`
+        );
+      }
+
+      return {
+        id_clinica,
+        nombre: servicio.nombre,
+        descripcion: servicio.descripcion || "",
+        precio: precioNumerico,
+        categoria: servicio.categoria,
+        disponible: true,
+      };
+    });
+
+    console.log("Insertando servicios en la base de datos...");
+    const { data: serviciosRegistrados, error: errorServicios } =
+      await supabaseClient
+        .from("servicios")
+        .insert(serviciosAInsertar)
+        .select();
+
+    if (errorServicios) {
+      console.error("Error de Supabase:", errorServicios);
+      return res.status(400).json({
+        message: "Error al registrar los servicios: " + errorServicios.message,
+      });
+    }
+
+    console.log(
+      `${serviciosRegistrados.length} servicios registrados con éxito`
+    );
+
+    res.status(201).json({
+      message: `${serviciosRegistrados.length} servicios registrados exitosamente`,
+      servicios: serviciosRegistrados,
+    });
+  } catch (error) {
+    console.error("Error interno del servidor:", error);
+    res.status(500).json({
+      message: "Error interno del servidor: " + error.message,
+      stack: process.env.NODE_ENV !== "production" ? error.stack : undefined,
+    });
+  }
+});
+
+// Endpoint para registrar un horario de atención de una clínica veterinaria
+app.post("/register/schedule", async (req, res) => {
+  try {
+    console.log("Recibiendo solicitud para registrar horario de atención");
+
+    const {
+      id_clinica,
+      dia_semana,
+      hora_apertura,
+      hora_cierre,
+      es_24h,
+      esta_cerrado,
+    } = req.body;
+
+    // Validación de campos requeridos
+    if (!id_clinica || !dia_semana) {
+      return res.status(400).json({
+        message: "Los campos id_clinica y dia_semana son obligatorios.",
+      });
+    }
+
+    // Validación de día de la semana
+    const diasValidos = [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+      "sunday",
+    ];
+    if (!diasValidos.includes(dia_semana)) {
+      return res.status(400).json({
+        message:
+          "El día de la semana debe ser uno de los siguientes valores: " +
+          diasValidos.join(", "),
+      });
+    }
+
+    // Si no está cerrado ni es 24h, validar horas
+    if (!esta_cerrado && !es_24h) {
+      if (!hora_apertura || !hora_cierre) {
+        return res.status(400).json({
+          message:
+            "Si el local no está cerrado y no es 24h, se requieren hora_apertura y hora_cierre.",
+        });
+      }
+    }
+
+    // Crear objeto de horario
+    let horarioData = {
+      id_clinica,
+      dia_semana,
+      es_24h: es_24h || false,
+      esta_cerrado: esta_cerrado || false,
+    };
+
+    // Asignar horas según el caso
+    if (es_24h) {
+      horarioData.hora_apertura = "00:00:00";
+      horarioData.hora_cierre = "23:59:59";
+    } else if (esta_cerrado) {
+      horarioData.hora_apertura = null;
+      horarioData.hora_cierre = null;
+    } else {
+      horarioData.hora_apertura = hora_apertura;
+      horarioData.hora_cierre = hora_cierre;
+    }
+
+    console.log("Insertando horario en la base de datos:", horarioData);
+
+    // Insertar en la base de datos
+    const { data: horario, error: errorHorario } = await supabaseClient
+      .from("horarios_atencion")
+      .insert([horarioData])
+      .select()
+      .single();
+
+    if (errorHorario) {
+      console.error("Error de Supabase:", errorHorario);
+      return res.status(400).json({
+        message: "Error al registrar el horario: " + errorHorario.message,
+      });
+    }
+
+    console.log("Horario registrado con éxito:", horario);
+
+    res.status(201).json({
+      message: "Horario registrado exitosamente",
+      horario,
+    });
+  } catch (error) {
+    console.error("Error interno del servidor:", error);
+    res.status(500).json({
+      message: "Error interno del servidor: " + error.message,
+      stack: process.env.NODE_ENV !== "production" ? error.stack : undefined,
+    });
+  }
+});
+
+// Endpoint para registrar múltiples horarios de atención de una clínica veterinaria
+app.post("/register/schedules", async (req, res) => {
+  try {
+    console.log("Recibiendo solicitud para registrar múltiples horarios");
+
+    const { id_clinica, horarios } = req.body;
+
+    // Validación de campos requeridos
+    if (
+      !id_clinica ||
+      !horarios ||
+      !Array.isArray(horarios) ||
+      horarios.length === 0
+    ) {
+      return res.status(400).json({
+        message:
+          "Se requiere un id_clinica válido y un array de horarios no vacío.",
+      });
+    }
+
+    // Preparar array para inserción múltiple
+    const horariosAInsertar = [];
+
+    // Validación de días de la semana
+    const diasValidos = [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+      "sunday",
+    ];
+
+    // Procesar cada horario
+    for (const horario of horarios) {
+      const { dia_semana, hora_apertura, hora_cierre, es_24h, esta_cerrado } =
+        horario;
+
+      // Validar día de la semana
+      if (!dia_semana || !diasValidos.includes(dia_semana)) {
+        throw new Error(
+          `Día de la semana inválido: ${dia_semana}. Debe ser uno de: ${diasValidos.join(
+            ", "
+          )}`
+        );
+      }
+
+      // Crear objeto de horario
+      let horarioData = {
+        id_clinica,
+        dia_semana,
+        es_24h: es_24h || false,
+        esta_cerrado: esta_cerrado || false,
+      };
+
+      // Asignar horas según el caso
+      if (es_24h) {
+        horarioData.hora_apertura = "00:00:00";
+        horarioData.hora_cierre = "23:59:59";
+      } else if (esta_cerrado) {
+        horarioData.hora_apertura = null;
+        horarioData.hora_cierre = null;
+      } else {
+        // Validar que hay horas de apertura y cierre
+        if (!hora_apertura || !hora_cierre) {
+          throw new Error(
+            `Para el día ${dia_semana}: Si no está cerrado y no es 24h, se requieren hora_apertura y hora_cierre.`
+          );
+        }
+        horarioData.hora_apertura = hora_apertura;
+        horarioData.hora_cierre = hora_cierre;
+      }
+
+      horariosAInsertar.push(horarioData);
+    }
+
+    console.log(
+      `Insertando ${horariosAInsertar.length} horarios en la base de datos...`
+    );
+
+    // Insertar en la base de datos
+    const { data: horariosRegistrados, error: errorHorarios } =
+      await supabaseClient
+        .from("horarios_atencion")
+        .insert(horariosAInsertar)
+        .select();
+
+    if (errorHorarios) {
+      console.error("Error de Supabase:", errorHorarios);
+      return res.status(400).json({
+        message: "Error al registrar los horarios: " + errorHorarios.message,
+      });
+    }
+
+    console.log(`${horariosRegistrados.length} horarios registrados con éxito`);
+
+    res.status(201).json({
+      message: `${horariosRegistrados.length} horarios registrados exitosamente`,
+      horarios: horariosRegistrados,
+    });
+  } catch (error) {
+    console.error("Error interno del servidor:", error);
+    res.status(500).json({
+      message: "Error interno del servidor: " + error.message,
+      stack: process.env.NODE_ENV !== "production" ? error.stack : undefined,
+    });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`Servidor corriendo en el puerto ${PORT}`);
+  });
+}
+export default app;
