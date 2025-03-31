@@ -21,31 +21,7 @@ import { Input } from "~/components/ui/input"
 import { Badge } from "~/components/ui/badge"
 
 export default function PetDashboardPage() {
-  const [isNewLogin, setIsNewLogin] = useState(false)
-  //const { user } = useAuth()
-/*
-  useEffect(() => {
-    // Check if this is a new login (within the last minute)
-    const userData = localStorage.getItem("userData")
-    if (userData) {
-      try {
-        const parsedData = JSON.parse(userData)
-        const userId = parsedData.id || ""
-        const timestamp = Number.parseInt(userId.split("-")[1] || "0")
-        const isNew = Date.now() - timestamp < 60000 // 1 minute
-        setIsNewLogin(isNew)
-
-        // Clear the "new" status after showing the welcome message
-        if (isNew) {
-          setTimeout(() => {
-            setIsNewLogin(false)
-          }, 10000) // Hide after 10 seconds
-        }
-      } catch (error) {
-        console.error("Error parsing user data:", error)
-      }
-    }
-  }, [])*/
+  const [isNewLogin, setIsNewLogin] = useState(false);
 
   return (
     <div className="flex flex-col gap-4 p-4 md:gap-8 md:p-8">
