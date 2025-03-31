@@ -70,9 +70,9 @@ const COLORS = [
 interface AppointmentData {
   date: string;
   total: number;
-  confirmed: number;
-  cancelled: number;
   completed: number;
+  scheduled: number;
+  cancelled: number;
 }
 
 interface ServiceData {
@@ -81,22 +81,19 @@ interface ServiceData {
   revenue: number;
 }
 
-interface SatisfactionData {
-  date: string;
-  overallSatisfaction: number;
-  staffRating: number;
-  serviceRating: number;
-  valueRating: number;
+interface PetData {
+  type: string;
+  count: number;
 }
 
-interface PeakHourData {
-  hour: string;
-  appointments: number;
-}
-
-interface AgeDistributionData {
+interface AgeData {
   range: string;
-  value: number;
+  count: number;
+}
+
+interface RatingData {
+  rating: string;
+  count: number;
 }
 
 export function ClinicAnalytics() {
@@ -107,7 +104,6 @@ export function ClinicAnalytics() {
   });
 
   // Filter states
-  const [serviceFilter, setServiceFilter] = useState<string>("all");
   const [petTypeFilter, setPetTypeFilter] = useState<string>("all");
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -135,7 +131,7 @@ export function ClinicAnalytics() {
   // Effect to refresh data when filters change
   useEffect(() => {
     refreshData();
-  }, [dateRange, serviceFilter, petTypeFilter]);
+  }, [dateRange, petTypeFilter]);
 
   // Generate mock data for appointments over time
   const generateAppointmentsData = (): AppointmentData[] => {
@@ -145,15 +141,15 @@ export function ClinicAnalytics() {
       (date) => {
         const total = Math.floor(Math.random() * 20) + 5;
         const completed = Math.floor(total * 0.7);
-        const cancelled = Math.floor(total * 0.1);
-        const confirmed = total - completed - cancelled;
+        const scheduled = Math.floor(total * 0.2);
+        const cancelled = total - completed - scheduled;
 
         return {
           date: format(date, "yyyy-MM-dd"),
           total,
-          confirmed,
-          cancelled,
           completed,
+          scheduled,
+          cancelled,
         };
       }
     );
@@ -166,67 +162,40 @@ export function ClinicAnalytics() {
     { name: "Control de Rutina", value: 65, revenue: 32500 },
     { name: "Limpieza Dental", value: 45, revenue: 36000 },
     { name: "Desparasitación", value: 40, revenue: 12000 },
-    { name: "Cirugías", value: 25, revenue: 50000 },
-    { name: "Exámenes de Laboratorio", value: 35, revenue: 17500 },
-    { name: "Rayos X", value: 20, revenue: 16000 },
   ];
 
-  // Satisfaction data
-  const generateSatisfactionData = (): SatisfactionData[] => {
-    if (!dateRange?.from || !dateRange.to) return [];
-
-    const interval = Math.max(
-      Math.floor(
-        eachDayOfInterval({ start: dateRange.from, end: dateRange.to }).length /
-          7
-      ),
-      1
-    );
-    return eachDayOfInterval({ start: dateRange.from, end: dateRange.to })
-      .filter((_, i) => i % interval === 0)
-      .map((date) => {
-        return {
-          date: format(date, "yyyy-MM-dd"),
-          overallSatisfaction: 3.5 + Math.random() * 1.5,
-          staffRating: 3.8 + Math.random() * 1.2,
-          serviceRating: 3.6 + Math.random() * 1.4,
-          valueRating: 3.4 + Math.random() * 1.3,
-        };
-      });
-  };
-
-  // Peak hours data
-  const peakHoursData: PeakHourData[] = [
-    { hour: "8:00", appointments: 3 },
-    { hour: "9:00", appointments: 5 },
-    { hour: "10:00", appointments: 8 },
-    { hour: "11:00", appointments: 12 },
-    { hour: "12:00", appointments: 7 },
-    { hour: "13:00", appointments: 4 },
-    { hour: "14:00", appointments: 3 },
-    { hour: "15:00", appointments: 8 },
-    { hour: "16:00", appointments: 10 },
-    { hour: "17:00", appointments: 6 },
-    { hour: "18:00", appointments: 4 },
+  // Pet type distribution data
+  const petTypeData: PetData[] = [
+    { type: "Perros", count: 65 },
+    { type: "Gatos", count: 25 },
+    { type: "Aves", count: 5 },
+    { type: "Exóticos", count: 5 },
   ];
 
   // Pet age distribution data
-  const ageDistributionData: AgeDistributionData[] = [
-    { range: "< 1 año", value: 15 },
-    { range: "1-3 años", value: 30 },
-    { range: "4-7 años", value: 25 },
-    { range: "8-10 años", value: 20 },
-    { range: "> 10 años", value: 10 },
+  const ageDistributionData: AgeData[] = [
+    { range: "< 1 año", count: 15 },
+    { range: "1-3 años", count: 30 },
+    { range: "4-7 años", count: 25 },
+    { range: "8-10 años", count: 20 },
+    { range: "> 10 años", count: 10 },
+  ];
+
+  // Rating distribution data
+  const ratingData: RatingData[] = [
+    { rating: "1 ★", count: 5 },
+    { rating: "2 ★", count: 12 },
+    { rating: "3 ★", count: 28 },
+    { rating: "4 ★", count: 85 },
+    { rating: "5 ★", count: 120 },
   ];
 
   // KPI data
   const kpiData = {
     totalAppointments: 345,
-    avgDuration: 35, // minutes
-    completionRate: 92, // percentage
-    satisfactionRate: 4.7, // out of 5
-    repeatClients: 78, // percentage
-    avgResponseTime: 4.3, // hours
+    avgRating: 4.2,
+    totalRevenue: 225250,
+    totalPets: 250,
   };
 
   return (
@@ -260,19 +229,6 @@ export function ClinicAnalytics() {
             </PopoverContent>
           </Popover>
 
-          <Select value={serviceFilter} onValueChange={setServiceFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Todos los servicios" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los servicios</SelectItem>
-              <SelectItem value="consultation">Consultas</SelectItem>
-              <SelectItem value="vaccination">Vacunación</SelectItem>
-              <SelectItem value="surgery">Cirugías</SelectItem>
-              <SelectItem value="grooming">Peluquería</SelectItem>
-            </SelectContent>
-          </Select>
-
           <Select value={petTypeFilter} onValueChange={setPetTypeFilter}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Todos los tipos" />
@@ -298,7 +254,7 @@ export function ClinicAnalytics() {
       </div>
 
       {/* KPI summary cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Citas Totales</CardTitle>
@@ -312,106 +268,56 @@ export function ClinicAnalytics() {
               <span className="text-green-500 font-medium">↑12%</span> respecto
               al periodo anterior
             </p>
-            <div className="mt-2 h-1 w-full bg-muted overflow-hidden rounded">
-              <div className="bg-primary h-1 w-3/4" />
-            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Duración Promedio
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpiData.avgDuration} min</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-red-500 font-medium">↓3%</span> respecto al
-              periodo anterior
-            </p>
-            <div className="mt-2 h-1 w-full bg-muted overflow-hidden rounded">
-              <div className="bg-blue-500 h-1 w-2/3" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Satisfacción del Cliente
+              Calificación Promedio
             </CardTitle>
             <Star className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {kpiData.satisfactionRate}/5
-            </div>
+            <div className="text-2xl font-bold">{kpiData.avgRating}/5</div>
             <p className="text-xs text-muted-foreground">
               <span className="text-green-500 font-medium">↑0.2</span> respecto
               al periodo anterior
             </p>
-            <div className="mt-2 h-1 w-full bg-muted overflow-hidden rounded">
-              <div className="bg-yellow-500 h-1 w-[94%]" />
-            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Tasa de Finalización
+              Ingresos Totales
             </CardTitle>
             <Layers className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{kpiData.completionRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-500 font-medium">↑4%</span> respecto
-              al periodo anterior
-            </p>
-            <div className="mt-2 h-1 w-full bg-muted overflow-hidden rounded">
-              <div className="bg-green-500 h-1 w-[92%]" />
+            <div className="text-2xl font-bold">
+              ${kpiData.totalRevenue.toLocaleString()}
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Clientes Recurrentes
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpiData.repeatClients}%</div>
             <p className="text-xs text-muted-foreground">
               <span className="text-green-500 font-medium">↑8%</span> respecto
               al periodo anterior
             </p>
-            <div className="mt-2 h-1 w-full bg-muted overflow-hidden rounded">
-              <div className="bg-purple-500 h-1 w-[78%]" />
-            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Tiempo de Respuesta
+              Mascotas Atendidas
             </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{kpiData.avgResponseTime}h</div>
+            <div className="text-2xl font-bold">{kpiData.totalPets}</div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-red-500 font-medium">↑0.3h</span> respecto
+              <span className="text-green-500 font-medium">↑5%</span> respecto
               al periodo anterior
             </p>
-            <div className="mt-2 h-1 w-full bg-muted overflow-hidden rounded">
-              <div className="bg-orange-500 h-1 w-1/2" />
-            </div>
           </CardContent>
         </Card>
       </div>
@@ -421,8 +327,8 @@ export function ClinicAnalytics() {
         <TabsList>
           <TabsTrigger value="appointments">Citas</TabsTrigger>
           <TabsTrigger value="services">Servicios</TabsTrigger>
-          <TabsTrigger value="satisfaction">Satisfacción</TabsTrigger>
           <TabsTrigger value="demographics">Demografía</TabsTrigger>
+          <TabsTrigger value="ratings">Calificaciones</TabsTrigger>
         </TabsList>
 
         {/* Appointments Tab */}
@@ -556,58 +462,6 @@ export function ClinicAnalytics() {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="mt-2 flex justify-center text-sm text-muted-foreground">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="flex items-center">
-                      <div className="mr-1 h-3 w-3 rounded-full bg-[#82ca9d]" />
-                      <span>Completadas</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="mr-1 h-3 w-3 rounded-full bg-[#8884d8]" />
-                      <span>Programadas</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="mr-1 h-3 w-3 rounded-full bg-[#ff8042]" />
-                      <span>Canceladas</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Horas Pico</CardTitle>
-                <CardDescription>
-                  Distribución de citas por hora del día
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={peakHoursData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="hour" />
-                      <YAxis />
-                      <Tooltip
-                        formatter={(value: number) => [
-                          `${value} citas`,
-                          "Cantidad",
-                        ]}
-                      />
-                      <Bar dataKey="appointments" fill="#8884d8" name="Citas">
-                        {peakHoursData.map((_, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={`#${Math.floor(
-                              Math.random() * 16777215
-                            ).toString(16)}`}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -699,250 +553,6 @@ export function ClinicAnalytics() {
                 </div>
               </CardContent>
             </Card>
-
-            <Card className="col-span-2">
-              <CardHeader>
-                <CardTitle>Evolución de Servicios</CardTitle>
-                <CardDescription>
-                  Tendencia de servicios prestados en el tiempo
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={[
-                        {
-                          month: "Ene",
-                          "Consulta General": 35,
-                          Vacunación: 28,
-                          "Limpieza Dental": 18,
-                          Desparasitación: 12,
-                        },
-                        {
-                          month: "Feb",
-                          "Consulta General": 32,
-                          Vacunación: 24,
-                          "Limpieza Dental": 16,
-                          Desparasitación: 15,
-                        },
-                        {
-                          month: "Mar",
-                          "Consulta General": 30,
-                          Vacunación: 26,
-                          "Limpieza Dental": 20,
-                          Desparasitación: 18,
-                        },
-                        {
-                          month: "Abr",
-                          "Consulta General": 40,
-                          Vacunación: 32,
-                          "Limpieza Dental": 22,
-                          Desparasitación: 20,
-                        },
-                        {
-                          month: "May",
-                          "Consulta General": 38,
-                          Vacunación: 30,
-                          "Limpieza Dental": 24,
-                          Desparasitación: 22,
-                        },
-                        {
-                          month: "Jun",
-                          "Consulta General": 42,
-                          Vacunación: 34,
-                          "Limpieza Dental": 25,
-                          Desparasitación: 18,
-                        },
-                      ]}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="Consulta General"
-                        stroke="#8884d8"
-                        activeDot={{ r: 8 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="Vacunación"
-                        stroke="#82ca9d"
-                        activeDot={{ r: 8 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="Limpieza Dental"
-                        stroke="#ffc658"
-                        activeDot={{ r: 8 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="Desparasitación"
-                        stroke="#ff8042"
-                        activeDot={{ r: 8 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Satisfaction Tab */}
-        <TabsContent value="satisfaction" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card className="col-span-2">
-              <CardHeader>
-                <CardTitle>Evolución de la Satisfacción del Cliente</CardTitle>
-                <CardDescription>
-                  Calificaciones promedio a lo largo del tiempo
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={generateSatisfactionData()}
-                      margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="date"
-                        tickFormatter={(date) => {
-                          const d = new Date(date);
-                          return format(d, "dd/MM");
-                        }}
-                        interval={Math.max(
-                          Math.floor(generateSatisfactionData().length / 6),
-                          1
-                        )}
-                      />
-                      <YAxis domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} />
-                      <Tooltip
-                        formatter={(value: number) => [value.toFixed(1), ""]}
-                        labelFormatter={(label) =>
-                          format(new Date(label), "PPP", { locale: es })
-                        }
-                      />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="overallSatisfaction"
-                        stroke="#8884d8"
-                        name="Satisfacción General"
-                        strokeWidth={2}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="staffRating"
-                        stroke="#82ca9d"
-                        name="Personal"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="serviceRating"
-                        stroke="#ffc658"
-                        name="Servicio"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="valueRating"
-                        stroke="#ff8042"
-                        name="Relación Precio-Calidad"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Distribución de Calificaciones</CardTitle>
-                <CardDescription>
-                  Frecuencia de cada calificación recibida
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={[
-                        { rating: "1 ★", count: 5 },
-                        { rating: "2 ★", count: 12 },
-                        { rating: "3 ★", count: 28 },
-                        { rating: "4 ★", count: 85 },
-                        { rating: "5 ★", count: 120 },
-                      ]}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="rating" />
-                      <YAxis />
-                      <Tooltip
-                        formatter={(value) => [`${value} reseñas`, ""]}
-                      />
-                      <Bar dataKey="count" name="Cantidad">
-                        <Cell fill="#f44336" />
-                        <Cell fill="#ff9800" />
-                        <Cell fill="#ffc107" />
-                        <Cell fill="#8bc34a" />
-                        <Cell fill="#4caf50" />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Temas de Comentarios</CardTitle>
-                <CardDescription>
-                  Análisis de temas recurrentes en comentarios
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: "Atención del personal", value: 40 },
-                          { name: "Calidad del servicio", value: 30 },
-                          { name: "Tiempos de espera", value: 15 },
-                          { name: "Instalaciones", value: 10 },
-                          { name: "Precios", value: 5 },
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        dataKey="value"
-                        nameKey="name"
-                        label={({ name, percent }) =>
-                          `${
-                            name.length > 10
-                              ? name.substring(0, 8) + "..."
-                              : name
-                          } ${(percent * 100).toFixed(0)}%`
-                        }
-                        labelLine={false}
-                      >
-                        {COLORS.map((color, index) => (
-                          <Cell key={`cell-${index}`} fill={color} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => [`${value}%`, ""]} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </TabsContent>
 
@@ -959,17 +569,12 @@ export function ClinicAnalytics() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={[
-                          { name: "Perros", value: 65 },
-                          { name: "Gatos", value: 25 },
-                          { name: "Aves", value: 5 },
-                          { name: "Exóticos", value: 5 },
-                        ]}
+                        data={petTypeData}
                         cx="50%"
                         cy="50%"
                         outerRadius={80}
-                        dataKey="value"
-                        nameKey="name"
+                        dataKey="count"
+                        nameKey="type"
                         label={({ name, percent }) =>
                           `${name} ${(percent * 100).toFixed(0)}%`
                         }
@@ -979,7 +584,9 @@ export function ClinicAnalytics() {
                         <Cell fill="#ffc658" />
                         <Cell fill="#ff8042" />
                       </Pie>
-                      <Tooltip formatter={(value) => [`${value}%`, ""]} />
+                      <Tooltip
+                        formatter={(value) => [`${value} mascotas`, ""]}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -1000,8 +607,10 @@ export function ClinicAnalytics() {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="range" />
                       <YAxis />
-                      <Tooltip formatter={(value) => [`${value}%`, ""]} />
-                      <Bar dataKey="value" fill="#8884d8" name="Porcentaje">
+                      <Tooltip
+                        formatter={(value) => [`${value} mascotas`, ""]}
+                      />
+                      <Bar dataKey="count" fill="#8884d8" name="Cantidad">
                         {ageDistributionData.map((_, index) => (
                           <Cell
                             key={`cell-${index}`}
@@ -1014,40 +623,35 @@ export function ClinicAnalytics() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </TabsContent>
 
-            <Card className="col-span-2">
+        {/* Ratings Tab */}
+        <TabsContent value="ratings" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
               <CardHeader>
-                <CardTitle>Distribución Geográfica de Clientes</CardTitle>
+                <CardTitle>Distribución de Calificaciones</CardTitle>
                 <CardDescription>
-                  Zonas de donde provienen los clientes
+                  Frecuencia de cada calificación recibida
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px]">
+                <div className="h-[250px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={[
-                        { zone: "Centro", clients: 120 },
-                        { zone: "Norte", clients: 85 },
-                        { zone: "Sur", clients: 65 },
-                        { zone: "Este", clients: 45 },
-                        { zone: "Oeste", clients: 40 },
-                        { zone: "Otras áreas", clients: 25 },
-                      ]}
-                    >
+                    <BarChart data={ratingData}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="zone" />
+                      <XAxis dataKey="rating" />
                       <YAxis />
                       <Tooltip
-                        formatter={(value) => [`${value} clientes`, ""]}
+                        formatter={(value) => [`${value} reseñas`, ""]}
                       />
-                      <Bar dataKey="clients" fill="#8884d8" name="Clientes">
-                        {[...Array(6)].map((_, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                          />
-                        ))}
+                      <Bar dataKey="count" name="Cantidad">
+                        <Cell fill="#f44336" />
+                        <Cell fill="#ff9800" />
+                        <Cell fill="#ffc107" />
+                        <Cell fill="#8bc34a" />
+                        <Cell fill="#4caf50" />
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
