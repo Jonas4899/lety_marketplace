@@ -1,21 +1,31 @@
 import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "~/components/ui/card"
 import { Alert, AlertDescription } from "~/components/ui/alert"
 import { Button } from "~/components/ui/button"
 import { Label } from "~/components/ui/label"
 import { Input } from "~/components/ui/input"
 import { Loader2 } from "lucide-react"
-import {  PawPrint, Building2, Mail, Lock, Eye, EyeOff } from "lucide-react"
+import { Mail, Lock, Eye, EyeOff } from "lucide-react"
 import { Link, useNavigate } from "react-router" 
+import { z } from "zod"
+import { loginFormSchema } from "~/zodSchemas/loginFormSchema"
+import type { UseFormReturn } from "react-hook-form"
 
+type LoginFormData = z.infer<typeof loginFormSchema>;
 
-export default function PetOwnerLogin() {
+interface PetOwnerLoginProps {
+   form: UseFormReturn<LoginFormData>;
+   onSubmit: (data: LoginFormData) => void;
+   isLoading: boolean;
+   error: string | null;
+}
+
+export default function PetOwnerLogin({form, onSubmit, isLoading, error}: PetOwnerLoginProps) {
 
    const [userType, setUserType] = useState<"pet-owner" | "vet-clinic">("pet-owner")
-   const [error, setError] = useState<string | null>(null)
+   //const [error, setError] = useState<string | null>(null)
    const [showPassword, setShowPassword] = useState(false)
-   const [isLoading, setIsLoading] = useState(false)
+   //const [isLoading, setIsLoading] = useState(false)
    const [petOwnerFormData, setPetOwnerFormData] = useState({
       email: "",
       password: "",

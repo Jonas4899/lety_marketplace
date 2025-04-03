@@ -6,15 +6,25 @@ import { Button } from "~/components/ui/button"
 import { Label } from "~/components/ui/label"
 import { Input } from "~/components/ui/input"
 import { Loader2 } from "lucide-react"
-import {  PawPrint, Building2, Mail, Lock, Eye, EyeOff } from "lucide-react"
-import { Link, useNavigate } from "react-router" 
+import { Mail, Lock, Eye, EyeOff } from "lucide-react"
+import { Form, Link, useNavigate } from "react-router" 
+import { z } from "zod"
+import { loginFormSchema } from "~/zodSchemas/loginFormSchema"
+import type { UseFormReturn } from "react-hook-form"
 
-export default function VetLogin() {
+type LoginFormData = z.infer<typeof loginFormSchema>;
+
+interface PetOwnerLoginProps {
+   form: UseFormReturn<LoginFormData>;
+   onSubmit: (data: LoginFormData) => void;
+   isLoading: boolean;
+   error: string | null;
+}
+
+export default function VetLogin({form, onSubmit, isLoading, error}: PetOwnerLoginProps) {
 
    const [userType, setUserType] = useState<"pet-owner" | "vet-clinic">("pet-owner")
-   const [error, setError] = useState<string | null>(null)
    const [showPassword, setShowPassword] = useState(false)
-   const [isLoading, setIsLoading] = useState(false)
 
    const [vetClinicFormData, setVetClinicFormData] = useState({
       email: "",
