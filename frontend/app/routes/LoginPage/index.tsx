@@ -5,22 +5,41 @@ import { Link, useNavigate } from "react-router"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { loginFormSchema } from "~/zodSchemas/loginFormSchema"
+import Cookies from 'js-cookie';
+//Stores
+import { useAuthStore } from "~/stores/useAuthStore"
 
 //Components
 import PetOwnerLogin from "~/components/PetOwnerLogin"
 import VetLogin from "~/components/VetLogin"
 import { zodResolver } from "@hookform/resolvers/zod"
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
 export default function LoginPage() {
    const [userType, setUserType] = useState<"pet-owner" | "vet-clinic">("pet-owner")
    const [isLoading, setIsLoading] = useState(false)
    const [error, setError] = useState<string | null>(null)
-   const [showPassword, setShowPassword] = useState(false)
-   const [isClient, setIsClient] = useState(false)
-
+   const login = useAuthStore((state) => state.login);
+   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
    const navigate = useNavigate();
 
+
+   //Redireccionar si el usuario ya está autenticado
+   useEffect(() => {
+    if (isAuthenticated) {
+      const userType =  useAuthStore.getState().userType;
+      if (userType === "owner") {
+        navigate("/dashboard-client");
+      } else if (userType === "vet") {
+        navigate("/dashboard-vet");
+      }
+    }
+   },[isAuthenticated, navigate])
+
+
    type LoginFormData = z.infer<typeof loginFormSchema>
+
    const ownerForm = useForm<LoginFormData>({
      resolver: zodResolver(loginFormSchema),
      mode: "onTouched",
@@ -43,12 +62,50 @@ export default function LoginPage() {
    const handlePetOwnerSubmit = async (data: LoginFormData) => {
     setError(null)
     setIsLoading(true)
+
+    console.log("ownerForm", ownerForm.getValues());
     try {
-      console.log("Enviando datos de inicio de sesión del dueño de mascota:", data)
-      // Simulación de llamada a la API
-      //...
+      const response = await fetch(`${API_URL}/owner/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Error de inicio de sesión');
+      }
+
+      const responseData = await response.json();
+
+      //Guardar el token en una cookie
+      Cookies.set("auth_token", responseData.token, {
+        expires: 1, // 1 dia / 24hrs
+        secure: true,
+        sameSite: "Strict",
+      });
+
+      //Actualizar el estado de global de autenticacion
+      login({
+        token: responseData.token,
+        userType: "owner",
+        user: responseData.user,
+        pets: responseData.pets,
+      });
+
+      // Redirigir al usuario a la página de inicio
+      navigate("/dashboard-client");
+
     } catch (error) {
-      setError("Ocurrió un error al iniciar sesión. Por favor intenta de nuevo.")
+      console.error('Error en loginOwner:', error);
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Ocurrió un error desconocido al iniciar sesión');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -57,12 +114,52 @@ export default function LoginPage() {
    const handleVetSubmit = async (data: LoginFormData) => {
     setError(null)
     setIsLoading(true)
+    
     try {
-      console.log("Enviando datos de inicio de sesión de la clínica veterinaria:", data)
-      // Simulación de llamada a la API
-      //...
+      const response = await fetch(`${API_URL}/vet/login`,{
+        method: "POST",
+        headers: {
+          "ContentType": "application/json",
+        },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Error de inicio de sesión');
+      }
+
+      const responseData = await response.json();
+
+      //Guardar el token en una cookie
+      Cookies.set("auth_token", responseData.token, {
+        expires: 1, // 1 dia / 24hrs
+        secure: true,
+        sameSite: "Strict",
+      });
+
+      //Actualizar el estado de global de autenticacion
+      login({
+        token: responseData.token,
+        userType: "vet",
+        user: responseData.user,
+        pets: null,
+      });
+
+
+      // Redirigir al usuario a la página de inicio
+      navigate("/dashboard-vet");
+
+
     } catch (error) {
-      setError("Ocurrió un error al iniciar sesión. Por favor intenta de nuevo.")
+      console.error('Error en loginVet:', error);
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Ocurrió un error desconocido al iniciar sesión');
+      }
     } finally {
       setIsLoading(false);
     }

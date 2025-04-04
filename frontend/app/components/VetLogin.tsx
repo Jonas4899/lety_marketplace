@@ -26,12 +26,6 @@ export default function VetLogin({form, onSubmit, isLoading, error}: PetOwnerLog
    const [userType, setUserType] = useState<"pet-owner" | "vet-clinic">("pet-owner")
    const [showPassword, setShowPassword] = useState(false)
 
-   const [vetClinicFormData, setVetClinicFormData] = useState({
-      email: "",
-      password: "",
-   })
-
-
    return (
       <Card>
          <form /*onAbort={handleVetClinicSubmit}*/>
@@ -45,14 +39,11 @@ export default function VetLogin({form, onSubmit, isLoading, error}: PetOwnerLog
                <div className="relative">
                   <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                  id="vet-clinic-email"
-                  name="email"
+                  id="email"
                   type="email"
                   placeholder="clinica@email.com"
                   className="pl-9"
-                  //value={vetClinicFormData.email}
-                  //onChange={handleVetClinicChange}
-                  required
+                  {...form.register("email")}
                   />
                </div>
             </div>
@@ -66,14 +57,11 @@ export default function VetLogin({form, onSubmit, isLoading, error}: PetOwnerLog
                <div className="relative">
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                  id="vet-clinic-password"
-                  name="password"
+                  id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   className="pl-9 pr-9"
-                  value={vetClinicFormData.password}
-                  //onChange={handleVetClinicChange}
-                  required
+                  {...form.register("password")}
                   />
                   <Button
                   type="button"

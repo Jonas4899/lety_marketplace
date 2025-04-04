@@ -23,25 +23,11 @@ interface PetOwnerLoginProps {
 export default function PetOwnerLogin({form, onSubmit, isLoading, error}: PetOwnerLoginProps) {
 
    const [userType, setUserType] = useState<"pet-owner" | "vet-clinic">("pet-owner")
-   //const [error, setError] = useState<string | null>(null)
    const [showPassword, setShowPassword] = useState(false)
-   //const [isLoading, setIsLoading] = useState(false)
-   const [petOwnerFormData, setPetOwnerFormData] = useState({
-      email: "",
-      password: "",
-   })
-
-   const handlePetOwnerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setPetOwnerFormData({
-      ...petOwnerFormData,
-      [name]: value,
-    })
-  }
 
    return (
       <Card>
-         <form>
+         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <CardHeader className="py-4">
             <CardTitle>Dueño de Mascota</CardTitle>
             <CardDescription>Ingresa tus datos para acceder a la información de tus mascotas</CardDescription>
@@ -52,14 +38,11 @@ export default function PetOwnerLogin({form, onSubmit, isLoading, error}: PetOwn
                <div className="relative">
                   <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                  id="pet-owner-email"
-                  name="email"
+                  id="email"
                   type="email"
                   placeholder="tu@email.com"
                   className="pl-9"
-                  value={petOwnerFormData.email}
-                  onChange={handlePetOwnerChange}
-                  required
+                  {...form.register("email")}
                   />
                </div>
             </div>
@@ -74,13 +57,10 @@ export default function PetOwnerLogin({form, onSubmit, isLoading, error}: PetOwn
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                   id="pet-owner-password"
-                  name="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   className="pl-9 pr-9"
-                  value={petOwnerFormData.password}
-                  onChange={handlePetOwnerChange}
-                  required
+                  {...form.register("password")}
                   />
                   <Button
                   type="button"

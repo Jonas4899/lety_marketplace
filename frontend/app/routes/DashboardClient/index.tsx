@@ -23,6 +23,7 @@ import { Badge } from "~/components/ui/badge"
 export default function PetDashboardPage() {
   const [isNewLogin, setIsNewLogin] = useState(false);
 
+
   return (
     <div className="flex flex-col gap-4 p-4 md:gap-8 md:p-8">
       {isNewLogin && (
@@ -181,13 +182,6 @@ export default function PetDashboardPage() {
               ].map((pet) => (
                 <div key={pet.id} className="flex items-center gap-4 rounded-lg border p-3">
                   <div className="h-12 w-12 overflow-hidden rounded-full bg-muted">
-                    {/*<Image
-                      src={pet.image || "/placeholder.svg"}
-                      alt={pet.name}
-                      width={48}
-                      height={48}
-                      className="h-full w-full object-cover"
-                    />*/}
                   </div>
                   <div className="flex-1">
                     <h3 className="font-medium">{pet.name}</h3>

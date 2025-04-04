@@ -6,14 +6,23 @@ import multer from 'multer';
 import bcrypt from 'bcrypt';
 import path from 'path';
 import fs, { Dirent } from 'fs';
-import e from 'express';
 import jwt from 'jsonwebtoken';
+import cookieParser from 'cookie-parser';
 
 // Configurar variables de entorno
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: 'http://localhost:5173', // URL de tu frontend
+    credentials: true, // Permitir cookies
+  })
+);
+
+// Middleware para manejar cookies
+app.use(cookieParser());
+
 app.use(express.json());
 
 // Configurar conexión a la base de datos de Supabase
@@ -75,9 +84,6 @@ app.post(
       petBreed,
       petSpecies,
     } = req.body;
-
-    //req.files contiene los archivos subidos en un objeto con arrays de archivos
-    //"foto_mascota": [ { "file1_data" } ], foto mascota es un array de archivos
 
     const fotoMascotaFile = req.files.petPhoto?.[0]; // Obtener el primer archivol array
     const historialMedicoFile = req.files.petHistory?.[0]; // Obtener el primer archivol array
@@ -214,6 +220,8 @@ app.post(
 //Login de usuarios
 app.post('/owner/login', async (req, res) => {
   const { email, password } = req.body;
+  console.log('Email:', email);
+  console.log('Contra: ', password);
   try {
     const { data: user, error } = await supabaseClient
       .from('usuarios')
@@ -235,7 +243,7 @@ app.post('/owner/login', async (req, res) => {
     const token = jwt.sign(
       {
         userId: user.id_usuario,
-        userType: 'pet-owner',
+        userType: 'owner',
       },
       JWT_SECRET,
       { expiresIn: '8h' } // El token expira en 8 horas
@@ -252,6 +260,14 @@ app.post('/owner/login', async (req, res) => {
         .status(500)
         .json({ message: 'Error al obtener las mascotas del usuario' });
     }
+
+    // Configurar la cookie segura con el token
+    res.cookie('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 8 * 60 * 60 * 1000, // 8 horas en milisegundos
+    });
 
     //enviar respuesta con el token y los datos del usuario
     res.status(200).json({
@@ -295,11 +311,11 @@ app.post('/vet/login', async (req, res) => {
     //verificar el estado de la clinica
     const estadoRequerido = 'confirmado';
 
-    if (clinica.estadoRequerido.toLowerCase() !== estadoRequerido) {
+    if (clinica.estado !== estadoRequerido) {
       return res.status(403).json({
         message:
-          'La clinica aun no ha sido verificada, intentenlo luego de las siguietnes 24 horas',
-        estado: clinica.estadoRequerido,
+          'La clinica aun no ha sido verificada, intentelo luego de las siguientes 24 horas',
+        estado: clinica.estado,
       });
     }
 
@@ -312,6 +328,14 @@ app.post('/vet/login', async (req, res) => {
       JWT_SECRET,
       { expiresIn: '24h' }
     );
+
+    // Configurar la cookie segura con el token
+    res.cookie('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 8 * 60 * 60 * 1000, // 8 horas en milisegundos
+    });
 
     //enviar respuesta con los datos de la clinica
     res.status(200).json({

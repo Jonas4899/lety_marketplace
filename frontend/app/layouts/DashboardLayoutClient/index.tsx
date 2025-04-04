@@ -16,11 +16,13 @@ import {
   Bell,
   Heart,
   Clipboard,
+  Cookie,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/sheet";
-//import { useAuth } from "@/context/auth-context"
+import Cookies from "js-cookie";
+import { useAuthStore } from "~/stores/useAuthStore";
 
 interface SidebarNavProps {
   items: {
@@ -80,6 +82,15 @@ export default function PetDashboardLayout({
   if (!isClient || !isAuthenticated || user?.type !== "pet-owner") {
     return null
   }*/
+
+  const logout = useAuthStore(state => state.logout);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    Cookies.remove("auth_token");
+    logout();
+    navigate("/login");
+  }
 
   const navItems = [
     {
@@ -225,10 +236,7 @@ export default function PetDashboardLayout({
                 variant="outline"
                 size="sm"
                 className="w-full justify-start gap-2"
-                onClick={() => {
-                  //logout()
-                  router("/");
-                }}
+                onClick={handleLogout}
               >
                 <LogOut className="h-4 w-4" />
                 Cerrar sesión
