@@ -90,7 +90,7 @@ export const StatusDialog = ({
               Entendido
             </Button>
           ) : (
-            <Button className="mx-auto  " onClick={() => navigate("/dashboard-client")}>
+            <Button className="mx-auto  " onClick={() => navigate("/login")}>
               Continuar
             </Button>
           )}

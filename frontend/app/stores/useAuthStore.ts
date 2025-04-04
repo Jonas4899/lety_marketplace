@@ -1,29 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import Cookies from "js-cookie";
-
-type Owner = {
-  id_usuario: number;
-  nombre: string;
-  correo: string;
-  telefono: string;
-}
-
-type Vet = {
-  nombre: string;
-  direccion: string;
-  telefono: string;
-  correo: string;    
-}
-
-type Pet = {
-  id_mascota: number;
-  nombre: string;
-  edad: number;
-  raza: string;
-  especie: string;
-  foto_url?: string;
-}
+import type { Owner, Vet, Pet } from "~/types/usersTypes";  // Importar los tipos
 
 type AuthState = {
    isAuthenticated: boolean;

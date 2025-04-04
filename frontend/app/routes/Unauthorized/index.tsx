@@ -1,9 +1,19 @@
 import { Button } from "~/components/ui/button";
 import { useAuthStore } from "~/stores/useAuthStore";
-import { Link, Navigate } from "react-router";
+import { Link, Navigate, useNavigate } from "react-router";
+import { Cookie } from "lucide-react";
+import Cookies from "js-cookie";
 
 export default function Unauthorized() {
   const userType = useAuthStore(state => state.userType);
+  const logout = useAuthStore(state => state.logout);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    Cookies.remove("access_token");
+    logout();
+    navigate("/");
+  }
   
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
@@ -20,10 +30,8 @@ export default function Unauthorized() {
             </Link>
           </Button>
           
-          <Button variant="outline" asChild>
-            <Link to="/">
-              Volver al inicio
-            </Link>
+          <Button variant="outline" onClick={handleLogout}>
+              Cerrar Sesion
           </Button>
         </div>
       </div>

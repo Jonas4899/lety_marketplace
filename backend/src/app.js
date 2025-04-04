@@ -198,8 +198,11 @@ app.post(
         .single();
 
       if (errorMascota) {
+        console.error('Error completo:', JSON.stringify(errorMascota, null, 2));
         return res.status(400).json({
-          message: 'Error al registrar la mascota:' + errorMascota.message,
+          message: 'Error al registrar la mascota: ' + errorMascota.message,
+          details: errorMascota.details,
+          code: errorMascota.code,
         });
       }
 

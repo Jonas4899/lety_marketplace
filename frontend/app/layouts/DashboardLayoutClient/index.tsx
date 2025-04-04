@@ -32,6 +32,8 @@ interface SidebarNavProps {
   }[];
 }
 
+import type { Owner } from "~/types/usersTypes"; 
+
 function SidebarNav({ items }: SidebarNavProps) {
   const location = useLocation();
   const pathname = location.pathname;
@@ -67,21 +69,12 @@ export default function PetDashboardLayout({
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const router = useNavigate();
-  //const { user, logout, isAuthenticated } = useAuth()
-  /*
-  useEffect(() => {
-    setIsClient(true)
 
-    // Check if the user is authenticated and is a pet owner
-    if (isClient && (!isAuthenticated || user?.type !== "pet-owner")) {
-      router.push("/login")
-    }
-  }, [router, isAuthenticated, user, isClient])
+    //Extraer la info del usuario
+  const user = useAuthStore((state) => state.user);
+  const userType = useAuthStore((state) => state.userType);
 
-  // Don't render anything on the server or if not authenticated yet
-  if (!isClient || !isAuthenticated || user?.type !== "pet-owner") {
-    return null
-  }*/
+  const userId = userType === 'owner' && user ? (user as Owner).id_usuario : undefined;
 
   const logout = useAuthStore(state => state.logout);
   const navigate = useNavigate();
@@ -218,8 +211,7 @@ export default function PetDashboardLayout({
               <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase() || "U"}</AvatarFallback>
             </Avatar>*/}
             <div className="hidden md:block">
-              {/*<p className="text-sm font-medium">{user?.name}</p>*/}
-              <p className="text-xs text-muted-foreground">Dueño de Mascota</p>
+              <p className="text-sm font-medium">{user?.nombre}</p>
             </div>
           </div>
         </div>
