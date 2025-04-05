@@ -69,7 +69,6 @@ const autenticacionToken = (req, res, next) => {
 
 const upload = multer({ storage }); //Inicializar multer con la configuración de storage
 
-//Endpoint para registrar usuarios dueños de las mascotas junto con su mascota ---------------------------
 app.post(
   '/register/user',
   upload.fields([{ name: 'petPhoto' }, { name: 'petHistory' }]),

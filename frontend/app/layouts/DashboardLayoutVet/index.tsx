@@ -18,7 +18,9 @@ import {
 import { Button } from "~/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/sheet";
-//import { useAuth } from "~/context/auth-context"
+import Cookies from "js-cookie";
+import { useAuthStore } from "~/stores/useAuthStore";
+import type { Vet } from "~/types/usersTypes";
 
 interface SidebarNavProps {
   items: {
@@ -58,7 +60,21 @@ function SidebarNav({ items }: SidebarNavProps) {
 export default function DashboardLayout() {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  const router = useNavigate();
+  const navigate = useNavigate();
+  const logout = useAuthStore((state) => state.logout); 
+
+  //extrar info de la veterinaria
+  const user = useAuthStore((state) => state.user);
+  const userType = useAuthStore((state) => state.userType); 
+
+  const vetId = user && userType === "vet" ? (user as Vet).id_clinica : undefined;
+  console.log(vetId)
+
+  const handleLogout = () => {
+    Cookies.remove("auth_token");
+    logout();
+    navigate("/login");
+  }
 
   const navItems = [
     {
@@ -143,10 +159,7 @@ export default function DashboardLayout() {
                   variant="outline"
                   size="sm"
                   className="w-full justify-start gap-2"
-                  onClick={() => {
-                    //logout()
-                    window.location.href = "/";
-                  }}
+                  onClick={handleLogout}
                 >
                   <LogOut className="h-4 w-4" />
                   Cerrar sesión
@@ -173,10 +186,7 @@ export default function DashboardLayout() {
                 variant="outline"
                 size="sm"
                 className="w-full justify-start gap-2"
-                onClick={() => {
-                  //logout()
-                  router("/");
-                }}
+                onClick={handleLogout}
               >
                 <LogOut className="h-4 w-4" />
                 Cerrar sesión

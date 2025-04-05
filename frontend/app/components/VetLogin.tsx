@@ -14,21 +14,21 @@ import type { UseFormReturn } from "react-hook-form"
 
 type LoginFormData = z.infer<typeof loginFormSchema>;
 
-interface PetOwnerLoginProps {
+interface VetLoginProps {
    form: UseFormReturn<LoginFormData>;
    onSubmit: (data: LoginFormData) => void;
    isLoading: boolean;
    error: string | null;
 }
 
-export default function VetLogin({form, onSubmit, isLoading, error}: PetOwnerLoginProps) {
+export default function VetLogin({form, onSubmit, isLoading, error}: VetLoginProps) {
 
    const [userType, setUserType] = useState<"pet-owner" | "vet-clinic">("pet-owner")
    const [showPassword, setShowPassword] = useState(false)
 
    return (
       <Card>
-         <form /*onAbort={handleVetClinicSubmit}*/>
+         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <CardHeader className="py-4">
             <CardTitle>Clínica Veterinaria</CardTitle>
             <CardDescription>Ingresa tus datos para acceder al panel de administración</CardDescription>
@@ -46,13 +46,20 @@ export default function VetLogin({form, onSubmit, isLoading, error}: PetOwnerLog
                   {...form.register("email")}
                   />
                </div>
+               {form.formState.errors.email && (
+                  <p className="text-sm text-red-500 mt-1">{form.formState.errors.email.message}</p>
+               )}
             </div>
             <div className="space-y-2">
                <div className="flex items-center justify-between">
                   <Label htmlFor="vet-clinic-password">Contraseña</Label>
-                  <Link to="/" className="text-xs text-primary hover:underline">
-                  ¿Olvidaste tu contraseña?
-                  </Link>
+                  {
+                  /*
+                     <Link to="/" className="text-xs text-primary hover:underline">
+                     ¿Olvidaste tu contraseña?
+                     </Link>
+                  */
+                  }
                </div>
                <div className="relative">
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -78,6 +85,9 @@ export default function VetLogin({form, onSubmit, isLoading, error}: PetOwnerLog
                   <span className="sr-only">{showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}</span>
                   </Button>
                </div>
+               {form.formState.errors.password && (
+                  <p className="text-sm text-red-500 mt-1">{form.formState.errors.password.message}</p>
+               )}
             </div>
 
             {error && userType === "vet-clinic" && (

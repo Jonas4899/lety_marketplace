@@ -1,7 +1,6 @@
 import { Button } from "~/components/ui/button";
 import { useAuthStore } from "~/stores/useAuthStore";
 import { Link, Navigate, useNavigate } from "react-router";
-import { Cookie } from "lucide-react";
 import Cookies from "js-cookie";
 
 export default function Unauthorized() {

@@ -45,13 +45,20 @@ export default function PetOwnerLogin({form, onSubmit, isLoading, error}: PetOwn
                   {...form.register("email")}
                   />
                </div>
+               {form.formState.errors.email && (
+                  <p className="text-sm text-red-500 mt-1">{form.formState.errors.email.message}</p>
+               )}
             </div>
             <div className="space-y-2">
                <div className="flex items-center justify-between">
                   <Label htmlFor="pet-owner-password">Contraseña</Label>
-                  <Link to="/" className="text-xs text-primary hover:underline">
-                  ¿Olvidaste tu contraseña?
-                  </Link>
+                  {
+                  /*
+                     <Link to="/" className="text-xs text-primary hover:underline">
+                     ¿Olvidaste tu contraseña?
+                     </Link>
+                  */
+                  }
                </div>
                <div className="relative">
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -77,6 +84,9 @@ export default function PetOwnerLogin({form, onSubmit, isLoading, error}: PetOwn
                   <span className="sr-only">{showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}</span>
                   </Button>
                </div>
+               {form.formState.errors.password && (
+                  <p className="text-sm text-red-500 mt-1">{form.formState.errors.password.message}</p>
+               )}
             </div>
 
             {error && userType === "pet-owner" && (

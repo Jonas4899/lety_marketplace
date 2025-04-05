@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs"
-import {  PawPrint, Building2, Mail, Lock, Eye, EyeOff } from "lucide-react"
+import { PawPrint, Building2 } from "lucide-react"
 import { Link, useNavigate } from "react-router" 
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -12,6 +12,7 @@ import { useAuthStore } from "~/stores/useAuthStore"
 //Components
 import PetOwnerLogin from "~/components/PetOwnerLogin"
 import VetLogin from "~/components/VetLogin"
+import { StatusDialog } from "~/components/StatusDialog"
 import { zodResolver } from "@hookform/resolvers/zod"
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
@@ -20,12 +21,14 @@ export default function LoginPage() {
    const [userType, setUserType] = useState<"pet-owner" | "vet-clinic">("pet-owner")
    const [isLoading, setIsLoading] = useState(false)
    const [error, setError] = useState<string | null>(null)
+   const [showErrorDialog, setShowErrorDialog] = useState(false)
+   const [errorMessage, setErrorMessage] = useState("")
+   
    const login = useAuthStore((state) => state.login);
    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
    const navigate = useNavigate();
 
-
-   //Redireccionar si el usuario ya está autenticado
+   // Redireccionar si el usuario ya está autenticado
    useEffect(() => {
     if (isAuthenticated) {
       const userType =  useAuthStore.getState().userType;
@@ -36,7 +39,6 @@ export default function LoginPage() {
       }
     }
    },[isAuthenticated, navigate])
-
 
    type LoginFormData = z.infer<typeof loginFormSchema>
 
@@ -63,7 +65,6 @@ export default function LoginPage() {
     setError(null)
     setIsLoading(true)
 
-    console.log("ownerForm", ownerForm.getValues());
     try {
       const response = await fetch(`${API_URL}/owner/login`, {
         method: "POST",
@@ -74,12 +75,13 @@ export default function LoginPage() {
         credentials: "include",
       });
 
+      const responseData = await response.json();
+      
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Error de inicio de sesión');
+        throw new Error(responseData.message || 'Error de inicio de sesión');
       }
 
-      const responseData = await response.json();
+      console.log("Datos del usuario:", responseData.user);
 
       //Guardar el token en una cookie
       Cookies.set("auth_token", responseData.token, {
@@ -102,9 +104,11 @@ export default function LoginPage() {
     } catch (error) {
       console.error('Error en loginOwner:', error);
       if (error instanceof Error) {
-        setError(error.message);
+        setErrorMessage(error.message);
+        setShowErrorDialog(true);
       } else {
-        setError('Ocurrió un error desconocido al iniciar sesión');
+        setErrorMessage('Ocurrió un error desconocido al iniciar sesión');
+        setShowErrorDialog(true);
       }
     } finally {
       setIsLoading(false);
@@ -112,57 +116,57 @@ export default function LoginPage() {
    }
 
    const handleVetSubmit = async (data: LoginFormData) => {
-    setError(null)
-    setIsLoading(true)
-    
-    try {
-      const response = await fetch(`${API_URL}/vet/login`,{
-        method: "POST",
-        headers: {
-          "ContentType": "application/json",
-        },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
+      setError(null)
+      setIsLoading(true)
 
+      try {
+        const response = await fetch(`${API_URL}/vet/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+          credentials: "include",
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Error de inicio de sesión');
+        const responseData = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(responseData.message || 'Error de inicio de sesión');
+        }
+        
+        console.log("Datos de la veterinaria:", responseData.clinica);
+
+        //Guardar el token en una cookie
+        Cookies.set("auth_token", responseData.token, {
+          expires: 1, // 1 dia / 24hrs
+          secure: true,
+          sameSite: "Strict",
+        });
+
+        //Actualizar el estado de global de autenticacion
+        login({
+          token: responseData.token,
+          userType: "vet",
+          user: responseData.clinica,
+          pets: null,
+        });
+
+        // Redirigir al usuario a la página de inicio
+        navigate("/dashboard-vet");
+
+      } catch (error) {
+        console.error('Error en loginVet:', error);
+        if (error instanceof Error) {
+          setErrorMessage(error.message);
+          setShowErrorDialog(true);
+        } else {
+          setErrorMessage('Ocurrió un error desconocido al iniciar sesión');
+          setShowErrorDialog(true);
+        }
+      } finally {
+        setIsLoading(false);
       }
-
-      const responseData = await response.json();
-
-      //Guardar el token en una cookie
-      Cookies.set("auth_token", responseData.token, {
-        expires: 1, // 1 dia / 24hrs
-        secure: true,
-        sameSite: "Strict",
-      });
-
-      //Actualizar el estado de global de autenticacion
-      login({
-        token: responseData.token,
-        userType: "vet",
-        user: responseData.user,
-        pets: null,
-      });
-
-
-      // Redirigir al usuario a la página de inicio
-      navigate("/dashboard-vet");
-
-
-    } catch (error) {
-      console.error('Error en loginVet:', error);
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError('Ocurrió un error desconocido al iniciar sesión');
-      }
-    } finally {
-      setIsLoading(false);
-    }
    }
 
     return (
@@ -190,7 +194,12 @@ export default function LoginPage() {
           </TabsList>
 
          <TabsContent value="pet-owner">
-          <PetOwnerLogin form={ownerForm} onSubmit={handlePetOwnerSubmit} isLoading={isLoading} error={error && userType === "pet-owner" ? error : null} />
+          <PetOwnerLogin 
+            form={ownerForm} 
+            onSubmit={handlePetOwnerSubmit} 
+            isLoading={isLoading} 
+            error={error && userType === "pet-owner" ? error : null} 
+          />
          </TabsContent>
 
           <TabsContent value="vet-clinic">
@@ -203,6 +212,15 @@ export default function LoginPage() {
           </TabsContent>
         </Tabs>
       </div>
+      
+      {/* Error Dialog */}
+      <StatusDialog
+        open={showErrorDialog}
+        onOpenChange={setShowErrorDialog}
+        type="error"
+        title="Error de inicio de sesión"
+        message={errorMessage}
+      />
     </div>
   )
 }
