@@ -67,8 +67,6 @@ export default function PetDashboardLayout({
   children: React.ReactNode;
 }) {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [isClient, setIsClient] = useState(false);
-  const router = useNavigate();
 
     //Extraer la info del usuario
   const user = useAuthStore((state) => state.user);
@@ -82,7 +80,7 @@ export default function PetDashboardLayout({
   const handleLogout = () => {
     Cookies.remove("auth_token");
     logout();
-    navigate("/login");
+    navigate("/");
   }
 
   const navItems = [
@@ -169,10 +167,7 @@ export default function PetDashboardLayout({
                   variant="outline"
                   size="sm"
                   className="w-full justify-start gap-2"
-                  onClick={() => {
-                    //logout()
-                    router("/");
-                  }}
+                  onClick={handleLogout}
                 >
                   <LogOut className="h-4 w-4" />
                   Cerrar sesión

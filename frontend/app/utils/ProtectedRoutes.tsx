@@ -12,7 +12,7 @@ export default function ProtectedRoutes ({children, allowedUserTypes}: Protected
    const {isAuthenticated, userType} = useAuthStore();
 
    if (!isAuthenticated) {
-      return <Navigate to="/login" />
+      return <Navigate to="/" />
    }
 
    if (allowedUserTypes && userType && !allowedUserTypes.includes(userType)) {

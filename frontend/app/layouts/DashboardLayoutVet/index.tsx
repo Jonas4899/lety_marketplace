@@ -59,7 +59,6 @@ function SidebarNav({ items }: SidebarNavProps) {
 
 export default function DashboardLayout() {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [isClient, setIsClient] = useState(false);
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout); 
 
@@ -73,7 +72,7 @@ export default function DashboardLayout() {
   const handleLogout = () => {
     Cookies.remove("auth_token");
     logout();
-    navigate("/login");
+    navigate("/");
   }
 
   const navItems = [

@@ -1,12 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-import express from 'express';
-import cors from 'cors';
-import multer from 'multer';
-import bcrypt from 'bcrypt';
-import path from 'path';
-import fs from 'fs';
-
 import uploadFile from './utils.js';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
