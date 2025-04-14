@@ -17,8 +17,6 @@ const JWT_SECRET = process.env.JWT_SECRET;
 // Login de usuarios dueños de mascotas
 router.post('/owner/login', async (req, res) => {
   const { email, password } = req.body;
-  console.log('Email:', email);
-  console.log('Contra: ', password);
   try {
     const { data: user, error } = await supabaseClient
       .from('usuarios')
@@ -66,6 +64,8 @@ router.post('/owner/login', async (req, res) => {
       maxAge: 8 * 60 * 60 * 1000, // 8 horas en milisegundos
     });
 
+    console.log(mascotas);
+
     //enviar respuesta con el token y los datos del usuario
     res.status(200).json({
       message: 'Inicio de sesión exitoso',
@@ -75,8 +75,8 @@ router.post('/owner/login', async (req, res) => {
         nombre: user.nombre,
         correo: user.correo,
         telefono: user.telefono,
+        mascotas: mascotas || [],
       },
-      mascotas: mascotas || [],
     });
   } catch (error) {
     console.error('Error en el inicio de sesion:', error);

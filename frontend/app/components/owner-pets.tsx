@@ -1,8 +1,6 @@
-"use client"
-
 import { useAuthStore } from "~/stores/useAuthStore";
 import Cookies from "js-cookie";
-import type { Owner } from "~/types/usersTypes"; 
+import type { Owner, Pet as PetType} from "~/types/usersTypes"; 
 
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card"
@@ -22,8 +20,7 @@ import {
   Calendar,
   ChevronRight,
 } from "lucide-react"
-//import Link from "next/link"
-//import Image from "next/image"
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,92 +39,51 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog"
-import { Toaster } from "~/components/ui/sonner"
 import { toast } from "sonner"
 
-//import { useToast } from "~/hooks/use-toast"
-
-interface Pet {
-  id: number
-  name: string
-  type: string
-  breed: string
-  age: number
-  gender: string
-  weight: string
-  image: string
-  lastCheckup: string
-  nextVaccination: string | null
-  medicalConditions: string[]
+interface Pet extends PetType{
+  id_mascota: number;
+  nombre: string;
+  edad: number;
+  raza: string;
+  especie: string;
+  genero: String;
+  peso: number,
+  foto_url?: string;
 }
 
 export default function PetsPage() {
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+  //Data del usuario
+   const user = useAuthStore((state) => state.user);
+   const userType = useAuthStore((state) => state.userType);
+  
+  const id_usuario = userType === 'owner' && user ? (user as Owner).id_usuario : undefined;
+  const userPets = userType === 'owner' && user ? (user as Owner).mascotas  : undefined;
+  console.log(userPets);
+
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true);
-  const [pets, setPets] = useState<Pet[]>([
-    {
-      id: 1,
-      name: "Max",
-      type: "Perro",
-      breed: "Labrador Retriever",
-      age: 3,
-      gender: "Macho",
-      weight: "28 kg",
-      image: "/placeholder.svg?height=200&width=200&text=Max",
-      lastCheckup: "15 de Febrero, 2023",
-      nextVaccination: "15 de Abril, 2023",
-      medicalConditions: [],
-    },
-    {
-      id: 2,
-      name: "Luna",
-      type: "Gato",
-      breed: "Siamés",
-      age: 2,
-      gender: "Hembra",
-      weight: "4.5 kg",
-      image: "/placeholder.svg?height=200&width=200&text=Luna",
-      lastCheckup: "10 de Enero, 2023",
-      nextVaccination: "10 de Julio, 2023",
-      medicalConditions: ["Alergia alimentaria"],
-    },
-    {
-      id: 3,
-      name: "Rocky",
-      type: "Perro",
-      breed: "Bulldog",
-      age: 4,
-      gender: "Macho",
-      weight: "22 kg",
-      image: "/placeholder.svg?height=200&width=200&text=Rocky",
-      lastCheckup: "5 de Marzo, 2023",
-      nextVaccination: null,
-      medicalConditions: ["Artritis leve"],
-    },
-  ])
+  const [pets, setPets] = useState(userPets || []);
+
 
   const filteredPets = pets.filter(
     (pet) =>
-      pet.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      pet.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      pet.breed.toLowerCase().includes(searchQuery.toLowerCase()),
+      pet.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      pet.especie.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      pet.raza.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
   const handleDeletePet = (petId: number) => {
-    setPets(pets.filter((pet) => pet.id !== petId))
+    setPets(pets.filter((pet) => pet.id_mascota !== petId))
     // Replace useToast with sonner toast
     toast.success("Mascota eliminada", {
       description: "La mascota ha sido eliminada correctamente"
     })
   }
 
-  //Data del usuario
-   const user = useAuthStore((state) => state.user);
-   const userType = useAuthStore((state) => state.userType);
-  
-    const id_usuario = userType === 'owner' && user ? (user as Owner).id_usuario : undefined;
-
+  /*
   useEffect(() => {
    const fetchPets = async () => {
       try {
@@ -166,9 +122,10 @@ export default function PetsPage() {
    fetchPets();
 
   },[]);
+  */
 
   const renderPetCard = (pet: Pet) => (
-    <Card key={pet.id} className="overflow-hidden">
+    <Card key={pet.id_mascota} className="overflow-hidden">
       <div className="relative aspect-square">
 
         <Button
@@ -190,10 +147,10 @@ export default function PetsPage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link to={`/pet-dashboard/pets/${pet.id}`}>Ver detalles</Link>
+              <Link to={`/pet-dashboard/pets/${pet.id_mascota}`}>Ver detalles</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to={`/pet-dashboard/pets/${pet.id}/edit`}>
+              <Link to={`/pet-dashboard/pets/${pet.id_mascota}/edit`}>
                 <Edit className="mr-2 h-4 w-4" />
                 Editar
               </Link>
@@ -216,14 +173,14 @@ export default function PetsPage() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Esta acción no se puede deshacer. Se eliminará permanentemente a {pet.name} de tus mascotas
+                    Esta acción no se puede deshacer. Se eliminará permanentemente a {pet.nombre} de tus mascotas
                     registradas.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={() => handleDeletePet(pet.id)}
+                    onClick={() => handleDeletePet(pet.id_mascota)}
                     className="bg-destructive text-destructive-foreground"
                   >
                     Eliminar
@@ -235,46 +192,30 @@ export default function PetsPage() {
         </DropdownMenu>
       </div>
       <CardHeader>
-        <CardTitle>{pet.name}</CardTitle>
+        <CardTitle>{pet.nombre}</CardTitle>
         <CardDescription>
-          {pet.type} • {pet.breed} • {pet.age} años
+          {pet.especie} • {pet.raza} • {pet.edad} años
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2 text-sm">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Género:</span>
-          <span>{pet.gender}</span>
+          <span>{pet.genero}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Peso:</span>
-          <span>{pet.weight}</span>
+          <span>{pet.peso}</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Último chequeo:</span>
-          <span>{pet.lastCheckup}</span>
-        </div>
-        {pet.nextVaccination && (
-          <div className="flex items-center gap-1 rounded-md bg-primary/10 p-2 text-xs text-primary">
-            <Syringe className="h-3 w-3" />
-            <span>Próxima vacuna: {pet.nextVaccination}</span>
-          </div>
-        )}
-        {pet.medicalConditions.length > 0 && (
-          <div className="rounded-md bg-yellow-100 p-2 text-xs text-yellow-800">
-            <span className="font-medium">Condiciones médicas: </span>
-            {pet.medicalConditions.join(", ")}
-          </div>
-        )}
       </CardContent>
       <CardFooter className="flex justify-between">
         <Button variant="outline" size="sm" asChild>
-          <Link to={`/pet-dashboard/pets/${pet.id}/edit`}>
+          <Link to={`/pet-dashboard/pets/${pet.id_mascota}/edit`}>
             <Edit className="mr-2 h-3 w-3" />
             Editar
           </Link>
         </Button>
         <Button variant="outline" size="sm" asChild>
-          <Link to={`/pet-dashboard/pets/${pet.id}`}>
+          <Link to={`/pet-dashboard/pets/${pet.id_mascota}`}>
             Ver Detalles
             <ChevronRight className="ml-1 h-3 w-3" />
           </Link>
@@ -346,19 +287,19 @@ export default function PetsPage() {
 
         <TabsContent value="dogs" className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredPets.filter((pet) => pet.type === "Perro").map((pet) => renderPetCard(pet))}
+            {filteredPets.filter((pet) => pet.especie === "Perro").map((pet) => renderPetCard(pet))}
           </div>
         </TabsContent>
 
         <TabsContent value="cats" className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredPets.filter((pet) => pet.type === "Gato").map((pet) => renderPetCard(pet))}
+            {filteredPets.filter((pet) => pet.especie === "Gato").map((pet) => renderPetCard(pet))}
           </div>
         </TabsContent>
 
         <TabsContent value="others" className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredPets.filter((pet) => pet.type !== "Perro" && pet.type !== "Gato").length === 0 ? (
+            {filteredPets.filter((pet) => pet.especie !== "Perro" && pet.especie !== "Gato").length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted">
                   <PawPrint className="h-10 w-10 text-muted-foreground" />
@@ -370,7 +311,7 @@ export default function PetsPage() {
                 </Button>
               </div>
             ) : (
-              filteredPets.filter((pet) => pet.type !== "Perro" && pet.type !== "Gato").map((pet) => renderPetCard(pet))
+              filteredPets.filter((pet) => pet.especie !== "Perro" && pet.especie !== "Gato").map((pet) => renderPetCard(pet))
             )}
           </div>
         </TabsContent>
