@@ -5,6 +5,9 @@ import fs from 'fs';
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
 import uploadFile from '../utils.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const router = express.Router();
 
