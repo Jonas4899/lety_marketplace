@@ -13,6 +13,7 @@ export default [
   ]),
   layout("layouts/DashboardLayoutClient/index.tsx", [
     route("dashboard-client", "routes/DashboardClient/index.tsx"), // Agregamos la nueva ruta
+    route("dashboard-client/pets", "routes/DashboardClient/pets.tsx")
   ]),
   route("login", "routes/LoginPage/index.tsx"),
   route("unauthorized", "routes/Unauthorized/index.tsx"),
