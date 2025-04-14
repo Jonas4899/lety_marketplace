@@ -83,50 +83,21 @@ export default function PetsPage() {
     })
   }
 
-  /*
-  useEffect(() => {
-   const fetchPets = async () => {
-      try {
-         setLoading(true);
-         
-         const token = Cookies.get("auth_token");
-
-         //enviar solicitud
-         const response = await fetch(`${API_URL}/user/pets?id_usuario=${id_usuario}`, {
-            method: 'GET',
-            headers: {
-               'Content-type': 'application/json',
-               'Authorization': `Bearer ${token}`
-            },
-         })
-
-         //Parsear datos recibidos de la solicitud
-         const data = await response.json();
-         console.log('Mascotas: ' + data);
-
-        if (response.ok) {
-          // Here we'd normally update the pets state with real data
-          // setPets(data.mascotas)
-          console.log('Mascotas obtenidas correctamente:', data.mascotas)
-        } else {
-          console.error('Error fetching pets:', data.message)
-        }
-
-      }catch (error) {
-        console.error('Error fetching pets data:', error)
-      } finally {
-        setLoading(false)
-      }
-   }
-
-   fetchPets();
-
-  },[]);
-  */
 
   const renderPetCard = (pet: Pet) => (
-    <Card key={pet.id_mascota} className="overflow-hidden">
-      <div className="relative aspect-square">
+    <Card key={pet.id_mascota} className="overflow-hidden flex flex-col lg:h-3/5 w-4/5 py-0">
+      <div className="relative h-3/5">
+        {pet.foto_url ? (
+          <img 
+            src={pet.foto_url} 
+            alt={`Foto de ${pet.nombre}`}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-muted">
+            <PawPrint className="h-12 w-12 text-muted-foreground" />
+          </div>
+        )}
 
         <Button
           variant="ghost"
@@ -192,6 +163,7 @@ export default function PetsPage() {
         </DropdownMenu>
       </div>
       <CardHeader>
+
         <CardTitle>{pet.nombre}</CardTitle>
         <CardDescription>
           {pet.especie} • {pet.raza} • {pet.edad} años
