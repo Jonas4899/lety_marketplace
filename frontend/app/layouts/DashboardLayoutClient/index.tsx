@@ -16,11 +16,13 @@ import {
   Bell,
   Heart,
   Clipboard,
+  Cookie,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/sheet";
-//import { useAuth } from "@/context/auth-context"
+import Cookies from "js-cookie";
+import { useAuthStore } from "~/stores/useAuthStore";
 
 interface SidebarNavProps {
   items: {
@@ -29,6 +31,8 @@ interface SidebarNavProps {
     icon: React.ReactNode;
   }[];
 }
+
+import type { Owner } from "~/types/usersTypes"; 
 
 function SidebarNav({ items }: SidebarNavProps) {
   const location = useLocation();
@@ -63,23 +67,21 @@ export default function PetDashboardLayout({
   children: React.ReactNode;
 }) {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [isClient, setIsClient] = useState(false);
-  const router = useNavigate();
-  //const { user, logout, isAuthenticated } = useAuth()
-  /*
-  useEffect(() => {
-    setIsClient(true)
 
-    // Check if the user is authenticated and is a pet owner
-    if (isClient && (!isAuthenticated || user?.type !== "pet-owner")) {
-      router.push("/login")
-    }
-  }, [router, isAuthenticated, user, isClient])
+    //Extraer la info del usuario
+  const user = useAuthStore((state) => state.user);
+  const userType = useAuthStore((state) => state.userType);
 
-  // Don't render anything on the server or if not authenticated yet
-  if (!isClient || !isAuthenticated || user?.type !== "pet-owner") {
-    return null
-  }*/
+  const userId = userType === 'owner' && user ? (user as Owner).id_usuario : undefined;
+
+  const logout = useAuthStore(state => state.logout);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    Cookies.remove("auth_token");
+    logout();
+    navigate("/");
+  }
 
   const navItems = [
     {
@@ -165,10 +167,7 @@ export default function PetDashboardLayout({
                   variant="outline"
                   size="sm"
                   className="w-full justify-start gap-2"
-                  onClick={() => {
-                    //logout()
-                    router("/");
-                  }}
+                  onClick={handleLogout}
                 >
                   <LogOut className="h-4 w-4" />
                   Cerrar sesión
@@ -207,8 +206,7 @@ export default function PetDashboardLayout({
               <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase() || "U"}</AvatarFallback>
             </Avatar>*/}
             <div className="hidden md:block">
-              {/*<p className="text-sm font-medium">{user?.name}</p>*/}
-              <p className="text-xs text-muted-foreground">Dueño de Mascota</p>
+              <p className="text-sm font-medium">{user?.nombre}</p>
             </div>
           </div>
         </div>
@@ -225,10 +223,7 @@ export default function PetDashboardLayout({
                 variant="outline"
                 size="sm"
                 className="w-full justify-start gap-2"
-                onClick={() => {
-                  //logout()
-                  router("/");
-                }}
+                onClick={handleLogout}
               >
                 <LogOut className="h-4 w-4" />
                 Cerrar sesión

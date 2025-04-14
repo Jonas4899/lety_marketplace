@@ -8,6 +8,8 @@ import { Link } from "react-router";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 
+import ProtectedRoutes  from "../../utils/ProtectedRoutes";
+
 export default function DashboardPage() {
   const [isNewRegistration, setIsNewRegistration] = useState(false)
  
@@ -100,7 +102,9 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="flex flex-col gap-4 p-4 md:gap-8 md:p-8">
+
+    <ProtectedRoutes allowedUserTypes={["vet"]}>
+       <div className="flex flex-col gap-4 p-4 md:gap-8 md:p-8">
       {isNewRegistration && (
         <div className="mb-4 rounded-lg bg-primary/10 p-4 text-primary animate-in fade-in duration-500">
           {/*<h2 className="mb-2 text-xl font-semibold">¡Bienvenido a PetVet Marketplace, {user?.name}!</h2>*/}
@@ -382,6 +386,7 @@ export default function DashboardPage() {
         </TabsContent>
       </Tabs>
     </div>
+    </ProtectedRoutes>
   )
 }
 

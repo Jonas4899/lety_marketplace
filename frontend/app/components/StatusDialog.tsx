@@ -16,6 +16,7 @@ export interface StatusDialogProps {
   type: "loading" | "error" | "success";
   title?: string;
   message: string;
+  hideRedirect?: boolean; // Opcional para ocultar el botón de redirección
 }
 
 export const StatusDialog = ({
@@ -25,6 +26,7 @@ export const StatusDialog = ({
   type,
   title,
   message,
+  hideRedirect = false,
 }: StatusDialogProps) => {
   // Determinar el título basado en el tipo si no se proporciona uno
   const dialogTitle = title || (
@@ -90,9 +92,11 @@ export const StatusDialog = ({
               Entendido
             </Button>
           ) : (
-            <Button className="mx-auto  " onClick={() => navigate("/dashboard-client")}>
-              Continuar
-            </Button>
+            !hideRedirect && (
+              <Button className="mx-auto" onClick={() => navigate("/login")}>
+                Continuar
+              </Button>
+            )
           )}
         </DialogFooter>
       </DialogContent>

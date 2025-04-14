@@ -22,4 +22,6 @@ export default [
   layout("layouts/DashboardLayoutClient/index.tsx", [
     route("dashboard-client", "routes/DashboardClient/index.tsx"), // Agregamos la nueva ruta
   ]),
+  route("login", "routes/LoginPage/index.tsx"),
+  route("unauthorized", "routes/Unauthorized/index.tsx"),
 ] satisfies RouteConfig;
