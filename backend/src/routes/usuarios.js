@@ -6,6 +6,7 @@ import path from 'path';
 import { createClient } from '@supabase/supabase-js';
 import uploadFile from '../utils.js';
 import dotenv from 'dotenv';
+import autenticacionToken from '../middleware/auth.js';
 
 dotenv.config();
 
@@ -156,5 +157,47 @@ router.post(
     }
   }
 );
+
+//Obtener mascotas del usuario
+router.get('/user/pets', autenticacionToken, async (req, res) => {
+  const id_usuario = req.query.id_usuario;
+  console.log('ID recibido: ' + id_usuario);
+
+  try {
+    if (!id_usuario) {
+      return res
+        .status(400)
+        .json({ meassage: 'Se requiere el ID del usuario' });
+    }
+
+    const { data: mascotas, error } = await supabaseClient
+      .from('mascotas')
+      .select('*')
+      .eq('id_usuario', id_usuario);
+
+    if (error) {
+      console.error('Error al obtener mascotas: ', error);
+      return res.status(400).json({
+        message: 'Error al obtener mascotas',
+        error: error.message,
+      });
+    }
+
+    if (mascotas.length === 0) {
+      return res.status(200).json({
+        message: 'El usuario no tiene mascotas registradas',
+        mascotas: [],
+      });
+    }
+
+    return res.status(200).json({
+      message: 'Mascotas obtenidas correctamente',
+      mascotas: mascotas,
+    });
+  } catch (error) {
+    console.error('Error en el servidor: ' + error);
+    return res.status(500).json({ message: 'Error interno en el servidor' });
+  }
+});
 
 export default router;

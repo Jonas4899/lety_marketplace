@@ -60,7 +60,7 @@ router.post('/owner/login', async (req, res) => {
 
     // Configurar la cookie segura con el token
     res.cookie('auth_token', token, {
-      httpOnly: true,
+      httpOnly: false, //cambiar luego a true
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 8 * 60 * 60 * 1000, // 8 horas en milisegundos

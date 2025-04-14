@@ -1,11 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useAuthStore } from "~/stores/useAuthStore";
+import Cookies from "js-cookie";
+import type { Owner } from "~/types/usersTypes"; 
+
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card"
 import { Button } from "~/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { Input } from "~/components/ui/input"
-import { Link, Outlet, useNavigate, useLocation } from "react-router";
+import { Link } from "react-router";
 import {
   PawPrint,
   Plus,
@@ -58,8 +62,9 @@ interface Pet {
 }
 
 export default function PetsPage() {
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
   const [searchQuery, setSearchQuery] = useState("")
-  //const { toast } = useToast()
+  const [loading, setLoading] = useState(true);
   const [pets, setPets] = useState<Pet[]>([
     {
       id: 1,
@@ -117,9 +122,50 @@ export default function PetsPage() {
     })
   }
 
-  /*
-          <Image src={pet.image || "/placeholder.svg"} alt={pet.name} fill className="object-cover" />
-  */
+  //Data del usuario
+   const user = useAuthStore((state) => state.user);
+   const userType = useAuthStore((state) => state.userType);
+  
+    const id_usuario = userType === 'owner' && user ? (user as Owner).id_usuario : undefined;
+
+  useEffect(() => {
+   const fetchPets = async () => {
+      try {
+         setLoading(true);
+         
+         const token = Cookies.get("auth_token");
+
+         //enviar solicitud
+         const response = await fetch(`${API_URL}/user/pets?id_usuario=${id_usuario}`, {
+            method: 'GET',
+            headers: {
+               'Content-type': 'application/json',
+               'Authorization': `Bearer ${token}`
+            },
+         })
+
+         //Parsear datos recibidos de la solicitud
+         const data = await response.json();
+         console.log('Mascotas: ' + data);
+
+        if (response.ok) {
+          // Here we'd normally update the pets state with real data
+          // setPets(data.mascotas)
+          console.log('Mascotas obtenidas correctamente:', data.mascotas)
+        } else {
+          console.error('Error fetching pets:', data.message)
+        }
+
+      }catch (error) {
+        console.error('Error fetching pets data:', error)
+      } finally {
+        setLoading(false)
+      }
+   }
+
+   fetchPets();
+
+  },[]);
 
   const renderPetCard = (pet: Pet) => (
     <Card key={pet.id} className="overflow-hidden">
