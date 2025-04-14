@@ -1385,6 +1385,46 @@ app.get("/api/analytics/summary/:id_clinica", async (req, res) => {
   }
 });
 
+// ================= Gestion Perfil de las veterinarias =================
+
+// Endpoint para actualizar la información basica de la clínica veterinaria
+app.put("/api/clinics/:id_clinica", async (req, res) => {
+  try {
+    const { id_clinica } = req.params;
+    const { nombre, telefono, NIT, direccion, ciudad, codigo_postal, correo, sitio_web, descripcion } = req.body;
+
+    const datosActualizar = {
+      nombre,
+      direccion,
+      telefono,
+      correo,
+      descripcion,
+      NIT,
+      sitio_web,
+      codigo_postal,
+      ciudad
+    }
+
+    const { data, error: errorActualizacion } = await supabaseClient
+        .from("clinicas")
+        .update(datosActualizar)
+        .eq("id_clinica", id_clinica)
+        .select();
+
+    if (errorActualizacion) {
+      return res.status(400).json({
+        message: "Error al actualizar la información de la clínica",
+        error: errorActualizacion.message,
+      });
+    }
+
+    res.status(200).json({ message: "Información de la clínica actualizada exitosamente", data });
+  } catch (error) {
+    console.error("Error al actualizar la información de la clínica:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+})
+
 const PORT = process.env.PORT || 3000;
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
