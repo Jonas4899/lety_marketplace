@@ -1,6 +1,5 @@
 import type React from "react";
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, Outlet, useNavigate, useLocation } from "react-router";
 import {
   PawPrint,
@@ -94,7 +93,7 @@ export default function PetDashboardLayout({
     },
     {
       title: "Citas",
-      href: "/pet-dashboard/appointments",
+      href: "/dashboard-client/appointments",
       icon: <Calendar className="h-4 w-4" />,
     },
     {

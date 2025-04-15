@@ -21,9 +21,12 @@ export default [
 
   ]),
   layout("layouts/DashboardLayoutVet/index.tsx",[
-    route("dashboard-vet", "routes/DashboardVet/index.tsx"), // Agregamos la nueva ruta
+    route("dashboard-vet", "routes/DashboardVet/index.tsx"),
+     // Agregamos la nueva ruta
   ]),
   layout("layouts/DashboardLayoutClient/index.tsx",[
     route("dashboard-client", "routes/DashboardClient/index.tsx"), // Agregamos la nueva ruta
+    route("dashboard-client/appointments", "routes/DashboardClient/Citas/appointments.tsx"),
+    route("dashboard-client/appointments/schedule", "routes/DashboardClient/Citas/Agendar/client-schedule.tsx"),
   ]),
 ] satisfies RouteConfig;
