@@ -118,10 +118,69 @@ router.post(
   }
 );
 
+//Eliminar mascota del usuario
+router.delete('/pets/delete', autenticacionToken, async (req, res) => {
+  const id_usuario = req.query.id_usuario;
+  const id_mascota = req.query.id_mascota;
+
+  try {
+    if (!id_usuario) {
+      return res.status(400).json({ message: 'Se requiere el id del usuario' });
+    }
+
+    if (!id_mascota) {
+      return res
+        .status(400)
+        .json({ message: 'Se requiere el id de la mascota' });
+    }
+
+    //Verificar que la mascota pertenezca al usuario
+    const { data: mascotaCheck, error: errorCheck } = await supabaseClient
+      .from('mascotas')
+      .select('id_mascota')
+      .eq('id_mascota', id_mascota)
+      .eq('id_usuario', id_usuario)
+      .single();
+
+    if (errorCheck || !mascotaCheck) {
+      console.error('Error al verificar mascota: ', errorCheck);
+      return res.status(404).json({
+        message: 'La mascota no existe o no pertenece a este usuario',
+        error: errorCheck?.message,
+      });
+    }
+
+    //Eliminar mascota
+    const { error: deleteError } = await supabaseClient
+      .from('mascotas')
+      .delete()
+      .eq('id_mascota', id_mascota)
+      .eq('id_usuario', id_usuario);
+
+    if (deleteError) {
+      console.error('Error al eliminar mascota: ', deleteError);
+      return res.status(400).json({
+        message: 'Error al eliminar la mascota',
+        error: deleteError.message,
+      });
+    }
+
+    return res.status(200).json({
+      message: 'Mascota eliminada correctamente',
+      id_mascota: id_mascota,
+    });
+  } catch (error) {
+    console.error('Error en el servidor: ', error);
+    return res.status(500).json({
+      message: 'Error interno del servidor',
+      error: error.message,
+    });
+  }
+});
+
 //Obtener mascotas del usuario
 router.get('/pets/get', autenticacionToken, async (req, res) => {
   const id_usuario = req.query.id_usuario;
-  //console.log('ID recibido: ' + id_usuario);
 
   try {
     if (!id_usuario) {

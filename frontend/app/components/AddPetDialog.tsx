@@ -472,8 +472,8 @@ export function AddPetDialog({ open, onOpenChange, onSuccess }: AddPetDialogProp
                       <SelectValue placeholder="Especie" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Canino">Canino</SelectItem>
-                      <SelectItem value="Felino">Felino</SelectItem>
+                      <SelectItem value="Canino" className="hover:bg-primary/10">Canino</SelectItem>
+                      <SelectItem value="Felino" className="hover:bg-primary/10">Felino</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -491,11 +491,11 @@ export function AddPetDialog({ open, onOpenChange, onSuccess }: AddPetDialogProp
                       {
                         formValues.petSpecies === "Canino" ? 
                           dogBreeds.map((breed) => (
-                            <SelectItem key={breed} value={breed}>{breed}</SelectItem>
+                            <SelectItem key={breed} value={breed} className="hover:bg-primary/10">{breed}</SelectItem>
                           )) 
                         : formValues.petSpecies === "Felino" ? 
                           catBreeds.map((breed) => (
-                            <SelectItem key={breed} value={breed}>{breed}</SelectItem>
+                            <SelectItem key={breed} value={breed} className="hover:bg-primary/10">{breed}</SelectItem>
                           ))
                         : <SelectItem value="No aplica">No aplica</SelectItem>
                       }
@@ -513,8 +513,8 @@ export function AddPetDialog({ open, onOpenChange, onSuccess }: AddPetDialogProp
                       <SelectValue placeholder="Género" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Macho">Macho</SelectItem>
-                      <SelectItem value="Hembra">Hembra</SelectItem>
+                      <SelectItem value="Macho" className="hover:bg-primary/10">Macho</SelectItem>
+                      <SelectItem value="Hembra" className="hover:bg-primary/10">Hembra</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -651,7 +651,6 @@ export function AddPetDialog({ open, onOpenChange, onSuccess }: AddPetDialogProp
          type={statusDialog.type}
          message={statusDialog.message}
          hideRedirect={true} // Ocultar redirección
-         // No enviar redirectPath para que no redirija
       />
     </>
   );

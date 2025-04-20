@@ -12,12 +12,9 @@ import {
   PawPrint,
   Plus,
   Search,
-  Syringe,
   Edit,
-  Heart,
   Trash2,
   MoreVertical,
-  Calendar,
   ChevronRight,
 } from "lucide-react"
 
@@ -260,17 +257,38 @@ export default function PetsPage() {
     </Card>
   );
 
-  /*
-  const handleDeletePet = (petId: number) => {
-    setPets(pets.filter((pet) => pet.id_mascota !== petId))
-    // Eliminar también de localStorage
-    savePetsToLocalStorage(pets.filter((pet) => pet.id_mascota !== petId));
-    // Mensaje de éxito
-    toast.success("Mascota eliminada", {
-      description: "La mascota ha sido eliminada correctamente"
-    })
-  }
-  */
+  const handleDeletePet = async (petId: number) => {
+    try {
+      const token = Cookies.get('auth_token');
+      const response = await fetch(`${API_URL}/pets/delete?id_usuario=${id_usuario}&id_mascota=${petId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const updatedPets = pets.filter((pet) => pet.id_mascota !== petId);
+        setPets(updatedPets);
+
+        // Actualizar localStorage
+        savePetsToLocalStorage(updatedPets);
+
+        // Mostrar mensaje de éxito
+        toast.success("Mascota eliminada", {
+          description: "La mascota ha sido eliminada correctamente"
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al eliminar la mascota");
+      }
+    } catch (error) {
+      console.error("Error al eliminar mascota:", error);
+      toast.error("Error al eliminar", {
+        description: error instanceof Error ? error.message : "No se pudo eliminar la mascota"
+      });
+    }
+  };
 
   const renderPetCard = (pet: Pet) => (
     <Card key={pet.id_mascota} className="overflow-hidden flex flex-col w-full py-0">
@@ -287,19 +305,12 @@ export default function PetsPage() {
           </div>
         )}
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-2 top-2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm"
-        >
-          <Heart className="h-4 w-4" />
-        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="absolute right-12 top-2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm"
+              className="absolute right-4 top-3 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm"
             >
               <MoreVertical className="h-4 w-4" />
             </Button>
@@ -314,16 +325,10 @@ export default function PetsPage() {
                 Editar
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/pet-dashboard/appointments/schedule">
-                <Calendar className="mr-2 h-4 w-4" />
-                Agendar cita
-              </Link>
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Eliminar
                 </DropdownMenuItem>
@@ -332,15 +337,14 @@ export default function PetsPage() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Esta acción no se puede deshacer. Se eliminará permanentemente a {pet.nombre} de tus mascotas
-                    registradas.
+                    Esta acción no se puede deshacer. Se eliminará permanentemente a {pet.nombre} de tu lista de mascotas.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction
-                    //onClick={() => handleDeletePet(pet.id_mascota)}
-                    className="bg-destructive text-destructive-foreground"
+                  <AlertDialogAction 
+                    className="bg-destructive hover:bg-destructive/90"
+                    onClick={() => handleDeletePet(pet.id_mascota)}
                   >
                     Eliminar
                   </AlertDialogAction>
@@ -349,6 +353,7 @@ export default function PetsPage() {
             </AlertDialog>
           </DropdownMenuContent>
         </DropdownMenu>
+
       </div>
       <CardHeader>
 
@@ -383,6 +388,22 @@ export default function PetsPage() {
       </CardFooter>
     </Card>
   )
+
+  const NoPetsMessage = () => (
+    <div className="col-span-full flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted">
+        <PawPrint className="h-10 w-10 text-muted-foreground" />
+      </div>
+      <h3 className="mt-4 text-lg font-medium">No hay mascotas registradas</h3>
+      <p className="mt-2 text-sm text-muted-foreground">Agrega tu primera mascota para empezar</p>
+      <Button 
+        className="mt-4"
+        onClick={() => setIsAddPetDialogOpen(true)}
+      >
+        Agregar Mascota
+      </Button>
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -422,7 +443,7 @@ export default function PetsPage() {
         </TabsList>
 
         <TabsContent value="all" className="space-y-1">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-16 lg:auto-rows-[640px]">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-14 lg:auto-rows-[640px]">
             {loading && pets.length === 0 ? (
               // Mostrar esqueletos solo si está cargando Y no hay datos en caché
               Array(3).fill(0).map((_, index) => (
@@ -430,86 +451,81 @@ export default function PetsPage() {
               ))
             ) : filteredPets.length > 0 ? (
               // Mostrar las mascotas cuando estén cargadas o desde caché
-              filteredPets.map((pet) => renderPetCard(pet))
+              <>
+                {filteredPets.map((pet) => renderPetCard(pet))}
+                <Card 
+                  className="flex aspect-square flex-col items-center justify-center cursor-pointer h-full w-full" 
+                  onClick={() => setIsAddPetDialogOpen(true)}
+                > 
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+                    <Plus className="h-10 w-10 text-primary" />
+                  </div>
+                  <h3 className="mt-4 text-xl font-medium">Agregar Mascota</h3>
+                  <p className="mt-2 text-center text-sm text-muted-foreground">
+                    Registra una nueva mascota en tu familia
+                  </p>
+                  <Button className="mt-4">
+                    Agregar
+                  </Button>
+                </Card>
+              </>
             ) : (
               // Mensaje cuando no hay mascotas
-              <div className="col-span-full flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted">
-                  <PawPrint className="h-10 w-10 text-muted-foreground" />
-                </div>
-                <h3 className="mt-4 text-lg font-medium">No hay mascotas registradas</h3>
-                <p className="mt-2 text-sm text-muted-foreground">Agrega tu primera mascota para empezar</p>
-                <Button 
-                  className="mt-4"
-                  onClick={() => setIsAddPetDialogOpen(true)}
-                >
-                  Agregar Mascota
-                </Button>
-              </div>
-            )}
-
-            {filteredPets.length > 0 && (
-              <Card 
-                className="flex aspect-square flex-col items-center justify-center cursor-pointer h-full w-full" 
-                onClick={() => setIsAddPetDialogOpen(true)}
-              > 
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-                  <Plus className="h-10 w-10 text-primary" />
-                </div>
-                <h3 className="mt-4 text-xl font-medium">Agregar Mascota</h3>
-                <p className="mt-2 text-center text-sm text-muted-foreground">
-                  Registra una nueva mascota para gestionar su información
-                </p>
-                <Button className="mt-4">
-                  Agregar
-                </Button>
-              </Card>
+              <NoPetsMessage />
             )}
           </div>
         </TabsContent>
 
         <TabsContent value="dogs" className="space-y-4">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-16 lg:auto-rows-[640px]">
-            {filteredPets.filter((pet) => pet.especie === "Canino").map((pet) => renderPetCard(pet))}
-            {filteredPets.filter((pet) => pet.especie === "Canino").length > 0 && (
-              <Card   
-                className="flex aspect-square flex-col items-center justify-center cursor-pointer h-full w-full" 
-                onClick={() => setIsAddPetDialogOpen(true)}
-              > 
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-                  <Plus className="h-10 w-10 text-primary" />
-                </div>
-                <h3 className="mt-4 text-xl font-medium">Agregar Perro</h3>
-                <p className="mt-2 text-center text-sm text-muted-foreground">
-                  Registra un nuevo perro en tu familia
-                </p>
-                <Button className="mt-4">
-                  Agregar
-                </Button>
-              </Card>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-14 lg:auto-rows-[640px]">
+            {filteredPets.filter((pet) => pet.especie === "Canino").length > 0 ? (
+              <>
+                {filteredPets.filter((pet) => pet.especie === "Canino").map((pet) => renderPetCard(pet))}
+                <Card   
+                  className="flex aspect-square flex-col items-center justify-center cursor-pointer h-full w-full" 
+                  onClick={() => setIsAddPetDialogOpen(true)}
+                > 
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+                    <Plus className="h-10 w-10 text-primary" />
+                  </div>
+                  <h3 className="mt-4 text-xl font-medium">Agregar Perro</h3>
+                  <p className="mt-2 text-center text-sm text-muted-foreground">
+                    Registra un nuevo perro en tu familia
+                  </p>
+                  <Button className="mt-4">
+                    Agregar
+                  </Button>
+                </Card>
+              </>
+            ) : (
+              <NoPetsMessage />
             )}
           </div>
         </TabsContent>
 
         <TabsContent value="cats" className="space-y-4">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-16 lg:auto-rows-[640px]">
-            {filteredPets.filter((pet) => pet.especie === "Felino").map((pet) => renderPetCard(pet))}
-            {filteredPets.filter((pet) => pet.especie === "Felino").length > 0 && (
-              <Card 
-                className="flex aspect-square flex-col items-center justify-center cursor-pointer h-full w-full" 
-                onClick={() => setIsAddPetDialogOpen(true)}
-              > 
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-                  <Plus className="h-10 w-10 text-primary" />
-                </div>
-                <h3 className="mt-4 text-xl font-medium">Agregar Gato</h3>
-                <p className="mt-2 text-center text-sm text-muted-foreground">
-                  Registra un nuevo gato en tu familia
-                </p>
-                <Button className="mt-4">
-                  Agregar
-                </Button>
-              </Card>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-14 lg:auto-rows-[640px]">
+            {filteredPets.filter((pet) => pet.especie === "Felino").length > 0 ? (
+              <>
+                {filteredPets.filter((pet) => pet.especie === "Felino").map((pet) => renderPetCard(pet))}
+                <Card 
+                  className="flex aspect-square flex-col items-center justify-center cursor-pointer h-full w-full" 
+                  onClick={() => setIsAddPetDialogOpen(true)}
+                > 
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+                    <Plus className="h-10 w-10 text-primary" />
+                  </div>
+                  <h3 className="mt-4 text-xl font-medium">Agregar Gato</h3>
+                  <p className="mt-2 text-center text-sm text-muted-foreground">
+                    Registra un nuevo gato en tu familia
+                  </p>
+                  <Button className="mt-4">
+                    Agregar
+                  </Button>
+                </Card>
+              </>
+            ) : (
+              <NoPetsMessage />
             )}
           </div>
         </TabsContent>
