@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuthStore } from "~/stores/useAuthStore";
 import {
   Card,
   CardContent,
@@ -125,9 +126,6 @@ interface RatingsResponse {
   ratingDistribution: RatingData[];
 }
 
-// Constants
-const CLINIC_ID = 1; // Hardcoded clinic ID as mentioned
-
 // Mock data generation functions (for fallback)
 const generateMockAppointmentsData = (
   from: Date,
@@ -194,6 +192,10 @@ const generateMockKpiData = () => ({
 });
 
 export function ClinicAnalytics() {
+  // Get clinic ID from auth store
+  const { user, userType } = useAuthStore();
+  const clinicId = userType === "vet" && user ? (user as any).id_clinica : null;
+
   // Date range state
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 30),
@@ -251,6 +253,25 @@ export function ClinicAnalytics() {
         throw new Error("Fecha de rango inválida");
       }
 
+      if (!clinicId) {
+        setError(
+          "No se ha identificado una clínica veterinaria para mostrar estadísticas"
+        );
+        setUsingMockData(true);
+        // Use mock data when we don't have a clinic ID
+        setKpiData(generateMockKpiData());
+        setAppointmentsData(
+          generateMockAppointmentsData(dateRange.from, dateRange.to)
+        );
+        setStatusDistribution(generateMockStatusDistribution());
+        setServicesData(generateMockServicesData());
+        setPetTypeData(generateMockPetTypeData());
+        setAgeDistributionData(generateMockAgeDistributionData());
+        setRatingData(generateMockRatingData());
+        setLoading(false);
+        return;
+      }
+
       const fromDate = formatDateForApi(dateRange.from);
       const toDate = formatDateForApi(dateRange.to);
       // Use the full backend URL instead of relative paths
@@ -266,19 +287,19 @@ export function ClinicAnalytics() {
           ratingsRes,
         ] = await Promise.all([
           fetch(
-            `${baseUrl}/api/analytics/summary/${CLINIC_ID}?from_date=${fromDate}&to_date=${toDate}`
+            `${baseUrl}/api/analytics/summary/${clinicId}?from_date=${fromDate}&to_date=${toDate}`
           ),
           fetch(
-            `${baseUrl}/api/analytics/appointments/${CLINIC_ID}?from_date=${fromDate}&to_date=${toDate}`
+            `${baseUrl}/api/analytics/appointments/${clinicId}?from_date=${fromDate}&to_date=${toDate}`
           ),
           fetch(
-            `${baseUrl}/api/analytics/services/${CLINIC_ID}?from_date=${fromDate}&to_date=${toDate}`
+            `${baseUrl}/api/analytics/services/${clinicId}?from_date=${fromDate}&to_date=${toDate}`
           ),
           fetch(
-            `${baseUrl}/api/analytics/demographics/${CLINIC_ID}?from_date=${fromDate}&to_date=${toDate}`
+            `${baseUrl}/api/analytics/demographics/${clinicId}?from_date=${fromDate}&to_date=${toDate}`
           ),
           fetch(
-            `${baseUrl}/api/analytics/ratings/${CLINIC_ID}?from_date=${fromDate}&to_date=${toDate}`
+            `${baseUrl}/api/analytics/ratings/${clinicId}?from_date=${fromDate}&to_date=${toDate}`
           ),
         ]);
 
