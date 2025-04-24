@@ -38,4 +38,4 @@ const validateDate = (dateStr) => {
   return !isNaN(date.getTime());
 };
 
-export { uploadFile, validateDate };
+export { uploadFile, validateDate, supabaseClient };
