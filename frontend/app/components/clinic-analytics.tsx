@@ -516,10 +516,6 @@ export function ClinicAnalytics() {
             <div className="text-2xl font-bold">
               {kpiData.totalAppointments}
             </div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-500 font-medium">↑12%</span> respecto
-              al periodo anterior
-            </p>
           </CardContent>
         </Card>
 
@@ -532,10 +528,6 @@ export function ClinicAnalytics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{kpiData.avgRating}/5</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-500 font-medium">↑0.2</span> respecto
-              al periodo anterior
-            </p>
           </CardContent>
         </Card>
 
@@ -550,10 +542,6 @@ export function ClinicAnalytics() {
             <div className="text-2xl font-bold">
               ${kpiData.totalRevenue.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-500 font-medium">↑8%</span> respecto
-              al periodo anterior
-            </p>
           </CardContent>
         </Card>
 
@@ -566,10 +554,6 @@ export function ClinicAnalytics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{kpiData.totalPets}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-500 font-medium">↑5%</span> respecto
-              al periodo anterior
-            </p>
           </CardContent>
         </Card>
       </div>

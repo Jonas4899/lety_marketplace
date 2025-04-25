@@ -175,6 +175,8 @@ ALTER TABLE "notificaciones" ADD FOREIGN KEY ("id_clinica") REFERENCES "clinicas
 │ ├───node_modules
 │ ├───playwright-report
 │ ├───src
+| ├──────middleware
+| ├──────routes
 │ ├───test-results
 │ ├───tests
 │ ├───tests-examples
