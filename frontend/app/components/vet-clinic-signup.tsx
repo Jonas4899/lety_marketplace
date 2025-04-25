@@ -113,6 +113,7 @@ export function VetClinicSignup({
     setValue,
     clearErrors,
     reset,
+    watch,
   } = useForm({
     resolver: zodResolver(vetClinicSchema),
     defaultValues: {
@@ -127,7 +128,7 @@ export function VetClinicSignup({
       businessLicense: false,
       nit: "",
     },
-    mode: "onSubmit", // Only validate on submit
+    mode: "onChange", // Change from onSubmit to onChange for real-time validation
   });
 
   const handleCheckboxChange = (name: string, checked: boolean) => {
@@ -573,7 +574,6 @@ export function VetClinicSignup({
                     Agregar servicio
                   </Button>
                 </div>
-
                 <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                   {services.map((service) => (
                     <ServiceItem
@@ -616,14 +616,10 @@ export function VetClinicSignup({
                       {...register("email")}
                       type="email"
                       placeholder="clinica@email.com"
-                      className={`pl-9 ${
-                        attemptedFinalSubmit && errors.email
-                          ? "border-red-500"
-                          : ""
-                      }`}
+                      className={`pl-9 ${errors.email ? "border-red-500" : ""}`}
                     />
                   </div>
-                  {attemptedFinalSubmit && errors.email && (
+                  {errors.email && (
                     <p className="text-xs text-red-500">
                       {errors.email.message as string}
                     </p>
@@ -640,17 +636,25 @@ export function VetClinicSignup({
                       type="password"
                       placeholder="Crea una contraseña"
                       className={`pl-9 ${
-                        attemptedFinalSubmit && errors.password
-                          ? "border-red-500"
-                          : ""
+                        errors.password ? "border-red-500" : ""
                       }`}
                     />
                   </div>
-                  {attemptedFinalSubmit && errors.password && (
+                  {errors.password && (
                     <p className="text-xs text-red-500">
                       {errors.password.message as string}
                     </p>
                   )}
+                  <div className="text-xs text-muted-foreground mt-1">
+                    <p>La contraseña debe contener:</p>
+                    <ul className="list-disc pl-4 mt-1 space-y-1">
+                      <li>Al menos 8 caracteres</li>
+                      <li>Al menos una letra minúscula (a-z)</li>
+                      <li>Al menos una letra mayúscula (A-Z)</li>
+                      <li>Al menos un número (0-9)</li>
+                      <li>Al menos un carácter especial (!@#$%^&*)</li>
+                    </ul>
+                  </div>
                 </div>
 
                 <div className="grid gap-2">
@@ -663,13 +667,11 @@ export function VetClinicSignup({
                       type="password"
                       placeholder="Confirma tu contraseña"
                       className={`pl-9 ${
-                        attemptedFinalSubmit && errors.confirmPassword
-                          ? "border-red-500"
-                          : ""
+                        errors.confirmPassword ? "border-red-500" : ""
                       }`}
                     />
                   </div>
-                  {attemptedFinalSubmit && errors.confirmPassword && (
+                  {errors.confirmPassword && (
                     <p className="text-xs text-red-500">
                       {errors.confirmPassword.message as string}
                     </p>
@@ -693,7 +695,7 @@ export function VetClinicSignup({
                     privacidad
                   </Label>
                 </div>
-                {attemptedFinalSubmit && errors.agreeTerms && (
+                {errors.agreeTerms && (
                   <p className="text-xs text-red-500">
                     {errors.agreeTerms.message as string}
                   </p>

@@ -1,24 +1,19 @@
----
-description: 
-globs: 
-alwaysApply: false
----
----
-description: 
-globs: 
-alwaysApply: true
----
 # Project Overview
+
 This web platform (called Lety Marketplace) is being developed to address the difficulties pet owners encounter when seeking trustworthy veterinary services within Bogotá. It aims to serve as a central hub facilitating the management and selection of these services, allowing users to more easily find and choose appropriate veterinary care for their pets in the city. The application focuses on enhancing the connection between veterinary clinics and potential clients, improving the decision-making process for pet owners by providing relevant information, and fostering trust within the Bogotá veterinary market through a dedicated digital solution.
 
 # Personality
+
 The model is configured to be direct and explanatory. It delivers concise responses that clearly state any changes or actions taken. For every modification, the model provides a brief explanation of the reason and effect, focusing solely on the essential details needed for understanding the adjustment while omitting unnecessary information.
 
 Additionally, every response will begin with the 🤖 emoji.
 
 # Tech Stack
+
 ## Frontend
+
 In the frontend the technologies used are:
+
 - Typescript
 - React router v7
 - React (as a library)
@@ -27,12 +22,15 @@ In the frontend the technologies used are:
 - Lucide React (Icons)
 
 ## Backend
+
 In the backend the technologies used are:
+
 - Node.js
 - Express.js
 - Playwright (testing library)
 
 # Database
+
 For the database, currently is being used postgresql in a Supabase database. The SQL code for the structure of the database is:
 
 ```sql
@@ -172,50 +170,53 @@ ALTER TABLE "notificaciones" ADD FOREIGN KEY ("id_clinica") REFERENCES "clinicas
 # Current File structure
 
 ├───.cursor
-│   └───rules
+│ └───rules
 ├───backend
-│   ├───node_modules
-│   ├───playwright-report
-│   ├───src
-│   ├───test-results
-│   ├───tests
-│   ├───tests-examples
-│   └───uploads
+│ ├───node_modules
+│ ├───playwright-report
+│ ├───src
+| ├──────middleware
+| ├──────routes
+│ ├───test-results
+│ ├───tests
+│ ├───tests-examples
+│ └───uploads
 └───frontend
-    ├───.react-router
-    │   └───types
-    │       └───app
-    │           ├───+types
-    │           ├───layouts
-    │           │   ├───DashboardLayoutClient
-    │           │   │   └───+types
-    │           │   └───DashboardLayoutVet
-    │           │       └───+types
-    │           └───routes
-    │               ├───+types
-    │               ├───DashboardClient
-    │               │   └───+types
-    │               └───DashboardVet
-    │                   └───+types
-    ├───app
-    │   ├───components
-    │   │   └───ui
-    │   ├───layouts
-    │   │   ├───AuthLayout
-    │   │   ├───DashboardLayoutClient
-    │   │   └───DashboardLayoutVet
-    │   ├───lib
-    │   ├───resources
-    │   │   └───images
-    │   ├───routes
-    │   │   ├───DashboardClient
-    │   │   ├───DashboardVet
-    │   │   └───HomePage
-    │   └───zodSchemas
-    ├───node_modules
-    └───public
+├───.react-router
+│ └───types
+│ └───app
+│ ├───+types
+│ ├───layouts
+│ │ ├───DashboardLayoutClient
+│ │ │ └───+types
+│ │ └───DashboardLayoutVet
+│ │ └───+types
+│ └───routes
+│ ├───+types
+│ ├───DashboardClient
+│ │ └───+types
+│ └───DashboardVet
+│ └───+types
+├───app
+│ ├───components
+│ │ └───ui
+│ ├───layouts
+│ │ ├───AuthLayout
+│ │ ├───DashboardLayoutClient
+│ │ └───DashboardLayoutVet
+│ ├───lib
+│ ├───resources
+│ │ └───images
+│ ├───routes
+│ │ ├───DashboardClient
+│ │ ├───DashboardVet
+│ │ └───HomePage
+│ └───zodSchemas
+├───node_modules
+└───public
 
 # Comments
+
 - Be brief and precise → Explain what the code does, not how it works.
 - Avoid the obvious → Don’t comment self-explanatory code (i++ // Increments i).
 - Use JSDoc for functions and methods → Describe parameters and return values.
@@ -225,4 +226,4 @@ ALTER TABLE "notificaciones" ADD FOREIGN KEY ("id_clinica") REFERENCES "clinicas
 - Stick to one language → If the code is in English, keep comments in English too.
 - Don’t overuse comments → Clean code should need minimal commenting.
 
-✨ Extra: Use block comments (/** ... */) for documentation and inline comments (// ...) for quick notes.
+✨ Extra: Use block comments (/\*_ ... _/) for documentation and inline comments (// ...) for quick notes.

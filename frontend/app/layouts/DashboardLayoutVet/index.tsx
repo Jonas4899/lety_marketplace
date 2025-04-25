@@ -83,12 +83,12 @@ export default function DashboardLayout() {
     },
     {
       title: "Información General",
-      href: "/dashboard/profile",
+      href: "/dashboard-vet/general-information",
       icon: <Building2 className="h-4 w-4" />,
     },
     {
       title: "Fotos",
-      href: "/dashboard/photos",
+      href: "/dashboard-vet/photos",
       icon: <ImageIcon className="h-4 w-4" />,
     },
     {
@@ -108,12 +108,12 @@ export default function DashboardLayout() {
     },
     {
       title: "Clientes",
-      href: "/dashboard/clients",
+      href: "/dashboard-vet/clients",
       icon: <Users className="h-4 w-4" />,
     },
     {
       title: "Estadísticas",
-      href: "/dashboard/analytics",
+      href: "/dashboard-vet/analytics",
       icon: <BarChart2 className="h-4 w-4" />,
     },
     {
