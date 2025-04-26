@@ -1,6 +1,46 @@
 import type React from "react";
 
-import { useState } from "react";
+interface User {
+  id?: number;
+  id_usuario?: number;
+  id_clinica?: number;
+  nombre?: string;
+  correo?: string;
+}
+
+interface Vet extends User {
+  id_clinica: number;
+}
+
+interface OpeningHour {
+  open: string;
+  close: string;
+  closed: boolean;
+  is24Hours: boolean;
+}
+
+interface OpeningHours {
+  [key: string]: OpeningHour;
+}
+
+interface FormData {
+  clinicName: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  phone: string;
+  email: string;
+  website: string;
+  description: string;
+  specialties: string[];
+  nit: string;
+  openingHours: OpeningHours;
+  facilities: string[];
+  paymentMethods: string[];
+}
+
+import { useState, useEffect } from "react";
 import {
   Building2,
   MapPin,
@@ -11,7 +51,10 @@ import {
   Save,
   Info,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
+import axios from "axios";
+import { useAuthStore } from "~/stores/useAuthStore";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -34,20 +77,27 @@ import {
   TooltipTrigger,
 } from "~/components/ui/tooltip";
 
+// URL base para las peticiones
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
 export default function ProfilePage() {
-  const [formData, setFormData] = useState({
-    clinicName: "Centro Veterinario Salud Animal",
-    address: "Av. Principal 123, Colonia Centro",
-    city: "Ciudad de México",
-    state: "CDMX",
-    zipCode: "01000",
-    phone: "(55) 1234-5678",
-    email: "contacto@saludanimal.com",
-    website: "www.saludanimal.com",
-    description:
-      "Centro Veterinario Salud Animal es una clínica de atención integral para mascotas con más de 10 años de experiencia. Ofrecemos servicios de consulta general, vacunación, cirugía, laboratorio y más.",
-    specialties: ["Perros", "Gatos", "Aves", "Exóticos"],
-    nit: "900-123456-7", // Nuevo campo para el NIT
+  const { user } = useAuthStore() as { user: User | null };
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState("basic");
+  const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState<FormData>({
+    clinicName: "",
+    address: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    phone: "",
+    email: "",
+    website: "",
+    description: "",
+    specialties: [] as string[],
+    nit: "",
     openingHours: {
       monday: {
         open: "09:00",
@@ -87,22 +137,96 @@ export default function ProfilePage() {
       },
       sunday: { open: "00:00", close: "00:00", closed: true, is24Hours: false },
     },
-    facilities: [
-      "Estacionamiento",
-      "Acceso para discapacitados",
-      "Sala de espera",
-      "Farmacia",
-    ],
-    paymentMethods: [
-      "Efectivo",
-      "Tarjeta de crédito",
-      "Tarjeta de débito",
-      "Transferencia",
-    ],
+    facilities: [] as string[],
+    paymentMethods: [] as string[],
   });
 
   const [nitError, setNitError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Cargar los datos de la clínica al montar el componente
+  useEffect(() => {
+    console.log("useEffect running, user:", user);
+    if (user) {
+      // Obtener el ID correcto dependiendo del tipo de usuario
+      const clinicId = (user as Vet).id_clinica;
+      console.log("Fetching clinic data for ID:", clinicId);
+
+      if (clinicId) {
+        fetchClinicData(clinicId);
+      } else {
+        console.log("Invalid clinic ID");
+        setLoading(false);
+        setError(
+          "No se pudo identificar la clínica. Por favor, inicie sesión nuevamente."
+        );
+      }
+    } else {
+      console.log("No user available, setting loading to false");
+      setLoading(false);
+      setError(
+        "No se pudo identificar la clínica. Por favor, inicie sesión nuevamente."
+      );
+    }
+  }, [user]);
+
+  // Función para cargar los datos de la clínica
+  const fetchClinicData = async (clinicId: number) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Obtener el token de autenticación
+      const token = useAuthStore.getState().token;
+
+      if (!token) {
+        setError("No hay sesión activa. Por favor, inicie sesión nuevamente.");
+        setLoading(false);
+        return;
+      }
+
+      console.log(
+        `Fetching data from: ${API_BASE_URL}/veterinary/profile/${clinicId}`
+      );
+      const response = await axios.get(
+        `${API_BASE_URL}/veterinary/profile/${clinicId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log("API Response:", response);
+
+      const clinic = response.data;
+
+      // Mapear los datos de la API al formato del formulario
+      setFormData({
+        clinicName: clinic.nombre || "",
+        address: clinic.direccion || "",
+        city: clinic.ciudad || "",
+        state: clinic.estado || "", // Incluir state property
+        zipCode: clinic.codigo_postal || "",
+        phone: clinic.telefono || "",
+        email: clinic.correo || "",
+        website: clinic.sitio_web || "",
+        description: clinic.descripcion || "",
+        nit: clinic.NIT || "",
+        specialties: clinic.specialties || [],
+        facilities: clinic.facilities || [],
+        paymentMethods: clinic.paymentMethods || [],
+        openingHours: clinic.openingHours
+          ? clinic.openingHours
+          : formData.openingHours,
+      });
+    } catch (err: any) {
+      console.error("Error al cargar datos de la clínica:", err);
+      console.log("Error response:", err.response);
+      setError(`No se pudieron cargar los datos de la clínica: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -206,28 +330,238 @@ export default function ProfilePage() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Función para guardar los cambios según la pestaña activa
+  const handleSubmit = async (e: React.FormEvent) => {
+    console.log("Función handleSubmit iniciada", e.type);
     e.preventDefault();
+    console.log("Evento prevenido (preventDefault)");
 
-    // Validar NIT antes de guardar
-    if (formData.nit) {
-      const nitRegex = /^[0-9-]{9,12}$/;
-      if (!nitRegex.test(formData.nit)) {
-        setNitError(
-          "El NIT debe contener entre 9-12 caracteres (números y guiones)"
-        );
-        return;
-      }
+    // Verificamos el estado completo del usuario
+    console.log("Estado completo de autenticación:", useAuthStore.getState());
+
+    if (!user) {
+      console.error("Error: No hay usuario en el store");
+      setError(
+        "No hay sesión activa. Por favor, inicie sesión nuevamente para guardar los cambios."
+      );
+      return;
     }
 
-    // Aquí iría la lógica para guardar los cambios
-    console.log("Guardando cambios:", formData);
+    if (!user.id_clinica) {
+      console.error("Error: Usuario sin ID de clínica válido:", user);
+      setError(
+        "La sesión parece estar incompleta. Por favor, cierre sesión y vuelva a iniciar sesión."
+      );
+      return;
+    }
 
-    // Mostrar mensaje de éxito
-    setSaveSuccess(true);
-    setTimeout(() => {
-      setSaveSuccess(false);
-    }, 3000);
+    console.log("Usuario autenticado:", user);
+
+    setError(null);
+    setSaving(true);
+    setSaveSuccess(false);
+    console.log(
+      "Estados inicializados: saving=true, error=null, saveSuccess=false"
+    );
+
+    try {
+      // Obtener el token de autenticación
+      const token = useAuthStore.getState().token;
+      console.log("Token obtenido:", token ? "Token presente" : "No hay token");
+
+      if (!token) {
+        setError(
+          "No hay token de autenticación. Por favor, inicie sesión nuevamente."
+        );
+        setSaving(false);
+        console.error("Error: No hay token de autenticación");
+        return;
+      }
+
+      // Verificar tipo de usuario
+      const userType = useAuthStore.getState().userType;
+      if (userType !== "vet") {
+        setError(
+          "Este perfil solo puede ser editado por usuarios de tipo veterinaria."
+        );
+        setSaving(false);
+        console.error("Error: Tipo de usuario incorrecto:", userType);
+        return;
+      }
+
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+      console.log("Configuración de cabeceras:", config);
+
+      const clinicId = (user as Vet).id_clinica;
+      console.log("ID de clínica:", clinicId);
+
+      // Verificar que tenemos un ID de clínica válido
+      if (!clinicId) {
+        setError(
+          "No se pudo identificar la clínica. Por favor, inicie sesión nuevamente."
+        );
+        setSaving(false);
+        console.error("Error: No se pudo obtener ID de clínica");
+        return;
+      }
+
+      console.log(`Guardando datos para la pestaña: ${activeTab}`);
+
+      // Guardar la información según la pestaña activa
+      switch (activeTab) {
+        case "basic":
+          console.log("Preparando para guardar información básica");
+          // Validar NIT antes de guardar
+          if (formData.nit) {
+            const nitRegex = /^[0-9-]{9,12}$/;
+            if (!nitRegex.test(formData.nit)) {
+              console.error("Error de validación: Formato de NIT incorrecto");
+              setNitError(
+                "El NIT debe contener entre 9-12 caracteres (números y guiones)"
+              );
+              setSaving(false);
+              return;
+            }
+          }
+
+          // Preparar datos para la API de información básica
+          const basicData = {
+            nombre: formData.clinicName,
+            direccion: formData.address,
+            telefono: formData.phone,
+            correo: formData.email,
+            descripcion: formData.description,
+            NIT: formData.nit,
+            sitio_web: formData.website,
+            codigo_postal: formData.zipCode,
+            ciudad: formData.city,
+          };
+
+          console.log(
+            `Enviando datos al endpoint: ${API_BASE_URL}/update/veterinary/info/${clinicId}`
+          );
+          console.log("Datos enviados:", basicData);
+
+          try {
+            console.log("Iniciando petición axios...");
+            const response = await axios.put(
+              `${API_BASE_URL}/update/veterinary/info/${clinicId}`,
+              basicData,
+              config
+            );
+            console.log("Respuesta del servidor:", response.data);
+            console.log("Petición exitosa, actualizando estado");
+            setSaveSuccess(true);
+          } catch (error: any) {
+            console.error("Error detallado en la petición:", error);
+            console.log("Headers de la petición:", error.config?.headers);
+            console.log("Respuesta del servidor:", error.response?.data);
+            console.log("Código de estado:", error.response?.status);
+            setError(
+              `Error al actualizar información básica: ${
+                error.response?.data?.message || error.message
+              }`
+            );
+          }
+          break;
+
+        case "details":
+          console.log("Preparando para guardar detalles");
+          // Preparar datos para la API de detalles
+          const detailsData = {
+            specialties: formData.specialties,
+            facilities: formData.facilities,
+            paymentMethods: formData.paymentMethods,
+          };
+
+          console.log(
+            `Enviando datos al endpoint: ${API_BASE_URL}/update/veterinary/details/${clinicId}`
+          );
+          console.log("Datos enviados:", detailsData);
+
+          try {
+            console.log("Iniciando petición axios...");
+            const response = await axios.put(
+              `${API_BASE_URL}/update/veterinary/details/${clinicId}`,
+              detailsData,
+              config
+            );
+            console.log("Respuesta del servidor:", response.data);
+            console.log("Petición exitosa, actualizando estado");
+            setSaveSuccess(true);
+          } catch (error: any) {
+            console.error("Error detallado en la petición:", error);
+            console.log("Headers de la petición:", error.config?.headers);
+            console.log("Respuesta del servidor:", error.response?.data);
+            console.log("Código de estado:", error.response?.status);
+            setError(
+              `Error al actualizar detalles: ${
+                error.response?.data?.message || error.message
+              }`
+            );
+          }
+          break;
+
+        case "hours":
+          console.log("Preparando para guardar horarios");
+          // Preparar datos para la API de horarios
+          const hoursData = {
+            openingHours: formData.openingHours,
+          };
+
+          console.log(
+            `Enviando datos al endpoint: ${API_BASE_URL}/update/veterinary/hours/${clinicId}`
+          );
+          console.log("Datos enviados:", hoursData);
+
+          try {
+            console.log("Iniciando petición axios...");
+            const response = await axios.put(
+              `${API_BASE_URL}/update/veterinary/hours/${clinicId}`,
+              hoursData,
+              config
+            );
+            console.log("Respuesta del servidor:", response.data);
+            console.log("Petición exitosa, actualizando estado");
+            setSaveSuccess(true);
+          } catch (error: any) {
+            console.error("Error detallado en la petición:", error);
+            console.log("Headers de la petición:", error.config?.headers);
+            console.log("Respuesta del servidor:", error.response?.data);
+            console.log("Código de estado:", error.response?.status);
+            setError(
+              `Error al actualizar horarios: ${
+                error.response?.data?.message || error.message
+              }`
+            );
+          }
+          break;
+
+        default:
+          console.error(`Tab desconocida: ${activeTab}`);
+          break;
+      }
+
+      console.log("Configurando temporizador para mensaje de éxito");
+      // Mostrar mensaje de éxito durante 3 segundos
+      setTimeout(() => {
+        setSaveSuccess(false);
+        console.log("Temporizador completado, estado saveSuccess=false");
+      }, 3000);
+    } catch (err: any) {
+      console.error(`Error general al guardar cambios (${activeTab}):`, err);
+      console.error("Stack completo:", err.stack);
+      setError(
+        "Ocurrió un error al guardar los cambios. Por favor, intenta nuevamente."
+      );
+    } finally {
+      console.log("Finalizando proceso, setting saving=false");
+      setSaving(false);
+    }
   };
 
   // Función para aplicar 24 horas a todos los días
@@ -251,15 +585,39 @@ export default function ProfilePage() {
     });
   };
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 h-[500px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">
+          Cargando información de la clínica...
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4 p-4 md:gap-8 md:p-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">
           Información General
         </h1>
-        <Button onClick={handleSubmit} className="gap-1">
-          <Save className="h-4 w-4" />
-          Guardar Cambios
+        <Button
+          onClick={(e) => {
+            console.log("Botón Guardar Cambios clickeado");
+            handleSubmit(e);
+          }}
+          className="gap-1"
+          disabled={saving}
+          id="guardar-cambios-btn"
+          type="button"
+        >
+          {saving ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4" />
+          )}
+          {saving ? "Guardando..." : "Guardar Cambios"}
         </Button>
       </div>
 
@@ -270,7 +628,18 @@ export default function ProfilePage() {
         </Alert>
       )}
 
-      <Tabs defaultValue="basic" className="space-y-4">
+      {error && (
+        <Alert className="bg-red-100 text-red-800 border-red-300">
+          <AlertCircle className="h-4 w-4" />
+          <span>{error}</span>
+        </Alert>
+      )}
+
+      <Tabs
+        defaultValue="basic"
+        className="space-y-4"
+        onValueChange={(value) => setActiveTab(value)}
+      >
         <TabsList>
           <TabsTrigger value="basic">Información Básica</TabsTrigger>
           <TabsTrigger value="details">Detalles</TabsTrigger>
