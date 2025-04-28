@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Plus,
   Save,
@@ -32,23 +32,193 @@ import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Badge } from "~/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "~/components/ui/dialog";
 import { useAuthStore } from "~/stores/useAuthStore";
 import toast from "react-hot-toast";
 
 // API URL from environment or default to localhost
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-type Service = {
+const categoryNames = {
+  todos: "Todos los servicios",
+  general: "Consulta General",
+  preventive: "Medicina Preventiva",
+  dental: "Odontología",
+  surgery: "Cirugía",
+  laboratory: "Laboratorio",
+  imaging: "Imagenología",
+  emergency: "Emergencias",
+  grooming: "Estética",
+  other: "Otros Servicios",
+} as const;
+
+type Category = keyof typeof categoryNames;
+
+interface Service {
   id: string;
   id_servicio?: number;
   nombre: string;
   descripcion: string;
   precio: number;
-  categoria: string;
+  categoria: Category;
   disponible: boolean;
+}
+
+interface AddServiceDialogProps {
+  open: boolean;
+  onClose: () => void;
+  defaultCategory: string;
+  onSave: (service: Service) => Promise<void>;
+}
+
+const AddServiceDialog = ({
+  open,
+  onClose,
+  defaultCategory,
+  onSave,
+}: AddServiceDialogProps) => {
+  const newService: Service = {
+    id: Date.now().toString(),
+    nombre: "",
+    descripcion: "",
+    precio: 0,
+    categoria: (defaultCategory as Category) || "general",
+    disponible: true,
+  };
+
+  const [tempService, setTempService] = useState<Service>(newService);
+
+  const handleSave = async () => {
+    if (!tempService.nombre || tempService.precio <= 0) {
+      toast.error("Por favor completa todos los campos requeridos");
+      return;
+    }
+
+    try {
+      await onSave(tempService);
+      onClose();
+    } catch (error) {
+      console.error("Error saving service:", error);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Agregar Nuevo Servicio</DialogTitle>
+          <DialogDescription>
+            Completa los detalles del nuevo servicio
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-service-name">Nombre del Servicio</Label>
+              <Input
+                id="new-service-name"
+                value={tempService.nombre}
+                onChange={(e) =>
+                  setTempService({ ...tempService, nombre: e.target.value })
+                }
+                placeholder="Ej: Consulta General"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-service-category">Categoría</Label>
+              <Select
+                value={tempService.categoria}
+                onValueChange={(value) =>
+                  setTempService({
+                    ...tempService,
+                    categoria: value as Category,
+                  })
+                }
+              >
+                <SelectTrigger id="new-service-category">
+                  <SelectValue placeholder="Seleccionar categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(categoryNames).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-service-description">Descripción</Label>
+              <Textarea
+                id="new-service-description"
+                value={tempService.descripcion}
+                onChange={(e) =>
+                  setTempService({
+                    ...tempService,
+                    descripcion: e.target.value,
+                  })
+                }
+                placeholder="Describe el servicio..."
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-service-price">Precio (COP)</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="new-service-price"
+                  type="number"
+                  min="0"
+                  value={tempService.precio}
+                  onChange={(e) =>
+                    setTempService({
+                      ...tempService,
+                      precio: Number(e.target.value),
+                    })
+                  }
+                  className="pl-9"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSave}>Guardar Servicio</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
-export default function ServicesPage() {
+const NoServicesMessage = ({
+  category,
+  onAddService,
+}: {
+  category: string;
+  onAddService: (category: string) => void;
+}) => (
+  <div className="flex flex-col items-center justify-center p-8">
+    <p className="text-gray-500 mb-4">No tienes servicios en esta categoría</p>
+    <Button onClick={() => onAddService(category)}>Agregar Servicio</Button>
+  </div>
+);
+
+const ServicesVet = () => {
   const { user, userType } = useAuthStore();
   const clinicId = userType === "vet" && user ? (user as any).id_clinica : null;
 
@@ -58,6 +228,19 @@ export default function ServicesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTab, setSelectedTab] = useState("todos");
+  const [showAddServiceForm, setShowAddServiceForm] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("");
+
+  const handleAddService = (category: string) => {
+    setSelectedCategory(category);
+    setShowAddServiceForm(true);
+  };
+
+  const filteredServices = useMemo(() => {
+    if (selectedTab === "todos") return services;
+    return services.filter((service) => service.categoria === selectedTab);
+  }, [services, selectedTab]);
 
   // Cargar servicios al montar el componente
   useEffect(() => {
@@ -90,7 +273,7 @@ export default function ServicesPage() {
             nombre: service.nombre || "",
             descripcion: service.descripcion || "",
             precio: service.precio || 0,
-            categoria: service.categoria || "general",
+            categoria: (service.categoria as Category) || "general",
             disponible: service.disponible === true,
           }));
 
@@ -123,107 +306,96 @@ export default function ServicesPage() {
     setTempService(null);
   };
 
-  const handleSaveEdit = async () => {
-    if (!tempService || !clinicId) return;
+  const handleCreateService = async (service: Service) => {
+    if (!service || !clinicId) return;
 
     setIsSubmitting(true);
+    try {
+      const response = await fetch(`${API_URL}/veterinary/services`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id_clinica: clinicId,
+          nombre: service.nombre,
+          descripcion: service.descripcion,
+          precio: service.precio,
+          categoria: service.categoria,
+          disponible: service.disponible,
+        }),
+      });
 
-    // Si el servicio ya existe (tiene id_servicio), actualizar
-    if (tempService.id_servicio) {
-      try {
-        const response = await fetch(
-          `${API_URL}/veterinary/services/${tempService.id_servicio}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              nombre: tempService.nombre,
-              descripcion: tempService.descripcion,
-              precio: tempService.precio,
-              categoria: tempService.categoria,
-              disponible: tempService.disponible,
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || "Error al actualizar servicio");
-        }
-
-        const updatedService = await response.json();
-
-        // Actualizar estado local
-        setServices(
-          services.map((service) =>
-            service.id === tempService.id
-              ? {
-                  ...tempService,
-                  id_servicio: updatedService.servicio.id_servicio,
-                }
-              : service
-          )
-        );
-
-        toast.success("Servicio actualizado correctamente");
-      } catch (err) {
-        console.error("Error al actualizar servicio:", err);
-        const errorMessage =
-          err instanceof Error ? err.message : "Error desconocido";
-        toast.error(`Error al actualizar servicio: ${errorMessage}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Error al crear servicio");
       }
-    } else {
-      // Es un servicio nuevo, crear
-      try {
-        const response = await fetch(`${API_URL}/veterinary/services`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id_clinica: clinicId,
-            nombre: tempService.nombre,
-            descripcion: tempService.descripcion,
-            precio: tempService.precio,
-            categoria: tempService.categoria,
-            disponible: tempService.disponible,
-          }),
-        });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || "Error al crear servicio");
-        }
-
-        const newService = await response.json();
-
-        // Actualizar estado local con el nuevo ID asignado por el backend
-        setServices(
-          services.map((service) =>
-            service.id === tempService.id
-              ? {
-                  ...tempService,
-                  id_servicio: newService.servicio.id_servicio,
-                  id: newService.servicio.id_servicio.toString(),
-                }
-              : service
-          )
-        );
-
-        toast.success("Servicio creado correctamente");
-      } catch (err) {
-        console.error("Error al crear servicio:", err);
-        const errorMessage =
-          err instanceof Error ? err.message : "Error desconocido";
-        toast.error(`Error al crear servicio: ${errorMessage}`);
-      }
+      const newService = await response.json();
+      setServices([
+        ...services,
+        { ...service, id_servicio: newService.servicio.id_servicio },
+      ]);
+      toast.success("Servicio creado correctamente");
+    } catch (err) {
+      console.error("Error al crear servicio:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Error desconocido";
+      toast.error(`Error al crear servicio: ${errorMessage}`);
+      throw err;
+    } finally {
+      setIsSubmitting(false);
     }
+  };
 
-    setIsSubmitting(false);
-    setEditingService(null);
-    setTempService(null);
+  /**
+   * Update an existing service via PUT and update local state without duplication.
+   */
+  const handleUpdateService = async (service: Service) => {
+    if (!service.id_servicio || !clinicId) return;
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/veterinary/services/${service.id_servicio}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nombre: service.nombre,
+            descripcion: service.descripcion,
+            precio: service.precio,
+            categoria: service.categoria,
+            disponible: service.disponible,
+          }),
+        }
+      );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Error al actualizar servicio");
+      }
+      const result = await response.json();
+      setServices(
+        services.map((s) =>
+          s.id === service.id
+            ? {
+                ...s,
+                ...result.servicio,
+                id_servicio: result.servicio.id_servicio,
+              }
+            : s
+        )
+      );
+      toast.success("Servicio actualizado correctamente");
+      setEditingService(null);
+      setTempService(null);
+    } catch (err) {
+      console.error("Error al actualizar servicio:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Error desconocido";
+      toast.error(`Error al actualizar servicio: ${errorMessage}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDeleteService = async (id: string) => {
@@ -263,21 +435,6 @@ export default function ServicesPage() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleAddService = () => {
-    const newService: Service = {
-      id: Date.now().toString(),
-      nombre: "Nuevo Servicio",
-      descripcion: "Descripción del servicio",
-      precio: 0,
-      categoria: "general",
-      disponible: true,
-    };
-
-    setServices([...services, newService]);
-    setTempService({ ...newService });
-    setEditingService(newService.id);
   };
 
   const handleToggleAvailability = async (id: string) => {
@@ -334,18 +491,6 @@ export default function ServicesPage() {
     }
   };
 
-  const categoryNames: Record<string, string> = {
-    general: "Consulta General",
-    preventive: "Medicina Preventiva",
-    dental: "Odontología",
-    surgery: "Cirugía",
-    laboratory: "Laboratorio",
-    imaging: "Imagenología",
-    emergency: "Emergencias",
-    grooming: "Estética",
-    other: "Otros Servicios",
-  };
-
   // Si no hay clínica identificada
   if (!clinicId) {
     return (
@@ -372,43 +517,16 @@ export default function ServicesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4 md:gap-8 md:p-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">
-          Servicios y Precios
-        </h1>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleAddService}
-            className="gap-1"
-            disabled={isSubmitting}
-          >
-            <Plus className="h-4 w-4" />
+    <div className="container mx-auto p-6">
+      <Tabs defaultValue="todos" onValueChange={setSelectedTab}>
+        <div className="flex justify-end my-4">
+          <Button onClick={() => handleAddService(selectedTab)}>
+            <Plus className="mr-1 h-4 w-4" />
             Agregar Servicio
           </Button>
         </div>
-      </div>
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Información importante</AlertTitle>
-        <AlertDescription>
-          Los precios y servicios que configures aquí serán visibles para los
-          dueños de mascotas en la plataforma.
-        </AlertDescription>
-      </Alert>
-
-      <Tabs defaultValue="all" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="all">Todos</TabsTrigger>
+          <TabsTrigger value="todos">Todos</TabsTrigger>
           <TabsTrigger value="general">Consultas</TabsTrigger>
           <TabsTrigger value="preventive">Preventiva</TabsTrigger>
           <TabsTrigger value="dental">Odontología</TabsTrigger>
@@ -416,1475 +534,229 @@ export default function ServicesPage() {
           <TabsTrigger value="laboratory">Laboratorio</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="all">
-          <Card>
-            <CardHeader>
-              <CardTitle>Todos los Servicios</CardTitle>
-              <CardDescription>
-                Gestiona todos los servicios y precios de tu clínica veterinaria
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {services.length === 0 && !isLoading && (
-                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8">
-                    <p className="mb-4 text-center text-muted-foreground">
-                      Aún no tienes servicios registrados
-                    </p>
-                    <Button
-                      variant="outline"
-                      onClick={handleAddService}
-                      className="gap-1"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Agregar Servicio
-                    </Button>
-                  </div>
-                )}
-
-                {services.map((service) => (
-                  <div
-                    key={service.id}
-                    className={`rounded-lg border p-4 transition-all ${
-                      !service.disponible ? "bg-muted/50" : ""
-                    }`}
-                  >
-                    {editingService === service.id && tempService ? (
-                      <div className="space-y-4">
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label htmlFor="service-name">
-                              Nombre del Servicio
-                            </Label>
-                            <Input
-                              id="service-name"
-                              value={tempService.nombre}
-                              onChange={(e) =>
-                                handleTempServiceChange(
-                                  "nombre",
-                                  e.target.value
-                                )
-                              }
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="service-category">Categoría</Label>
-                            <Select
-                              value={tempService.categoria}
-                              onValueChange={(value) =>
-                                handleTempServiceChange("categoria", value)
-                              }
-                            >
-                              <SelectTrigger id="service-category">
-                                <SelectValue placeholder="Seleccionar categoría" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.entries(categoryNames).map(
-                                  ([value, label]) => (
-                                    <SelectItem key={value} value={value}>
-                                      {label}
-                                    </SelectItem>
-                                  )
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
+        <TabsContent value={selectedTab}>
+          {filteredServices.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredServices.map((service) => (
+                <div
+                  key={service.id}
+                  className={`rounded-lg border p-4 transition-all ${
+                    !service.disponible ? "bg-muted/50" : ""
+                  }`}
+                >
+                  {editingService === service.id && tempService ? (
+                    <div className="space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                          <Label htmlFor="service-description">
-                            Descripción
+                          <Label htmlFor="service-name">
+                            Nombre del Servicio
                           </Label>
-                          <Textarea
-                            id="service-description"
-                            value={tempService.descripcion}
+                          <Input
+                            id="service-name"
+                            value={tempService.nombre}
                             onChange={(e) =>
-                              handleTempServiceChange(
-                                "descripcion",
-                                e.target.value
-                              )
+                              handleTempServiceChange("nombre", e.target.value)
                             }
-                            rows={2}
                           />
                         </div>
 
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label htmlFor="service-price">Precio (MXN)</Label>
-                            <div className="relative">
-                              <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                id="service-price"
-                                type="number"
-                                value={tempService.precio}
-                                onChange={(e) =>
-                                  handleTempServiceChange(
-                                    "precio",
-                                    Number(e.target.value)
-                                  )
-                                }
-                                className="pl-9"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="flex items-end gap-4">
-                            <div className="flex items-center space-x-2">
-                              <Switch
-                                id="service-available"
-                                checked={tempService.disponible}
-                                onCheckedChange={(checked) =>
-                                  handleTempServiceChange("disponible", checked)
-                                }
-                              />
-                              <Label htmlFor="service-available">
-                                Disponible
-                              </Label>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleCancelEdit}
-                            disabled={isSubmitting}
+                        <div className="space-y-2">
+                          <Label htmlFor="service-category">Categoría</Label>
+                          <Select
+                            value={tempService.categoria}
+                            onValueChange={(value) =>
+                              handleTempServiceChange(
+                                "categoria",
+                                value as Category
+                              )
+                            }
                           >
-                            <X className="mr-1 h-4 w-4" />
-                            Cancelar
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={handleSaveEdit}
-                            disabled={isSubmitting}
-                          >
-                            {isSubmitting ? (
-                              <>
-                                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                                Guardando...
-                              </>
-                            ) : (
-                              <>
-                                <Check className="mr-1 h-4 w-4" />
-                                Guardar
-                              </>
-                            )}
-                          </Button>
+                            <SelectTrigger id="service-category">
+                              <SelectValue placeholder="Seleccionar categoría" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(categoryNames).map(
+                                ([value, label]) => (
+                                  <SelectItem key={value} value={value}>
+                                    {label}
+                                  </SelectItem>
+                                )
+                              )}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
-                    ) : (
-                      <div>
-                        <div className="mb-2 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium">{service.nombre}</h3>
-                            {!service.disponible && (
-                              <Badge variant="outline" className="text-xs">
-                                No disponible
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold">
-                              ${service.precio.toLocaleString()}
-                            </span>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => handleEditService(service.id)}
-                                disabled={isSubmitting}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive"
-                                onClick={() => handleDeleteService(service.id)}
-                                disabled={isSubmitting}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="service-description">Descripción</Label>
+                        <Textarea
+                          id="service-description"
+                          value={tempService.descripcion}
+                          onChange={(e) =>
+                            handleTempServiceChange(
+                              "descripcion",
+                              e.target.value
+                            )
+                          }
+                          rows={2}
+                        />
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="service-price">Precio (COP)</Label>
+                          <div className="relative">
+                            <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="service-price"
+                              type="number"
+                              value={tempService.precio}
+                              onChange={(e) =>
+                                handleTempServiceChange(
+                                  "precio",
+                                  Number(e.target.value)
+                                )
+                              }
+                              className="pl-9"
+                            />
                           </div>
                         </div>
 
-                        <p className="mb-2 text-sm text-muted-foreground">
-                          {service.descripcion}
-                        </p>
+                        <div className="flex items-end gap-4">
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              id="service-available"
+                              checked={tempService.disponible}
+                              onCheckedChange={(checked) =>
+                                handleTempServiceChange("disponible", checked)
+                              }
+                            />
+                            <Label htmlFor="service-available">
+                              Disponible
+                            </Label>
+                          </div>
+                        </div>
+                      </div>
 
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                          <span>
-                            {categoryNames[service.categoria] ||
-                              service.categoria}
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleCancelEdit}
+                          disabled={isSubmitting}
+                        >
+                          <X className="mr-1 h-4 w-4" />
+                          Cancelar
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleUpdateService(tempService)}
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                              Guardando...
+                            </>
+                          ) : (
+                            <>
+                              <Check className="mr-1 h-4 w-4" />
+                              Guardar
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium">{service.nombre}</h3>
+                          {!service.disponible && (
+                            <Badge variant="outline" className="text-xs">
+                              No disponible
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">
+                            ${service.precio.toLocaleString()}
                           </span>
-                          <div className="ml-auto flex gap-4">
-                            <div className="flex items-center space-x-2">
-                              <Switch
-                                id={`available-${service.id}`}
-                                checked={service.disponible}
-                                onCheckedChange={() =>
-                                  handleToggleAvailability(service.id)
-                                }
-                                disabled={isSubmitting}
-                              />
-                              <Label
-                                htmlFor={`available-${service.id}`}
-                                className="text-xs"
-                              >
-                                Disponible
-                              </Label>
-                            </div>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleEditService(service.id)}
+                              disabled={isSubmitting}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive"
+                              onClick={() => handleDeleteService(service.id)}
+                              disabled={isSubmitting}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="general">
-          <Card>
-            <CardHeader>
-              <CardTitle>Consultas Generales</CardTitle>
-              <CardDescription>
-                Servicios relacionados con consultas y revisiones veterinarias
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {services.filter((s) => s.categoria === "general").length ===
-                0 ? (
-                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8">
-                    <p className="mb-4 text-center text-muted-foreground">
-                      No tienes servicios en esta categoría
-                    </p>
-                    <Button
-                      variant="outline"
-                      onClick={handleAddService}
-                      className="gap-1"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Agregar Servicio
-                    </Button>
-                  </div>
-                ) : (
-                  services
-                    .filter((service) => service.categoria === "general")
-                    .map((service) => (
-                      <div
-                        key={service.id}
-                        className={`rounded-lg border p-4 transition-all ${
-                          !service.disponible ? "bg-muted/50" : ""
-                        }`}
-                      >
-                        {editingService === service.id && tempService ? (
-                          <div className="space-y-4">
-                            <div className="grid gap-4 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label htmlFor="service-name">
-                                  Nombre del Servicio
-                                </Label>
-                                <Input
-                                  id="service-name"
-                                  value={tempService.nombre}
-                                  onChange={(e) =>
-                                    handleTempServiceChange(
-                                      "nombre",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                              </div>
+                      <p className="mb-2 text-sm text-muted-foreground">
+                        {service.descripcion}
+                      </p>
 
-                              <div className="space-y-2">
-                                <Label htmlFor="service-category">
-                                  Categoría
-                                </Label>
-                                <Select
-                                  value={tempService.categoria}
-                                  onValueChange={(value) =>
-                                    handleTempServiceChange("categoria", value)
-                                  }
-                                >
-                                  <SelectTrigger id="service-category">
-                                    <SelectValue placeholder="Seleccionar categoría" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {Object.entries(categoryNames).map(
-                                      ([value, label]) => (
-                                        <SelectItem key={value} value={value}>
-                                          {label}
-                                        </SelectItem>
-                                      )
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="service-description">
-                                Descripción
-                              </Label>
-                              <Textarea
-                                id="service-description"
-                                value={tempService.descripcion}
-                                onChange={(e) =>
-                                  handleTempServiceChange(
-                                    "descripcion",
-                                    e.target.value
-                                  )
-                                }
-                                rows={2}
-                              />
-                            </div>
-
-                            <div className="grid gap-4 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label htmlFor="service-price">
-                                  Precio (MXN)
-                                </Label>
-                                <div className="relative">
-                                  <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                  <Input
-                                    id="service-price"
-                                    type="number"
-                                    value={tempService.precio}
-                                    onChange={(e) =>
-                                      handleTempServiceChange(
-                                        "precio",
-                                        Number(e.target.value)
-                                      )
-                                    }
-                                    className="pl-9"
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="flex items-end gap-4">
-                                <div className="flex items-center space-x-2">
-                                  <Switch
-                                    id="service-available"
-                                    checked={tempService.disponible}
-                                    onCheckedChange={(checked) =>
-                                      handleTempServiceChange(
-                                        "disponible",
-                                        checked
-                                      )
-                                    }
-                                  />
-                                  <Label htmlFor="service-available">
-                                    Disponible
-                                  </Label>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCancelEdit}
-                                disabled={isSubmitting}
-                              >
-                                <X className="mr-1 h-4 w-4" />
-                                Cancelar
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={handleSaveEdit}
-                                disabled={isSubmitting}
-                              >
-                                {isSubmitting ? (
-                                  <>
-                                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                                    Guardando...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Check className="mr-1 h-4 w-4" />
-                                    Guardar
-                                  </>
-                                )}
-                              </Button>
-                            </div>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                        <span>
+                          {categoryNames[service.categoria] ||
+                            service.categoria}
+                        </span>
+                        <div className="ml-auto flex gap-4">
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              id={`available-${service.id}`}
+                              checked={service.disponible}
+                              onCheckedChange={() =>
+                                handleToggleAvailability(service.id)
+                              }
+                              disabled={isSubmitting}
+                            />
+                            <Label
+                              htmlFor={`available-${service.id}`}
+                              className="text-xs"
+                            >
+                              Disponible
+                            </Label>
                           </div>
-                        ) : (
-                          <div>
-                            <div className="mb-2 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-medium">
-                                  {service.nombre}
-                                </h3>
-                                {!service.disponible && (
-                                  <Badge variant="outline" className="text-xs">
-                                    No disponible
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold">
-                                  ${service.precio.toLocaleString()}
-                                </span>
-                                <div className="flex gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() =>
-                                      handleEditService(service.id)
-                                    }
-                                    disabled={isSubmitting}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive"
-                                    onClick={() =>
-                                      handleDeleteService(service.id)
-                                    }
-                                    disabled={isSubmitting}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-
-                            <p className="mb-2 text-sm text-muted-foreground">
-                              {service.descripcion}
-                            </p>
-
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                              <span>
-                                {categoryNames[service.categoria] ||
-                                  service.categoria}
-                              </span>
-                              <span>•</span>
-                              <div className="flex items-center space-x-2">
-                                <Switch
-                                  id={`toggle-${service.id}`}
-                                  checked={service.disponible}
-                                  onCheckedChange={() =>
-                                    handleToggleAvailability(service.id)
-                                  }
-                                  disabled={isSubmitting}
-                                />
-                                <Label htmlFor={`toggle-${service.id}`}>
-                                  {service.disponible
-                                    ? "Disponible"
-                                    : "No disponible"}
-                                </Label>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                        </div>
                       </div>
-                    ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="preventive">
-          <Card>
-            <CardHeader>
-              <CardTitle>Medicina Preventiva</CardTitle>
-              <CardDescription>
-                Servicios relacionados con vacunación, desparasitación y
-                prevención
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {services.filter((s) => s.categoria === "preventive").length ===
-                0 ? (
-                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8">
-                    <p className="mb-4 text-center text-muted-foreground">
-                      No tienes servicios en esta categoría
-                    </p>
-                    <Button
-                      variant="outline"
-                      onClick={handleAddService}
-                      className="gap-1"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Agregar Servicio
-                    </Button>
-                  </div>
-                ) : (
-                  services
-                    .filter((service) => service.categoria === "preventive")
-                    .map((service) => (
-                      <div
-                        key={service.id}
-                        className={`rounded-lg border p-4 transition-all ${
-                          !service.disponible ? "bg-muted/50" : ""
-                        }`}
-                      >
-                        {editingService === service.id && tempService ? (
-                          <div className="space-y-4">
-                            <div className="grid gap-4 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label htmlFor="service-name">
-                                  Nombre del Servicio
-                                </Label>
-                                <Input
-                                  id="service-name"
-                                  value={tempService.nombre}
-                                  onChange={(e) =>
-                                    handleTempServiceChange(
-                                      "nombre",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label htmlFor="service-category">
-                                  Categoría
-                                </Label>
-                                <Select
-                                  value={tempService.categoria}
-                                  onValueChange={(value) =>
-                                    handleTempServiceChange("categoria", value)
-                                  }
-                                >
-                                  <SelectTrigger id="service-category">
-                                    <SelectValue placeholder="Seleccionar categoría" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {Object.entries(categoryNames).map(
-                                      ([value, label]) => (
-                                        <SelectItem key={value} value={value}>
-                                          {label}
-                                        </SelectItem>
-                                      )
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="service-description">
-                                Descripción
-                              </Label>
-                              <Textarea
-                                id="service-description"
-                                value={tempService.descripcion}
-                                onChange={(e) =>
-                                  handleTempServiceChange(
-                                    "descripcion",
-                                    e.target.value
-                                  )
-                                }
-                                rows={2}
-                              />
-                            </div>
-
-                            <div className="grid gap-4 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label htmlFor="service-price">
-                                  Precio (MXN)
-                                </Label>
-                                <div className="relative">
-                                  <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                  <Input
-                                    id="service-price"
-                                    type="number"
-                                    value={tempService.precio}
-                                    onChange={(e) =>
-                                      handleTempServiceChange(
-                                        "precio",
-                                        Number(e.target.value)
-                                      )
-                                    }
-                                    className="pl-9"
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="flex items-end gap-4">
-                                <div className="flex items-center space-x-2">
-                                  <Switch
-                                    id="service-available"
-                                    checked={tempService.disponible}
-                                    onCheckedChange={(checked) =>
-                                      handleTempServiceChange(
-                                        "disponible",
-                                        checked
-                                      )
-                                    }
-                                  />
-                                  <Label htmlFor="service-available">
-                                    Disponible
-                                  </Label>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCancelEdit}
-                                disabled={isSubmitting}
-                              >
-                                <X className="mr-1 h-4 w-4" />
-                                Cancelar
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={handleSaveEdit}
-                                disabled={isSubmitting}
-                              >
-                                {isSubmitting ? (
-                                  <>
-                                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                                    Guardando...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Check className="mr-1 h-4 w-4" />
-                                    Guardar
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <div className="mb-2 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-medium">
-                                  {service.nombre}
-                                </h3>
-                                {!service.disponible && (
-                                  <Badge variant="outline" className="text-xs">
-                                    No disponible
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold">
-                                  ${service.precio.toLocaleString()}
-                                </span>
-                                <div className="flex gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() =>
-                                      handleEditService(service.id)
-                                    }
-                                    disabled={isSubmitting}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive"
-                                    onClick={() =>
-                                      handleDeleteService(service.id)
-                                    }
-                                    disabled={isSubmitting}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-
-                            <p className="mb-2 text-sm text-muted-foreground">
-                              {service.descripcion}
-                            </p>
-
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                              <span>
-                                {categoryNames[service.categoria] ||
-                                  service.categoria}
-                              </span>
-                              <span>•</span>
-                              <div className="flex items-center space-x-2">
-                                <Switch
-                                  id={`toggle-${service.id}`}
-                                  checked={service.disponible}
-                                  onCheckedChange={() =>
-                                    handleToggleAvailability(service.id)
-                                  }
-                                  disabled={isSubmitting}
-                                />
-                                <Label htmlFor={`toggle-${service.id}`}>
-                                  {service.disponible
-                                    ? "Disponible"
-                                    : "No disponible"}
-                                </Label>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="dental">
-          <Card>
-            <CardHeader>
-              <CardTitle>Odontología Veterinaria</CardTitle>
-              <CardDescription>
-                Servicios relacionados con la salud dental de las mascotas
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {services.filter((s) => s.categoria === "dental").length ===
-                0 ? (
-                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8">
-                    <p className="mb-4 text-center text-muted-foreground">
-                      No tienes servicios en esta categoría
-                    </p>
-                    <Button
-                      variant="outline"
-                      onClick={handleAddService}
-                      className="gap-1"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Agregar Servicio
-                    </Button>
-                  </div>
-                ) : (
-                  services
-                    .filter((service) => service.categoria === "dental")
-                    .map((service) => (
-                      <div
-                        key={service.id}
-                        className={`rounded-lg border p-4 transition-all ${
-                          !service.disponible ? "bg-muted/50" : ""
-                        }`}
-                      >
-                        {editingService === service.id && tempService ? (
-                          <div className="space-y-4">
-                            <div className="grid gap-4 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label htmlFor="service-name">
-                                  Nombre del Servicio
-                                </Label>
-                                <Input
-                                  id="service-name"
-                                  value={tempService.nombre}
-                                  onChange={(e) =>
-                                    handleTempServiceChange(
-                                      "nombre",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label htmlFor="service-category">
-                                  Categoría
-                                </Label>
-                                <Select
-                                  value={tempService.categoria}
-                                  onValueChange={(value) =>
-                                    handleTempServiceChange("categoria", value)
-                                  }
-                                >
-                                  <SelectTrigger id="service-category">
-                                    <SelectValue placeholder="Seleccionar categoría" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {Object.entries(categoryNames).map(
-                                      ([value, label]) => (
-                                        <SelectItem key={value} value={value}>
-                                          {label}
-                                        </SelectItem>
-                                      )
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="service-description">
-                                Descripción
-                              </Label>
-                              <Textarea
-                                id="service-description"
-                                value={tempService.descripcion}
-                                onChange={(e) =>
-                                  handleTempServiceChange(
-                                    "descripcion",
-                                    e.target.value
-                                  )
-                                }
-                                rows={2}
-                              />
-                            </div>
-
-                            <div className="grid gap-4 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label htmlFor="service-price">
-                                  Precio (MXN)
-                                </Label>
-                                <div className="relative">
-                                  <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                  <Input
-                                    id="service-price"
-                                    type="number"
-                                    value={tempService.precio}
-                                    onChange={(e) =>
-                                      handleTempServiceChange(
-                                        "precio",
-                                        Number(e.target.value)
-                                      )
-                                    }
-                                    className="pl-9"
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="flex items-end gap-4">
-                                <div className="flex items-center space-x-2">
-                                  <Switch
-                                    id="service-available"
-                                    checked={tempService.disponible}
-                                    onCheckedChange={(checked) =>
-                                      handleTempServiceChange(
-                                        "disponible",
-                                        checked
-                                      )
-                                    }
-                                  />
-                                  <Label htmlFor="service-available">
-                                    Disponible
-                                  </Label>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCancelEdit}
-                                disabled={isSubmitting}
-                              >
-                                <X className="mr-1 h-4 w-4" />
-                                Cancelar
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={handleSaveEdit}
-                                disabled={isSubmitting}
-                              >
-                                {isSubmitting ? (
-                                  <>
-                                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                                    Guardando...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Check className="mr-1 h-4 w-4" />
-                                    Guardar
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <div className="mb-2 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-medium">
-                                  {service.nombre}
-                                </h3>
-                                {!service.disponible && (
-                                  <Badge variant="outline" className="text-xs">
-                                    No disponible
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold">
-                                  ${service.precio.toLocaleString()}
-                                </span>
-                                <div className="flex gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() =>
-                                      handleEditService(service.id)
-                                    }
-                                    disabled={isSubmitting}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive"
-                                    onClick={() =>
-                                      handleDeleteService(service.id)
-                                    }
-                                    disabled={isSubmitting}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-
-                            <p className="mb-2 text-sm text-muted-foreground">
-                              {service.descripcion}
-                            </p>
-
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                              <span>
-                                {categoryNames[service.categoria] ||
-                                  service.categoria}
-                              </span>
-                              <span>•</span>
-                              <div className="flex items-center space-x-2">
-                                <Switch
-                                  id={`toggle-${service.id}`}
-                                  checked={service.disponible}
-                                  onCheckedChange={() =>
-                                    handleToggleAvailability(service.id)
-                                  }
-                                  disabled={isSubmitting}
-                                />
-                                <Label htmlFor={`toggle-${service.id}`}>
-                                  {service.disponible
-                                    ? "Disponible"
-                                    : "No disponible"}
-                                </Label>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="surgery">
-          <Card>
-            <CardHeader>
-              <CardTitle>Cirugía</CardTitle>
-              <CardDescription>
-                Servicios quirúrgicos para mascotas
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {services.filter((s) => s.categoria === "surgery").length ===
-                0 ? (
-                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8">
-                    <p className="mb-4 text-center text-muted-foreground">
-                      No tienes servicios en esta categoría
-                    </p>
-                    <Button
-                      variant="outline"
-                      onClick={handleAddService}
-                      className="gap-1"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Agregar Servicio
-                    </Button>
-                  </div>
-                ) : (
-                  services
-                    .filter((service) => service.categoria === "surgery")
-                    .map((service) => (
-                      <div
-                        key={service.id}
-                        className={`rounded-lg border p-4 transition-all ${
-                          !service.disponible ? "bg-muted/50" : ""
-                        }`}
-                      >
-                        {editingService === service.id && tempService ? (
-                          <div className="space-y-4">
-                            <div className="grid gap-4 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label htmlFor="service-name">
-                                  Nombre del Servicio
-                                </Label>
-                                <Input
-                                  id="service-name"
-                                  value={tempService.nombre}
-                                  onChange={(e) =>
-                                    handleTempServiceChange(
-                                      "nombre",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label htmlFor="service-category">
-                                  Categoría
-                                </Label>
-                                <Select
-                                  value={tempService.categoria}
-                                  onValueChange={(value) =>
-                                    handleTempServiceChange("categoria", value)
-                                  }
-                                >
-                                  <SelectTrigger id="service-category">
-                                    <SelectValue placeholder="Seleccionar categoría" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {Object.entries(categoryNames).map(
-                                      ([value, label]) => (
-                                        <SelectItem key={value} value={value}>
-                                          {label}
-                                        </SelectItem>
-                                      )
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="service-description">
-                                Descripción
-                              </Label>
-                              <Textarea
-                                id="service-description"
-                                value={tempService.descripcion}
-                                onChange={(e) =>
-                                  handleTempServiceChange(
-                                    "descripcion",
-                                    e.target.value
-                                  )
-                                }
-                                rows={2}
-                              />
-                            </div>
-
-                            <div className="grid gap-4 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label htmlFor="service-price">
-                                  Precio (MXN)
-                                </Label>
-                                <div className="relative">
-                                  <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                  <Input
-                                    id="service-price"
-                                    type="number"
-                                    value={tempService.precio}
-                                    onChange={(e) =>
-                                      handleTempServiceChange(
-                                        "precio",
-                                        Number(e.target.value)
-                                      )
-                                    }
-                                    className="pl-9"
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="flex items-end gap-4">
-                                <div className="flex items-center space-x-2">
-                                  <Switch
-                                    id="service-available"
-                                    checked={tempService.disponible}
-                                    onCheckedChange={(checked) =>
-                                      handleTempServiceChange(
-                                        "disponible",
-                                        checked
-                                      )
-                                    }
-                                  />
-                                  <Label htmlFor="service-available">
-                                    Disponible
-                                  </Label>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCancelEdit}
-                                disabled={isSubmitting}
-                              >
-                                <X className="mr-1 h-4 w-4" />
-                                Cancelar
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={handleSaveEdit}
-                                disabled={isSubmitting}
-                              >
-                                {isSubmitting ? (
-                                  <>
-                                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                                    Guardando...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Check className="mr-1 h-4 w-4" />
-                                    Guardar
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <div className="mb-2 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-medium">
-                                  {service.nombre}
-                                </h3>
-                                {!service.disponible && (
-                                  <Badge variant="outline" className="text-xs">
-                                    No disponible
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold">
-                                  ${service.precio.toLocaleString()}
-                                </span>
-                                <div className="flex gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() =>
-                                      handleEditService(service.id)
-                                    }
-                                    disabled={isSubmitting}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive"
-                                    onClick={() =>
-                                      handleDeleteService(service.id)
-                                    }
-                                    disabled={isSubmitting}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-
-                            <p className="mb-2 text-sm text-muted-foreground">
-                              {service.descripcion}
-                            </p>
-
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                              <span>
-                                {categoryNames[service.categoria] ||
-                                  service.categoria}
-                              </span>
-                              <span>•</span>
-                              <div className="flex items-center space-x-2">
-                                <Switch
-                                  id={`toggle-${service.id}`}
-                                  checked={service.disponible}
-                                  onCheckedChange={() =>
-                                    handleToggleAvailability(service.id)
-                                  }
-                                  disabled={isSubmitting}
-                                />
-                                <Label htmlFor={`toggle-${service.id}`}>
-                                  {service.disponible
-                                    ? "Disponible"
-                                    : "No disponible"}
-                                </Label>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="laboratory">
-          <Card>
-            <CardHeader>
-              <CardTitle>Laboratorio</CardTitle>
-              <CardDescription>
-                Servicios de laboratorio y análisis clínicos
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {services.filter((s) => s.categoria === "laboratory").length ===
-                0 ? (
-                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8">
-                    <p className="mb-4 text-center text-muted-foreground">
-                      No tienes servicios en esta categoría
-                    </p>
-                    <Button
-                      variant="outline"
-                      onClick={handleAddService}
-                      className="gap-1"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Agregar Servicio
-                    </Button>
-                  </div>
-                ) : (
-                  services
-                    .filter((service) => service.categoria === "laboratory")
-                    .map((service) => (
-                      <div
-                        key={service.id}
-                        className={`rounded-lg border p-4 transition-all ${
-                          !service.disponible ? "bg-muted/50" : ""
-                        }`}
-                      >
-                        {editingService === service.id && tempService ? (
-                          <div className="space-y-4">
-                            <div className="grid gap-4 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label htmlFor="service-name">
-                                  Nombre del Servicio
-                                </Label>
-                                <Input
-                                  id="service-name"
-                                  value={tempService.nombre}
-                                  onChange={(e) =>
-                                    handleTempServiceChange(
-                                      "nombre",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label htmlFor="service-category">
-                                  Categoría
-                                </Label>
-                                <Select
-                                  value={tempService.categoria}
-                                  onValueChange={(value) =>
-                                    handleTempServiceChange("categoria", value)
-                                  }
-                                >
-                                  <SelectTrigger id="service-category">
-                                    <SelectValue placeholder="Seleccionar categoría" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {Object.entries(categoryNames).map(
-                                      ([value, label]) => (
-                                        <SelectItem key={value} value={value}>
-                                          {label}
-                                        </SelectItem>
-                                      )
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="service-description">
-                                Descripción
-                              </Label>
-                              <Textarea
-                                id="service-description"
-                                value={tempService.descripcion}
-                                onChange={(e) =>
-                                  handleTempServiceChange(
-                                    "descripcion",
-                                    e.target.value
-                                  )
-                                }
-                                rows={2}
-                              />
-                            </div>
-
-                            <div className="grid gap-4 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <Label htmlFor="service-price">
-                                  Precio (MXN)
-                                </Label>
-                                <div className="relative">
-                                  <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                  <Input
-                                    id="service-price"
-                                    type="number"
-                                    value={tempService.precio}
-                                    onChange={(e) =>
-                                      handleTempServiceChange(
-                                        "precio",
-                                        Number(e.target.value)
-                                      )
-                                    }
-                                    className="pl-9"
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="flex items-end gap-4">
-                                <div className="flex items-center space-x-2">
-                                  <Switch
-                                    id="service-available"
-                                    checked={tempService.disponible}
-                                    onCheckedChange={(checked) =>
-                                      handleTempServiceChange(
-                                        "disponible",
-                                        checked
-                                      )
-                                    }
-                                  />
-                                  <Label htmlFor="service-available">
-                                    Disponible
-                                  </Label>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCancelEdit}
-                                disabled={isSubmitting}
-                              >
-                                <X className="mr-1 h-4 w-4" />
-                                Cancelar
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={handleSaveEdit}
-                                disabled={isSubmitting}
-                              >
-                                {isSubmitting ? (
-                                  <>
-                                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                                    Guardando...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Check className="mr-1 h-4 w-4" />
-                                    Guardar
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <div className="mb-2 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-medium">
-                                  {service.nombre}
-                                </h3>
-                                {!service.disponible && (
-                                  <Badge variant="outline" className="text-xs">
-                                    No disponible
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold">
-                                  ${service.precio.toLocaleString()}
-                                </span>
-                                <div className="flex gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() =>
-                                      handleEditService(service.id)
-                                    }
-                                    disabled={isSubmitting}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive"
-                                    onClick={() =>
-                                      handleDeleteService(service.id)
-                                    }
-                                    disabled={isSubmitting}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-
-                            <p className="mb-2 text-sm text-muted-foreground">
-                              {service.descripcion}
-                            </p>
-
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                              <span>
-                                {categoryNames[service.categoria] ||
-                                  service.categoria}
-                              </span>
-                              <span>•</span>
-                              <div className="flex items-center space-x-2">
-                                <Switch
-                                  id={`toggle-${service.id}`}
-                                  checked={service.disponible}
-                                  onCheckedChange={() =>
-                                    handleToggleAvailability(service.id)
-                                  }
-                                  disabled={isSubmitting}
-                                />
-                                <Label htmlFor={`toggle-${service.id}`}>
-                                  {service.disponible
-                                    ? "Disponible"
-                                    : "No disponible"}
-                                </Label>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <NoServicesMessage
+              category={selectedTab}
+              onAddService={handleAddService}
+            />
+          )}
         </TabsContent>
       </Tabs>
+
+      {showAddServiceForm && (
+        <AddServiceDialog
+          open={showAddServiceForm}
+          onClose={() => setShowAddServiceForm(false)}
+          defaultCategory={selectedCategory}
+          onSave={handleCreateService}
+        />
+      )}
     </div>
   );
-}
+};
+
+export default ServicesVet;
