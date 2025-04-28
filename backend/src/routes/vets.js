@@ -308,4 +308,220 @@ router.put("/update/veterinary/info/:id_clinica", async (req, res) => {
   }
 });
 
+// Endpoint para actualizar los horarios de la clínica veterinaria
+router.put("/update/veterinary/hours/:id_clinica", async (req, res) => {
+  try {
+    const { id_clinica } = req.params;
+    const { openingHours } = req.body;
+
+    // Verificar que la clínica existe
+    const { data: clinica, error: errorClinica } = await supabaseClient
+      .from("clinicas")
+      .select("id_clinica")
+      .eq("id_clinica", id_clinica)
+      .single();
+
+    if (errorClinica || !clinica) {
+      return res.status(404).json({
+        message: "Clínica no encontrada",
+      });
+    }
+
+    // Primero, eliminar los horarios existentes
+    const { error: errorBorrar } = await supabaseClient
+      .from("horarios_atencion")
+      .delete()
+      .eq("id_clinica", id_clinica);
+
+    if (errorBorrar) {
+      return res.status(400).json({
+        message: "Error al actualizar horarios: No se pudieron eliminar los horarios existentes",
+        error: errorBorrar.message,
+      });
+    }
+
+    // Preparar los nuevos horarios para inserción
+    const nuevosHorarios = [];
+    const diasSemana = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+    diasSemana.forEach(dia => {
+      if (openingHours[dia]) {
+        nuevosHorarios.push({
+          id_clinica: id_clinica,
+          dia_semana: dia,
+          hora_apertura: openingHours[dia].is24Hours ? "00:00:00" : openingHours[dia].open + ":00",
+          hora_cierre: openingHours[dia].is24Hours ? "23:59:59" : openingHours[dia].close + ":00",
+          es_24h: openingHours[dia].is24Hours,
+          esta_cerrado: openingHours[dia].closed,
+        });
+      }
+    });
+
+    // Insertar los nuevos horarios
+    if (nuevosHorarios.length > 0) {
+      const { data: horariosInsertados, error: errorInsercion } = await supabaseClient
+        .from("horarios_atencion")
+        .insert(nuevosHorarios)
+        .select();
+
+      if (errorInsercion) {
+        return res.status(400).json({
+          message: "Error al insertar los nuevos horarios",
+          error: errorInsercion.message,
+        });
+      }
+
+      return res.status(200).json({
+        message: "Horarios actualizados exitosamente",
+        horarios: horariosInsertados,
+      });
+    } else {
+      return res.status(400).json({
+        message: "No se proporcionaron horarios válidos para actualizar",
+      });
+    }
+  } catch (error) {
+    console.error("Error al actualizar horarios:", error);
+    res.status(500).json({ 
+      message: "Error interno del servidor", 
+      error: error.message 
+    });
+  }
+});
+
+// Endpoint para actualizar los detalles adicionales de la clínica (especialidades, instalaciones, métodos de pago)
+router.put("/update/veterinary/details/:id_clinica", async (req, res) => {
+  try {
+    const { id_clinica } = req.params;
+    const { specialties, facilities, paymentMethods } = req.body;
+
+    // Verificar que la clínica existe
+    const { data: clinica, error: errorClinica } = await supabaseClient
+      .from("clinicas")
+      .select("id_clinica, detalles")
+      .eq("id_clinica", id_clinica)
+      .single();
+
+    if (errorClinica || !clinica) {
+      return res.status(404).json({
+        message: "Clínica no encontrada",
+      });
+    }
+
+    // Preparar los detalles para actualizar
+    const detallesActualizados = {
+      especialidades: specialties || [],
+      instalaciones: facilities || [],
+      metodos_pago: paymentMethods || [],
+    };
+
+    // Actualizar los detalles en la tabla clinicas
+    const { data, error: errorActualizacion } = await supabaseClient
+      .from("clinicas")
+      .update({ detalles: detallesActualizados })
+      .eq("id_clinica", id_clinica)
+      .select();
+
+    if (errorActualizacion) {
+      return res.status(400).json({
+        message: "Error al actualizar los detalles de la clínica",
+        error: errorActualizacion.message,
+      });
+    }
+
+    res.status(200).json({
+      message: "Detalles de la clínica actualizados exitosamente",
+      data,
+    });
+  } catch (error) {
+    console.error("Error al actualizar detalles de la clínica:", error);
+    res.status(500).json({ 
+      message: "Error interno del servidor", 
+      error: error.message 
+    });
+  }
+});
+
+// Endpoint para obtener toda la información de la clínica (información básica, horarios y detalles)
+router.get("/veterinary/profile/:id_clinica", async (req, res) => {
+  try {
+    const { id_clinica } = req.params;
+
+    // Obtener información básica de la clínica
+    const { data: clinica, error: errorClinica } = await supabaseClient
+      .from("clinicas")
+      .select("*, detalles")
+      .eq("id_clinica", id_clinica)
+      .single();
+
+    if (errorClinica || !clinica) {
+      return res.status(404).json({
+        message: "Clínica no encontrada",
+      });
+    }
+
+    // Obtener horarios de la clínica
+    const { data: horarios, error: errorHorarios } = await supabaseClient
+      .from("horarios_atencion")
+      .select("*")
+      .eq("id_clinica", id_clinica);
+
+    if (errorHorarios) {
+      return res.status(400).json({
+        message: "Error al obtener horarios",
+        error: errorHorarios.message,
+      });
+    }
+
+    // Formatear los horarios para el frontend
+    const openingHours = {
+      monday: { open: "09:00", close: "18:00", closed: true, is24Hours: false },
+      tuesday: { open: "09:00", close: "18:00", closed: true, is24Hours: false },
+      wednesday: { open: "09:00", close: "18:00", closed: true, is24Hours: false },
+      thursday: { open: "09:00", close: "18:00", closed: true, is24Hours: false },
+      friday: { open: "09:00", close: "18:00", closed: true, is24Hours: false },
+      saturday: { open: "09:00", close: "18:00", closed: true, is24Hours: false },
+      sunday: { open: "09:00", close: "18:00", closed: true, is24Hours: false },
+    };
+
+    // Actualizar con los horarios reales
+    horarios.forEach(horario => {
+      const dia = horario.dia_semana;
+      if (openingHours[dia]) {
+        openingHours[dia] = {
+          open: horario.hora_apertura ? horario.hora_apertura.substring(0, 5) : "09:00",
+          close: horario.hora_cierre ? horario.hora_cierre.substring(0, 5) : "18:00",
+          closed: horario.esta_cerrado,
+          is24Hours: horario.es_24h,
+        };
+      }
+    });
+
+    // Extraer y formatear los detalles
+    const specialties = clinica.detalles?.especialidades || [];
+    const facilities = clinica.detalles?.instalaciones || [];
+    const paymentMethods = clinica.detalles?.metodos_pago || [];
+
+    // Quitar la contraseña del objeto que se retorna
+    const { contrasena, ...clinicaInfo } = clinica;
+
+    // Construir la respuesta completa
+    const perfilCompleto = {
+      ...clinicaInfo,
+      openingHours,
+      specialties,
+      facilities,
+      paymentMethods,
+    };
+
+    res.status(200).json(perfilCompleto);
+  } catch (error) {
+    console.error("Error al obtener perfil de la clínica:", error);
+    res.status(500).json({ 
+      message: "Error interno del servidor", 
+      error: error.message 
+    });
+  }
+});
+
 export default router;

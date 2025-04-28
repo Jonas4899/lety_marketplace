@@ -60,20 +60,21 @@ function SidebarNav({ items }: SidebarNavProps) {
 export default function DashboardLayout() {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const navigate = useNavigate();
-  const logout = useAuthStore((state) => state.logout); 
+  const logout = useAuthStore((state) => state.logout);
 
   //extrar info de la veterinaria
   const user = useAuthStore((state) => state.user);
-  const userType = useAuthStore((state) => state.userType); 
+  const userType = useAuthStore((state) => state.userType);
 
-  const vetId = user && userType === "vet" ? (user as Vet).id_clinica : undefined;
-  console.log(vetId)
+  const vetId =
+    user && userType === "vet" ? (user as Vet).id_clinica : undefined;
+  console.log(vetId);
 
   const handleLogout = () => {
     Cookies.remove("auth_token");
     logout();
     navigate("/");
-  }
+  };
 
   const navItems = [
     {
@@ -93,17 +94,17 @@ export default function DashboardLayout() {
     },
     {
       title: "Servicios y Precios",
-      href: "/dashboard/services",
+      href: "/dashboard-vet/services",
       icon: <DollarSign className="h-4 w-4" />,
     },
     {
       title: "Citas",
-      href: "/dashboard/appointments",
+      href: "/dashboard-vet/appointments",
       icon: <Calendar className="h-4 w-4" />,
     },
     {
       title: "Mensajes",
-      href: "/dashboard/messages",
+      href: "/dashboard-vet/messages",
       icon: <MessageSquare className="h-4 w-4" />,
     },
     {
@@ -118,7 +119,7 @@ export default function DashboardLayout() {
     },
     {
       title: "Configuración",
-      href: "/dashboard/settings",
+      href: "/dashboard-vet/settings",
       icon: <Settings className="h-4 w-4" />,
     },
   ];
