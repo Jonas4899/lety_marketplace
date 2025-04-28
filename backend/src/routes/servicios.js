@@ -152,4 +152,36 @@ router.post('/register/services', async (req, res) => {
   }
 });
 
+// Endpoint: Obtener todos los servicios de una clínica veterinaria
+router.get('/clinic/:clinicId/services', async (req, res) => {
+  const { clinicId } = req.params;
+
+  try {
+    console.log(`Obteniendo servicios para la clínica ${clinicId}`);
+
+    const { data: servicios, error } = await supabaseClient
+      .from('servicios')
+      .select('*')
+      .eq('id_clinica', clinicId)
+      .eq('disponible', true); // Solo servicios activos
+
+    if (error) {
+      console.error('Error consultando servicios:', error);
+      return res.status(400).json({
+        message: 'Error al obtener los servicios: ' + error.message,
+      });
+    }
+
+    res.status(200).json({
+      message: `Servicios de la clínica ${clinicId}`,
+      servicios,
+    });
+  } catch (error) {
+    console.error('Error interno del servidor:', error);
+    res.status(500).json({
+      message: 'Error interno del servidor: ' + error.message,
+    });
+  }
+});
+
 export default router;

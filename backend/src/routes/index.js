@@ -4,6 +4,8 @@ import userRoutes from './usuarios.js';
 import vetRoutes from './vets.js';
 import serviceRoutes from './servicios.js';
 import scheduleRoutes from './horarios.js';
+import appoinmentRoutes from './citas.js';
+import pets from './mascotas.js';
 
 const router = express.Router();
 
@@ -21,5 +23,12 @@ router.use('/', serviceRoutes);
 
 // Rutas de horarios
 router.use('/', scheduleRoutes);
+
+// Rutas de programación de citas
+router.use('/', appoinmentRoutes);
+
+// Rutas de mascotas y servicios
+router.use('/', pets);
+
 
 export default router;

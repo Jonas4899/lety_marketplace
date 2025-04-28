@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router";
 import { Check, ChevronRight, Clock, PawPrint } from "lucide-react"
 import { Button } from "~/components/ui/button"
@@ -29,29 +29,109 @@ export function AppointmentScheduler({ clinicId }: AppointmentSchedulerProps) {
     notes: "",
   })
 
+  // Tipos de mascotas
+interface Mascota {
+  id: string;
+  name: string;
+  type: string;
+  breed: string;
+  // Otros campos que tengas, como imagen, edad, etc
+}
+
+// Tipos de servicios
+interface Servicio {
+  id: string;
+  name: string;
+  duration: number;
+  price: number;
+  description?: string;
+  image?: string;
+  // Otros campos si los tienes
+}
+
+
   const customWeekdays = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-  // Datos simulados
-  const pets = [
-    { id: "1", name: "Max", type: "Perro", breed: "Labrador", image: "/placeholder.svg?height=60&width=60&text=Max" },
-    { id: "2", name: "Luna", type: "Gato", breed: "Siamés", image: "/placeholder.svg?height=60&width=60&text=Luna" },
-    {
-      id: "3",
-      name: "Rocky",
-      type: "Perro",
-      breed: "Bulldog",
-      image: "/placeholder.svg?height=60&width=60&text=Rocky",
-    },
-  ]
+  const [mascotas, setMascotas] = useState<Mascota[]>([]);
 
-  const services = [
-    { id: "1", name: "Consulta General", price: "$500", duration: "30 min" },
-    { id: "2", name: "Vacunación", price: "$350", duration: "20 min" },
-    { id: "3", name: "Control de Rutina", price: "$450", duration: "30 min" },
-    { id: "4", name: "Limpieza Dental", price: "$800", duration: "45 min" },
-    { id: "5", name: "Desparasitación", price: "$300", duration: "15 min" },
-  ]
+  useEffect(() => {
+    const fetchMascotas = async () => {
+      try {
+        const token = localStorage.getItem('token'); // <-- Recuperas el token guardado
+  
+        if (!token) {
+          console.error('Token no encontrado');
+          return;
+        }
+  
+        const response = await fetch(`${API_URL}/user/me/pets`, {
+          headers: {
+            'Authorization': `Bearer ${token}`, // <-- Lo mandas en Authorization header
+          },
+        });
+  
+        if (!response.ok) {
+          throw new Error('Error al obtener mascotas');
+        }
+  
+        const data = await response.json();
+
+        const mascotasFormateadas = data.mascotas.map((mascota: any) => ({
+          id: mascota.id_mascota || mascota.id,
+          name: mascota.nombre || "Sin nombre",
+          type: mascota.especie || "Sin tipo",
+          breed: mascota.raza || "Sin raza",
+          image: mascota.foto || "/placeholder.svg?height=60&width=60&text=" + (mascota.nombre || "Mascota"),
+        }));
+
+        setMascotas(mascotasFormateadas); // <-- Guardas las mascotas en el estado
+      } catch (error) {
+        console.error('Error trayendo mascotas:', error);
+      }
+    };
+  
+    fetchMascotas();
+  }, []);
+
+  const [servicios, setServicios] = useState<Servicio[]>([]);
+
+  useEffect(() => {
+    const fetchServicios = async () => {
+      try {
+        const response = await fetch(`${API_URL}/clinic/${clinicId}/services`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+  
+        if (!response.ok) {
+          throw new Error('Error al obtener servicios');
+        }
+  
+        const data = await response.json();
+  
+        const serviciosFormateados = data.servicios.map((servicio: any) => ({
+          id: servicio.id_servicio,
+          name: servicio.nombre,
+          duration: servicio.duracion || 30, // 🔥 Si no guardas duración aún, pone un default de 30 min
+          price: servicio.precio || 0,
+          description: servicio.descripcion || '',
+          image: servicio.imagen || '/placeholder.svg',
+        }));
+  
+        setServicios(serviciosFormateados);
+      } catch (error) {
+        console.error('Error trayendo servicios:', error);
+      }
+    };
+  
+    if (clinicId) {
+      fetchServicios();
+    }
+  }, [clinicId]);
 
   const timeSlots = [
     "9:00 AM",
@@ -70,14 +150,50 @@ export function AppointmentScheduler({ clinicId }: AppointmentSchedulerProps) {
     "5:30 PM",
   ]
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step < 4) {
-      setStep(step + 1)
-      window.scrollTo(0, 0)
+      setStep(step + 1);
+      window.scrollTo(0, 0);
     } else {
-      // Enviar datos y redirigir
-      console.log("Datos de la cita:", formData)
-      router("/pet-dashboard/appointments?success=true")
+      try {
+        const token = localStorage.getItem('token'); // Recuperar el token
+  
+        if (!token) {
+          alert("No estás autenticado");
+          return;
+        }
+  
+        const response = await fetch(`${API_URL}/appointments/schedule`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`, // 🔥 Mandar el token como Authorization Bearer
+          },
+          body: JSON.stringify({
+            petId: formData.petId,
+            serviceId: formData.serviceId,
+            clinicId: clinicId,
+            date: formData.date?.toISOString(), // fecha en formato ISO
+            timeSlot: formData.timeSlot,
+            reason: formData.reason,
+            notes: formData.notes,
+            acceptedTerms: true,  // 🔥 Backend espera que venga esto explícitamente
+            reminderPreference: "both", // Opcional
+          }),
+        });
+  
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Error al crear la cita");
+        }
+  
+        // Si todo salió bien, redirigimos
+        router("/pet-dashboard/appointments?success=true");
+  
+      } catch (error) {
+        console.error('Error agendando cita:', error);
+        alert("Hubo un problema al programar tu cita. Inténtalo más tarde.");
+      }
     }
   }
 
@@ -103,8 +219,8 @@ export function AppointmentScheduler({ clinicId }: AppointmentSchedulerProps) {
     }
   }
 
-  const selectedPet = pets.find((pet) => pet.id === formData.petId)
-  const selectedService = services.find((service) => service.id === formData.serviceId)
+  const selectedPet = mascotas.find((pet) => pet.id === formData.petId)
+  const selectedService = servicios.find((service) => service.id === formData.serviceId)
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -152,7 +268,7 @@ export function AppointmentScheduler({ clinicId }: AppointmentSchedulerProps) {
           <div>
             <h2 className="text-xl font-semibold mb-4">Selecciona tu mascota</h2>
             <div className="grid gap-4">
-              {pets.map((pet) => (
+              {mascotas.map((pet) => (
                 <Card
                   key={pet.id}
                   className={cn(
@@ -195,7 +311,7 @@ export function AppointmentScheduler({ clinicId }: AppointmentSchedulerProps) {
           <div>
             <h2 className="text-xl font-semibold mb-4">Selecciona el servicio</h2>
             <div className="grid gap-4">
-              {services.map((service) => (
+              {servicios.map((service) => (
                 <Card
                   key={service.id}
                   className={cn(
@@ -293,7 +409,6 @@ export function AppointmentScheduler({ clinicId }: AppointmentSchedulerProps) {
                   <div className="flex items-center gap-4">
                     <div className="relative h-12 w-12 rounded-full overflow-hidden bg-muted">
                       <img
-                        src={selectedPet.image || "/placeholder.svg"}
                         alt={selectedPet.name}
                         className="object-cover"
                       />
@@ -398,5 +513,7 @@ export function AppointmentScheduler({ clinicId }: AppointmentSchedulerProps) {
       </div>
     </div>
   )
+
+  
 }
 
