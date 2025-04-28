@@ -17,6 +17,10 @@ export default [
     route(
       "dashboard-vet/general-information",
       "routes/DashboardVet/GeneralInformation/index.tsx"
+    ),
+    route(
+      "dashboard-vet/services",
+      "routes/DashboardVet/ServicesVet/index.tsx"
     ), // Ruta para general information
   ]),
   layout("layouts/DashboardLayoutClient/index.tsx", [

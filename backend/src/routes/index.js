@@ -5,6 +5,7 @@ import vetRoutes from "./vets.js";
 import serviceRoutes from "./servicios.js";
 import scheduleRoutes from "./horarios.js";
 import analyticsRoutes from "./analytics.js";
+import photosRoutes from "./fotos.js";
 
 const router = express.Router();
 
@@ -25,5 +26,8 @@ router.use("/", scheduleRoutes);
 
 // Rutas de analytics
 router.use("/", analyticsRoutes);
+
+// Rutas de fotos
+router.use("/", photosRoutes);
 
 export default router;
