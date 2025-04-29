@@ -24,7 +24,11 @@ export default [
     ), // Ruta para general information
   ]),
   layout("layouts/DashboardLayoutClient/index.tsx", [
-    route("dashboard-client", "routes/DashboardClient/index.tsx"), // Agregamos la nueva ruta
+    route("dashboard-client", "routes/DashboardClient/index.tsx"),
+    route(
+      "dashboard-client/vet-search",
+      "routes/DashboardClient/BusquedaVeterinarias/index.tsx"
+    ),
   ]),
   route("login", "routes/LoginPage/index.tsx"),
   route("unauthorized", "routes/Unauthorized/index.tsx"),
