@@ -96,7 +96,9 @@ export default function LoginPage() {
         secure: true,
         sameSite: "Strict",
       });
-
+      
+      localStorage.setItem("token", responseData.token);
+      
       //Actualizar el estado de global de autenticacion
       login({
         token: responseData.token,

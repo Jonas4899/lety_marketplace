@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Link, useNavigate, useSearchParams} from "react-router";
 import { ArrowLeft, Clock, MapPin, Search, Star } from "lucide-react"
 import { Button } from "~/components/ui/button"
@@ -21,42 +21,50 @@ export default function ScheduleAppointmentPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedLocation, setSelectedLocation] = useState("nearby")
 
-  // Datos simulados de clínicas
-  const clinics = [
-    {
-      id: "1",
-      name: "Centro Veterinario Salud Animal",
-      image: "/placeholder.svg?height=100&width=100&text=Clinic",
-      rating: 4.9,
-      reviews: 124,
-      distance: "0.8 km",
-      address: "Av. Principal 123, Colonia Centro",
-      availability: "Disponible hoy",
-      featured: true,
-    },
-    {
-      id: "2",
-      name: "Clínica Veterinaria PetCare",
-      image: "/placeholder.svg?height=100&width=100&text=Clinic",
-      rating: 4.7,
-      reviews: 98,
-      distance: "1.2 km",
-      address: "Calle Secundaria 456, Colonia Norte",
-      availability: "Disponible mañana",
-      featured: false,
-    },
-    {
-      id: "3",
-      name: "Hospital Veterinario Central",
-      image: "/placeholder.svg?height=100&width=100&text=Clinic",
-      rating: 4.8,
-      reviews: 112,
-      distance: "1.5 km",
-      address: "Blvd. Principal 789, Colonia Sur",
-      availability: "Disponible hoy",
-      featured: true,
-    },
-  ]
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000"; // <-- Añade esto arriba si no lo tienes
+
+const [clinics, setClinics] = useState<any[]>([]); // 👈 ahora clinics viene del servidor
+const [loadingClinics, setLoadingClinics] = useState(true); // para mostrar loading si quieres
+
+useEffect(() => {
+  const fetchClinics = async () => {
+    try {
+      const response = await fetch(`${API_URL}/clinics`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al obtener clínicas');
+      }
+
+      const data = await response.json();
+
+      // 🔥 Mapeo para que coincida con el Frontend que espera image, address, etc
+      const clinicsFormateadas = data.clinicas.map((clinica: any) => ({
+        id: clinica.id_clinica,
+        name: clinica.nombre,
+        image: clinica.certificado_url || "/placeholder.svg?height=100&width=100&text=Clinic",
+        rating: 4.5, // 🔥 Puedes poner un valor fijo temporal mientras no guardas ratings en Supabase
+        reviews: Math.floor(Math.random() * 100) + 1, // 🔥 Simulas reviews random de momento
+        distance: "1 km", // 🔥 Simulas distancia si aún no manejas ubicación
+        address: clinica.direccion,
+        availability: "Disponible hoy", // 🔥 Puedes ponerlo fijo
+        featured: false, // 🔥 Puedes manejar featured manualmente después
+      }));
+
+      setClinics(clinicsFormateadas);
+    } catch (error) {
+      console.error('Error trayendo clínicas:', error);
+    } finally {
+      setLoadingClinics(false);
+    }
+  };
+
+  fetchClinics();
+}, []);
 
   // Filtrar clínicas según la búsqueda
   const filteredClinics = clinics.filter(
