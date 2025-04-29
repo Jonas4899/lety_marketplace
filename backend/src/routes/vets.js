@@ -524,4 +524,28 @@ router.get("/veterinary/profile/:id_clinica", async (req, res) => {
   }
 });
 
+// Endpoint: Obtener todas las clínicas veterinarias
+router.get('/clinics', async (req, res) => {
+  try {
+    console.log('Obteniendo clínicas registradas...');
+
+    const { data: clinicas, error } = await supabaseClient
+      .from('clinicas')
+      .select('id_clinica, nombre, direccion, telefono, correo, certificado_url');
+
+    if (error) {
+      console.error('Error consultando clínicas:', error);
+      return res.status(400).json({ message: 'Error al obtener clínicas: ' + error.message });
+    }
+
+    res.status(200).json({
+      message: 'Clínicas obtenidas exitosamente',
+      clinicas,
+    });
+  } catch (error) {
+    console.error('Error interno al obtener clínicas:', error);
+    res.status(500).json({ message: 'Error interno: ' + error.message });
+  }
+});
+
 export default router;

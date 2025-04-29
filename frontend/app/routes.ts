@@ -29,6 +29,19 @@ export default [
       "dashboard-client/vet-search",
       "routes/DashboardClient/BusquedaVeterinarias/index.tsx"
     ),
+    route("dashboard-client", "routes/DashboardClient/index.tsx"), // Agregamos la nueva ruta
+    route(
+      "dashboard-client/appointments",
+      "routes/DashboardClient/Citas/appointments.tsx"
+    ),
+    route(
+      "dashboard-client/appointments/schedule",
+      "routes/DashboardClient/Citas/Agendar/client-schedule.tsx"
+    ),
+    route(
+      "dashboard-client/appointments/:id",
+      "routes/DashboardClient/Citas/ID_citas/id-schedule.tsx"
+    ),
   ]),
   route("login", "routes/LoginPage/index.tsx"),
   route("unauthorized", "routes/Unauthorized/index.tsx"),
