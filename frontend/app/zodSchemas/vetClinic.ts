@@ -16,7 +16,11 @@ export const vetClinicSchema = z
     email: z.string().email("Ingrese un correo electrónico válido"),
     password: z
       .string()
-      .min(6, "La contraseña debe tener al menos 6 caracteres"),
+      .min(8, "La contraseña debe tener al menos 8 caracteres")
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/,
+        "La contraseña debe contener al menos una letra minúscula, una mayúscula, un número y un carácter especial"
+      ),
     confirmPassword: z.string(),
     agreeTerms: z
       .boolean()

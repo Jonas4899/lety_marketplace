@@ -1,25 +1,33 @@
-import express from 'express';
-import authRoutes from './autenticacion.js';
-import userRoutes from './usuarios.js';
-import vetRoutes from './vets.js';
-import serviceRoutes from './servicios.js';
-import scheduleRoutes from './horarios.js';
+import express from "express";
+import authRoutes from "./autenticacion.js";
+import userRoutes from "./usuarios.js";
+import vetRoutes from "./vets.js";
+import serviceRoutes from "./servicios.js";
+import scheduleRoutes from "./horarios.js";
+import analyticsRoutes from "./analytics.js";
+import photosRoutes from "./fotos.js";
 
 const router = express.Router();
 
 // Rutas de autenticación
-router.use('/', authRoutes);
+router.use("/", authRoutes);
 
 // Rutas de usuarios
-router.use('/', userRoutes);
+router.use("/", userRoutes);
 
 // Rutas de veterinarias
-router.use('/', vetRoutes);
+router.use("/", vetRoutes);
 
 // Rutas de servicios
-router.use('/', serviceRoutes);
+router.use("/", serviceRoutes);
 
 // Rutas de horarios
-router.use('/', scheduleRoutes);
+router.use("/", scheduleRoutes);
+
+// Rutas de analytics
+router.use("/", analyticsRoutes);
+
+// Rutas de fotos
+router.use("/", photosRoutes);
 
 export default router;
