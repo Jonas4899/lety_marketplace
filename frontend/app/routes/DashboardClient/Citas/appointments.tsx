@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "~/components/ui/card"
 import { Button } from "~/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
@@ -21,56 +21,41 @@ interface Appointment {
 }
 
 export default function AppointmentsPage() {
+  const [appointments, setAppointments] = useState<Appointment[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000"
 
-  const appointments: Appointment[] = [
-    {
-      id: 1,
-      petName: "Max",
-      petImage: "/placeholder.svg?height=100&width=100&text=Max",
-      clinicName: "Centro Veterinario Salud Animal",
-      clinicAddress: "Av. Principal 123, Colonia Centro",
-      date: "15 de Marzo, 2023",
-      time: "10:00 AM",
-      reason: "Chequeo general y vacunación",
-      status: "confirmed",
-    },
-    {
-      id: 2,
-      petName: "Luna",
-      petImage: "/placeholder.svg?height=100&width=100&text=Luna",
-      clinicName: "Clínica Veterinaria PetCare",
-      clinicAddress: "Calle Secundaria 456, Colonia Norte",
-      date: "18 de Marzo, 2023",
-      time: "3:30 PM",
-      reason: "Revisión de alergia alimentaria",
-      status: "pending",
-    },
-    {
-      id: 3,
-      petName: "Rocky",
-      petImage: "/placeholder.svg?height=100&width=100&text=Rocky",
-      clinicName: "Hospital Veterinario Central",
-      clinicAddress: "Blvd. Principal 789, Colonia Sur",
-      date: "5 de Marzo, 2023",
-      time: "2:00 PM",
-      reason: "Tratamiento de artritis",
-      status: "completed",
-      notes: "Se recomienda continuar con medicación y ejercicio moderado.",
-    },
-    {
-      id: 4,
-      petName: "Max",
-      petImage: "/placeholder.svg?height=100&width=100&text=Max",
-      clinicName: "Centro Veterinario Salud Animal",
-      clinicAddress: "Av. Principal 123, Colonia Centro",
-      date: "10 de Febrero, 2023",
-      time: "11:30 AM",
-      reason: "Vacunación anual",
-      status: "cancelled",
-      notes: "Cancelado por enfermedad del veterinario. Reprogramar.",
-    },
-  ]
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      try {
+        const token = localStorage.getItem('token');
+
+        if (!token) {
+          console.error('Token no encontrado');
+          return;
+        }
+
+        const response = await fetch(`${API_URL}/appointments/user`, {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Error al traer citas");
+        }
+
+        const data = await response.json();
+
+        setAppointments(data.citas || []);
+      } catch (error) {
+        console.error("Error trayendo citas:", error);
+      }
+    };
+
+    fetchAppointments();
+  }, []);
+  
 
   const filteredAppointments = appointments.filter(
     (appointment) =>
