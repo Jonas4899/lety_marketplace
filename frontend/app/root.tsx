@@ -36,6 +36,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="public/lm_logo.svg" type="image/x-icon" />
+        {/* Load Google Maps JS API for Places autocomplete */}
+        <script
+          async
+          defer
+          src={`https://maps.googleapis.com/maps/api/js?key=${
+            import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+          }&libraries=places`}
+        />
         <Meta />
         <Links />
       </head>

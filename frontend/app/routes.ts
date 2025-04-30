@@ -29,7 +29,6 @@ export default [
       "dashboard-client/vet-search",
       "routes/DashboardClient/BusquedaVeterinarias/index.tsx"
     ),
-    route("dashboard-client", "routes/DashboardClient/index.tsx"), // Agregamos la nueva ruta
     route(
       "dashboard-client/appointments",
       "routes/DashboardClient/Citas/appointments.tsx"

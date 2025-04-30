@@ -46,6 +46,8 @@ router.post(
         contrasena,
         descripcion,
         NIT,
+        latitud,
+        longitud,
         servicios: serviciosString,
       } = req.body;
 
@@ -57,6 +59,8 @@ router.post(
         contrasenaRecibida: !!contrasena,
         descripcion,
         NIT,
+        latitud,
+        longitud,
         serviciosRecibidos: !!serviciosString,
       });
 
@@ -87,6 +91,18 @@ router.post(
             message: "Error al procesar los servicios: formato inválido",
           });
         }
+      }
+
+      // Parse and validate coordinates
+      const latNum = latitud !== undefined ? parseFloat(latitud) : null;
+      const lngNum = longitud !== undefined ? parseFloat(longitud) : null;
+      if (
+        (latitud !== undefined && isNaN(latNum)) ||
+        (longitud !== undefined && isNaN(lngNum))
+      ) {
+        return res
+          .status(400)
+          .json({ message: "Latitud y longitud deben ser valores numéricos." });
       }
 
       // Obtener el archivo del certificado
@@ -155,6 +171,8 @@ router.post(
             contrasena: hashedPassword,
             descripcion,
             NIT,
+            latitud: latNum,
+            longitud: lngNum,
             estado,
             fecha_registro,
             certificado_url,
@@ -296,12 +314,10 @@ router.put("/update/veterinary/info/:id_clinica", async (req, res) => {
       });
     }
 
-    res
-      .status(200)
-      .json({
-        message: "Información de la clínica actualizada exitosamente",
-        data,
-      });
+    res.status(200).json({
+      message: "Información de la clínica actualizada exitosamente",
+      data,
+    });
   } catch (error) {
     console.error("Error al actualizar la información de la clínica:", error);
     res.status(500).json({ message: "Error interno del servidor" });
@@ -335,22 +351,35 @@ router.put("/update/veterinary/hours/:id_clinica", async (req, res) => {
 
     if (errorBorrar) {
       return res.status(400).json({
-        message: "Error al actualizar horarios: No se pudieron eliminar los horarios existentes",
+        message:
+          "Error al actualizar horarios: No se pudieron eliminar los horarios existentes",
         error: errorBorrar.message,
       });
     }
 
     // Preparar los nuevos horarios para inserción
     const nuevosHorarios = [];
-    const diasSemana = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const diasSemana = [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+      "sunday",
+    ];
 
-    diasSemana.forEach(dia => {
+    diasSemana.forEach((dia) => {
       if (openingHours[dia]) {
         nuevosHorarios.push({
           id_clinica: id_clinica,
           dia_semana: dia,
-          hora_apertura: openingHours[dia].is24Hours ? "00:00:00" : openingHours[dia].open + ":00",
-          hora_cierre: openingHours[dia].is24Hours ? "23:59:59" : openingHours[dia].close + ":00",
+          hora_apertura: openingHours[dia].is24Hours
+            ? "00:00:00"
+            : openingHours[dia].open + ":00",
+          hora_cierre: openingHours[dia].is24Hours
+            ? "23:59:59"
+            : openingHours[dia].close + ":00",
           es_24h: openingHours[dia].is24Hours,
           esta_cerrado: openingHours[dia].closed,
         });
@@ -359,10 +388,11 @@ router.put("/update/veterinary/hours/:id_clinica", async (req, res) => {
 
     // Insertar los nuevos horarios
     if (nuevosHorarios.length > 0) {
-      const { data: horariosInsertados, error: errorInsercion } = await supabaseClient
-        .from("horarios_atencion")
-        .insert(nuevosHorarios)
-        .select();
+      const { data: horariosInsertados, error: errorInsercion } =
+        await supabaseClient
+          .from("horarios_atencion")
+          .insert(nuevosHorarios)
+          .select();
 
       if (errorInsercion) {
         return res.status(400).json({
@@ -382,9 +412,9 @@ router.put("/update/veterinary/hours/:id_clinica", async (req, res) => {
     }
   } catch (error) {
     console.error("Error al actualizar horarios:", error);
-    res.status(500).json({ 
-      message: "Error interno del servidor", 
-      error: error.message 
+    res.status(500).json({
+      message: "Error interno del servidor",
+      error: error.message,
     });
   }
 });
@@ -435,9 +465,9 @@ router.put("/update/veterinary/details/:id_clinica", async (req, res) => {
     });
   } catch (error) {
     console.error("Error al actualizar detalles de la clínica:", error);
-    res.status(500).json({ 
-      message: "Error interno del servidor", 
-      error: error.message 
+    res.status(500).json({
+      message: "Error interno del servidor",
+      error: error.message,
     });
   }
 });
@@ -476,21 +506,45 @@ router.get("/veterinary/profile/:id_clinica", async (req, res) => {
     // Formatear los horarios para el frontend
     const openingHours = {
       monday: { open: "09:00", close: "18:00", closed: true, is24Hours: false },
-      tuesday: { open: "09:00", close: "18:00", closed: true, is24Hours: false },
-      wednesday: { open: "09:00", close: "18:00", closed: true, is24Hours: false },
-      thursday: { open: "09:00", close: "18:00", closed: true, is24Hours: false },
+      tuesday: {
+        open: "09:00",
+        close: "18:00",
+        closed: true,
+        is24Hours: false,
+      },
+      wednesday: {
+        open: "09:00",
+        close: "18:00",
+        closed: true,
+        is24Hours: false,
+      },
+      thursday: {
+        open: "09:00",
+        close: "18:00",
+        closed: true,
+        is24Hours: false,
+      },
       friday: { open: "09:00", close: "18:00", closed: true, is24Hours: false },
-      saturday: { open: "09:00", close: "18:00", closed: true, is24Hours: false },
+      saturday: {
+        open: "09:00",
+        close: "18:00",
+        closed: true,
+        is24Hours: false,
+      },
       sunday: { open: "09:00", close: "18:00", closed: true, is24Hours: false },
     };
 
     // Actualizar con los horarios reales
-    horarios.forEach(horario => {
+    horarios.forEach((horario) => {
       const dia = horario.dia_semana;
       if (openingHours[dia]) {
         openingHours[dia] = {
-          open: horario.hora_apertura ? horario.hora_apertura.substring(0, 5) : "09:00",
-          close: horario.hora_cierre ? horario.hora_cierre.substring(0, 5) : "18:00",
+          open: horario.hora_apertura
+            ? horario.hora_apertura.substring(0, 5)
+            : "09:00",
+          close: horario.hora_cierre
+            ? horario.hora_cierre.substring(0, 5)
+            : "18:00",
           closed: horario.esta_cerrado,
           is24Hours: horario.es_24h,
         };
@@ -517,34 +571,38 @@ router.get("/veterinary/profile/:id_clinica", async (req, res) => {
     res.status(200).json(perfilCompleto);
   } catch (error) {
     console.error("Error al obtener perfil de la clínica:", error);
-    res.status(500).json({ 
-      message: "Error interno del servidor", 
-      error: error.message 
+    res.status(500).json({
+      message: "Error interno del servidor",
+      error: error.message,
     });
   }
 });
 
 // Endpoint: Obtener todas las clínicas veterinarias
-router.get('/clinics', async (req, res) => {
+router.get("/clinics", async (req, res) => {
   try {
-    console.log('Obteniendo clínicas registradas...');
+    console.log("Obteniendo clínicas registradas...");
 
     const { data: clinicas, error } = await supabaseClient
-      .from('clinicas')
-      .select('id_clinica, nombre, direccion, telefono, correo, certificado_url');
+      .from("clinicas")
+      .select(
+        "id_clinica, nombre, direccion, telefono, correo, certificado_url"
+      );
 
     if (error) {
-      console.error('Error consultando clínicas:', error);
-      return res.status(400).json({ message: 'Error al obtener clínicas: ' + error.message });
+      console.error("Error consultando clínicas:", error);
+      return res
+        .status(400)
+        .json({ message: "Error al obtener clínicas: " + error.message });
     }
 
     res.status(200).json({
-      message: 'Clínicas obtenidas exitosamente',
+      message: "Clínicas obtenidas exitosamente",
       clinicas,
     });
   } catch (error) {
-    console.error('Error interno al obtener clínicas:', error);
-    res.status(500).json({ message: 'Error interno: ' + error.message });
+    console.error("Error interno al obtener clínicas:", error);
+    res.status(500).json({ message: "Error interno: " + error.message });
   }
 });
 
