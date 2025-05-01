@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -21,27 +21,47 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import axios from "axios";
+import ClinicImageCarousel from "./ClinicImageCarousel";
+import ClinicDefaultImage from "./ClinicDefaultImage";
+
+interface ClinicPhoto {
+  id_foto: number;
+  id_clinica: number;
+  url: string;
+  titulo?: string;
+  tipo?: string;
+  es_principal: boolean;
+  created_at: string;
+}
 
 interface Clinic {
-  id: number;
-  name: string;
-  image: string;
-  rating: number;
-  reviews: number;
-  distance: string;
-  address: string;
-  specialties: string[];
-  availability: string;
-  services: string[];
-  openNow: boolean;
-  price: "$" | "$$" | "$$$";
-  petTypes: string[];
+  id_clinica: number;
+  nombre: string;
+  direccion: string;
+  telefono: string;
+  correo: string;
+  certificado_url?: string;
+  // Propiedades adicionales para UI y filtrado
+  photos?: ClinicPhoto[];
+  rating?: number;
+  reviews?: number;
+  distance?: string;
+  specialties?: string[];
+  availability?: string;
+  services?: string[];
+  openNow?: boolean;
+  price?: "$" | "$$" | "$$$";
+  petTypes?: string[];
   featured?: boolean;
   favorite?: boolean;
 }
 
 export default function ClinicsPage() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [distance, setDistance] = useState([5]);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
@@ -52,160 +72,116 @@ export default function ClinicsPage() {
   );
   const [selectedPriceRange, setSelectedPriceRange] = useState<string>("any");
 
-  const clinics: Clinic[] = [
-    {
-      id: 1,
-      name: "Centro Veterinario Salud Animal",
-      image: "/placeholder.svg?height=200&width=400&text=Centro Veterinario",
-      rating: 4.9,
-      reviews: 124,
-      distance: "0.8 km",
-      address: "Av. Principal 123, Colonia Centro",
-      specialties: ["Emergencias", "Cirugía", "Dental"],
-      availability: "Abierto ahora • Cierra a las 20:00",
-      services: [
-        "Consulta general",
-        "Vacunación",
-        "Cirugía",
-        "Laboratorio",
-        "Rayos X",
-      ],
-      openNow: true,
-      price: "$$",
-      petTypes: ["Perros", "Gatos", "Aves"],
-      featured: true,
-      favorite: true,
-    },
-    {
-      id: 2,
-      name: "Clínica Veterinaria PetCare",
-      image: "/placeholder.svg?height=200&width=400&text=PetCare",
-      rating: 4.7,
-      reviews: 98,
-      distance: "1.2 km",
-      address: "Calle Secundaria 456, Colonia Norte",
-      specialties: ["Preventiva", "Dermatología", "Nutrición"],
-      availability: "Abierto ahora • Cierra a las 19:00",
-      services: [
-        "Consulta general",
-        "Vacunación",
-        "Dermatología",
-        "Nutrición",
-        "Peluquería",
-      ],
-      openNow: true,
-      price: "$",
-      petTypes: ["Perros", "Gatos"],
-      featured: true,
-    },
-    {
-      id: 3,
-      name: "Hospital Veterinario Central",
-      image: "/placeholder.svg?height=200&width=400&text=Hospital Veterinario",
-      rating: 4.8,
-      reviews: 112,
-      distance: "1.5 km",
-      address: "Blvd. Principal 789, Colonia Sur",
-      specialties: ["Exóticos", "Ortopedia", "Cardiología"],
-      availability: "Abierto ahora • Cierra a las 18:00",
-      services: [
-        "Consulta general",
-        "Cirugía",
-        "Hospitalización",
-        "Especialidades",
-        "Emergencias 24/7",
-      ],
-      openNow: true,
-      price: "$$$",
-      petTypes: ["Perros", "Gatos", "Exóticos", "Reptiles"],
-      featured: true,
-    },
-    {
-      id: 4,
-      name: "Veterinaria El Buen Amigo",
-      image: "/placeholder.svg?height=200&width=400&text=El Buen Amigo",
-      rating: 4.5,
-      reviews: 87,
-      distance: "2.3 km",
-      address: "Av. Secundaria 234, Colonia Este",
-      specialties: ["Preventiva", "Vacunación", "Peluquería"],
-      availability: "Cerrado • Abre mañana a las 9:00",
-      services: [
-        "Consulta general",
-        "Vacunación",
-        "Peluquería",
-        "Desparasitación",
-      ],
-      openNow: false,
-      price: "$",
-      petTypes: ["Perros", "Gatos"],
-    },
-    {
-      id: 5,
-      name: "Centro Médico Veterinario Especializado",
-      image: "/placeholder.svg?height=200&width=400&text=Centro Especializado",
-      rating: 4.9,
-      reviews: 156,
-      distance: "3.1 km",
-      address: "Calle Principal 567, Colonia Oeste",
-      specialties: ["Oncología", "Neurología", "Cardiología"],
-      availability: "Abierto ahora • Cierra a las 17:00",
-      services: [
-        "Consulta especializada",
-        "Cirugía avanzada",
-        "Diagnóstico por imagen",
-        "Tratamientos oncológicos",
-      ],
-      openNow: true,
-      price: "$$$",
-      petTypes: ["Perros", "Gatos", "Exóticos"],
-      favorite: true,
-    },
-    {
-      id: 6,
-      name: "Clínica Veterinaria Patitas Felices",
-      image: "/placeholder.svg?height=200&width=400&text=Patitas Felices",
-      rating: 4.6,
-      reviews: 92,
-      distance: "3.5 km",
-      address: "Av. Terciaria 890, Colonia Norte",
-      specialties: ["Preventiva", "Comportamiento", "Nutrición"],
-      availability: "Cerrado • Abre mañana a las 10:00",
-      services: [
-        "Consulta general",
-        "Vacunación",
-        "Asesoría en comportamiento",
-        "Planes nutricionales",
-      ],
-      openNow: false,
-      price: "$$",
-      petTypes: ["Perros", "Gatos", "Pequeños mamíferos"],
-    },
-  ];
+  useEffect(() => {
+    // Función para cargar las clínicas desde el backend
+    const fetchClinics = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get("http://localhost:3001/clinics");
+
+        if (response.data && response.data.clinicas) {
+          // Transformar los datos del backend al formato que espera nuestra UI
+          const formattedClinics = response.data.clinicas.map(
+            (clinic: any) => ({
+              id_clinica: clinic.id_clinica,
+              nombre: clinic.nombre,
+              direccion: clinic.direccion,
+              telefono: clinic.telefono,
+              correo: clinic.correo,
+              certificado_url: clinic.certificado_url,
+              photos: [], // Inicializar array vacío para fotos
+              // Valores por defecto para las propiedades de UI
+              rating: 4.5, // Valor por defecto
+              reviews: Math.floor(Math.random() * 100) + 20, // Valor aleatorio para demo
+              distance: (Math.random() * 5 + 0.5).toFixed(1) + " km", // Distancia aleatoria para demo
+              specialties: ["Consulta general", "Vacunación"], // Especialidades por defecto
+              availability:
+                Math.random() > 0.3
+                  ? "Abierto ahora • Cierra a las 18:00"
+                  : "Cerrado • Abre mañana a las 9:00",
+              openNow: Math.random() > 0.3, // Aleatoriamente abierto o cerrado
+              price: ["$", "$$", "$$$"][Math.floor(Math.random() * 3)] as
+                | "$"
+                | "$$"
+                | "$$$", // Precio aleatorio
+              petTypes: ["Perros", "Gatos"], // Tipos de mascotas por defecto
+              featured: Math.random() > 0.7, // Algunas clínicas destacadas
+              favorite: Math.random() > 0.8, // Algunas clínicas favoritas
+            })
+          );
+
+          setClinics(formattedClinics);
+
+          // Cargar fotos para cada clínica
+          loadClinicPhotos(formattedClinics);
+        } else {
+          setError("Formato de respuesta inesperado del servidor");
+        }
+      } catch (err) {
+        console.error("Error al obtener las clínicas:", err);
+        setError(
+          "Error al cargar las clínicas veterinarias. Por favor, intenta de nuevo."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClinics();
+  }, []);
+
+  // Función para cargar las fotos de cada clínica
+  const loadClinicPhotos = async (clinics: Clinic[]) => {
+    const updatedClinics = [...clinics];
+
+    for (const clinic of updatedClinics) {
+      try {
+        const response = await axios.get(
+          `http://localhost:3001/veterinary/photos/${clinic.id_clinica}`
+        );
+
+        if (response.data && response.data.fotos) {
+          clinic.photos = response.data.fotos.slice(0, 4); // Máximo 4 fotos
+        }
+      } catch (err) {
+        console.error(
+          `Error al cargar fotos para clínica ${clinic.id_clinica}:`,
+          err
+        );
+        // No interrumpir el flujo si falla una clínica
+      }
+    }
+
+    setClinics(updatedClinics);
+  };
 
   // Filtrar clínicas según los criterios seleccionados
   const filteredClinics = clinics.filter((clinic) => {
     // Filtro por búsqueda
     const matchesSearch =
       searchQuery === "" ||
-      clinic.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      clinic.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      clinic.specialties.some((s) =>
-        s.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      clinic.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      clinic.direccion.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (clinic.specialties &&
+        clinic.specialties.some((s) =>
+          s.toLowerCase().includes(searchQuery.toLowerCase())
+        ));
 
-    // Filtro por distancia
-    const matchesDistance = Number.parseFloat(clinic.distance) <= distance[0];
+    // Filtro por distancia (si la distancia está disponible)
+    const clinicDistance = clinic.distance ? parseFloat(clinic.distance) : 0;
+    const matchesDistance = clinicDistance <= distance[0];
 
     // Filtro por especialidades
     const matchesSpecialties =
       selectedSpecialties.length === 0 ||
-      selectedSpecialties.some((s) => clinic.specialties.includes(s));
+      (clinic.specialties &&
+        selectedSpecialties.some((s) => clinic.specialties?.includes(s)));
 
     // Filtro por tipos de mascotas
     const matchesPetTypes =
       selectedPetTypes.length === 0 ||
-      selectedPetTypes.some((p) => clinic.petTypes.includes(p));
+      (clinic.petTypes &&
+        selectedPetTypes.some((p) => clinic.petTypes?.includes(p)));
 
     // Filtro por disponibilidad
     const matchesAvailability =
@@ -269,11 +245,99 @@ export default function ClinicsPage() {
   const toggleFavorite = (id: number) => {
     // En una aplicación real, esto enviaría una solicitud al servidor
     console.log(`Toggling favorite for clinic ${id}`);
+
+    // Actualizar estado local para UI
+    setClinics(
+      clinics.map((clinic) => {
+        if (clinic.id_clinica === id) {
+          return { ...clinic, favorite: !clinic.favorite };
+        }
+        return clinic;
+      })
+    );
   };
 
   // Función para iniciar el proceso de programación de citas
   const handleScheduleAppointment = (clinicId: number) => {
     navigate(`/pet-dashboard/appointments/schedule?clinic=${clinicId}`);
+  };
+
+  // Mostrar mensaje de carga o error
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+        <p className="text-muted-foreground">Cargando veterinarias...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh]">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 mb-4">
+          <Search className="h-10 w-10 text-red-500" />
+        </div>
+        <h3 className="mb-2 text-xl font-semibold">Error</h3>
+        <p className="text-muted-foreground">{error}</p>
+        <Button className="mt-4" onClick={() => window.location.reload()}>
+          Reintentar
+        </Button>
+      </div>
+    );
+  }
+
+  // Función para renderizar la sección de imagen de cada clínica
+  const renderClinicImage = (clinic: Clinic) => {
+    const hasPhotos = clinic.photos && clinic.photos.length > 0;
+
+    // Elemento de "favorito" que se mostrará sobre la imagen
+    const favoriteButton = (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute right-3 top-3 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm z-10"
+        onClick={() => toggleFavorite(clinic.id_clinica)}
+      >
+        <Heart
+          className={`h-4 w-4 ${
+            clinic.favorite ? "fill-red-500 text-red-500" : ""
+          }`}
+        />
+      </Button>
+    );
+
+    // Badge de "destacado" que se mostrará sobre la imagen
+    const featuredBadge = clinic.featured && (
+      <Badge className="absolute left-3 top-3 bg-primary text-primary-foreground z-10">
+        Destacado
+      </Badge>
+    );
+
+    if (hasPhotos) {
+      return (
+        <div className="relative w-full md:w-1/3 p-3">
+          <div className="overflow-hidden rounded-lg shadow-sm">
+            <ClinicImageCarousel
+              photos={clinic.photos!}
+              clinicName={clinic.nombre}
+            />
+          </div>
+          {favoriteButton}
+          {featuredBadge}
+        </div>
+      );
+    } else {
+      return (
+        <div className="relative w-full md:w-1/3 p-3">
+          <div className="overflow-hidden rounded-lg shadow-sm">
+            <ClinicDefaultImage clinicName={clinic.nombre} />
+          </div>
+          {favoriteButton}
+          {featuredBadge}
+        </div>
+      );
+    }
   };
 
   return (
@@ -509,42 +573,15 @@ export default function ClinicsPage() {
                   </div>
 
                   {filteredClinics.map((clinic) => (
-                    <Card key={clinic.id} className="overflow-hidden">
+                    <Card key={clinic.id_clinica} className="overflow-hidden">
                       <CardContent className="p-0">
                         <div className="flex flex-col md:flex-row">
-                          <div className="relative md:w-1/3">
-                            <div className="aspect-video w-full md:h-full">
-                              <img
-                                src={clinic.image || "/placeholder.svg"}
-                                alt={clinic.name}
-                                className="object-cover w-full h-full"
-                              />
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="absolute right-2 top-2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm"
-                              onClick={() => toggleFavorite(clinic.id)}
-                            >
-                              <Heart
-                                className={`h-4 w-4 ${
-                                  clinic.favorite
-                                    ? "fill-red-500 text-red-500"
-                                    : ""
-                                }`}
-                              />
-                            </Button>
-                            {clinic.featured && (
-                              <Badge className="absolute left-2 top-2 bg-primary text-primary-foreground">
-                                Destacado
-                              </Badge>
-                            )}
-                          </div>
+                          {renderClinicImage(clinic)}
 
                           <div className="flex flex-1 flex-col p-4">
                             <div className="mb-2 flex items-center justify-between">
                               <h3 className="text-lg font-semibold">
-                                {clinic.name}
+                                {clinic.nombre}
                               </h3>
                               <div className="flex items-center">
                                 <Star className="mr-1 h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -560,7 +597,7 @@ export default function ClinicsPage() {
                             <div className="mb-2 flex items-center text-sm text-muted-foreground">
                               <MapPin className="mr-1 h-4 w-4" />
                               <span>
-                                {clinic.distance} • {clinic.address}
+                                {clinic.distance} • {clinic.direccion}
                               </span>
                             </div>
 
@@ -570,7 +607,7 @@ export default function ClinicsPage() {
                             </div>
 
                             <div className="mb-3 flex flex-wrap gap-1">
-                              {clinic.specialties.map((specialty) => (
+                              {clinic.specialties?.map((specialty) => (
                                 <Badge
                                   key={specialty}
                                   variant="secondary"
@@ -582,7 +619,7 @@ export default function ClinicsPage() {
                             </div>
 
                             <div className="mb-3 flex flex-wrap gap-1">
-                              {clinic.petTypes.map((petType) => (
+                              {clinic.petTypes?.map((petType) => (
                                 <Badge
                                   key={petType}
                                   variant="outline"
@@ -594,29 +631,17 @@ export default function ClinicsPage() {
                             </div>
 
                             <div className="mt-auto flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">
-                                  {clinic.price === "$"
-                                    ? "Económico"
-                                    : clinic.price === "$$"
-                                    ? "Moderado"
-                                    : "Premium"}
-                                </span>
-                                <span className="text-sm text-muted-foreground">
-                                  {clinic.price}
-                                </span>
-                              </div>
                               <div className="flex gap-2">
                                 <Button variant="outline" size="sm" asChild>
                                   <Link
-                                    to={`/pet-dashboard/clinics/${clinic.id}`}
+                                    to={`/pet-dashboard/clinics/${clinic.id_clinica}`}
                                   >
                                     Ver perfil
                                   </Link>
                                 </Button>
                                 <Button className="w-full sm:w-auto" asChild>
                                   <Link
-                                    to={`/pet-dashboard/appointments/schedule?clinic=${clinic.id}`}
+                                    to={`/pet-dashboard/appointments/schedule?clinic=${clinic.id_clinica}`}
                                   >
                                     Agendar cita
                                   </Link>
@@ -643,23 +668,30 @@ export default function ClinicsPage() {
                 <div className="absolute bottom-4 left-4 right-4 flex flex-col gap-2 md:w-1/3">
                   {filteredClinics.slice(0, 3).map((clinic) => (
                     <Card
-                      key={clinic.id}
-                      className="bg-background/95 backdrop-blur-sm"
+                      key={clinic.id_clinica}
+                      className="bg-background/95 backdrop-blur-sm shadow-sm overflow-hidden"
                     >
                       <CardContent className="p-3">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 overflow-hidden rounded-full bg-muted">
+                          <div className="h-12 w-12 overflow-hidden rounded-full bg-muted shadow-sm">
                             <div className="relative h-full w-full">
-                              <img
-                                src={clinic.image || "/placeholder.svg"}
-                                alt={clinic.name}
-                                className="object-cover h-full w-full"
-                              />
+                              {clinic.photos && clinic.photos.length > 0 ? (
+                                <img
+                                  src={clinic.photos[0].url}
+                                  alt={clinic.nombre}
+                                  className="object-cover h-full w-full"
+                                />
+                              ) : (
+                                <ClinicDefaultImage
+                                  clinicName={clinic.nombre}
+                                  className="rounded-full"
+                                />
+                              )}
                             </div>
                           </div>
                           <div className="flex-1">
                             <h4 className="text-sm font-medium">
-                              {clinic.name}
+                              {clinic.nombre}
                             </h4>
                             <p className="text-xs text-muted-foreground">
                               {clinic.distance} • {clinic.rating} ★
@@ -672,13 +704,15 @@ export default function ClinicsPage() {
                               asChild
                               className="h-8"
                             >
-                              <Link to={`/pet-dashboard/clinics/${clinic.id}`}>
+                              <Link
+                                to={`/pet-dashboard/clinics/${clinic.id_clinica}`}
+                              >
                                 Ver
                               </Link>
                             </Button>
                             <Button size="sm" className="h-8" asChild>
                               <Link
-                                to={`/pet-dashboard/appointments/schedule?clinic=${clinic.id}`}
+                                to={`/pet-dashboard/appointments/schedule?clinic=${clinic.id_clinica}`}
                               >
                                 Agendar
                               </Link>

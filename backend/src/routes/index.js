@@ -6,8 +6,9 @@ import serviceRoutes from "./servicios.js";
 import scheduleRoutes from "./horarios.js";
 import analyticsRoutes from "./analytics.js";
 import photosRoutes from "./fotos.js";
-import appoinmentRoutes from './citas.js';
-import pets from './mascotas.js';
+import appoinmentRoutes from "./citas.js";
+import pets from "./mascotas.js";
+import placesRoutes from "./places.js"; // Import the new places routes
 
 const router = express.Router();
 
@@ -33,10 +34,12 @@ router.use("/", analyticsRoutes);
 router.use("/", photosRoutes);
 
 // Rutas de programación de citas
-router.use('/', appoinmentRoutes);
+router.use("/", appoinmentRoutes);
 
 // Rutas de mascotas y servicios
-router.use('/', pets);
+router.use("/", pets);
 
+// Rutas de Google Places API (proxy)
+router.use("/", placesRoutes);
 
 export default router;

@@ -77,25 +77,7 @@ export function VetClinicSignup({
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [healthCertificateFile, setHealthCertificateFile] =
     useState<File | null>(null);
-  const [attemptedFinalSubmit, setAttemptedFinalSubmit] = useState(false); // Keep if used
-
-  // --- State for coordinates ---
-  const [coordinates, setCoordinates] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
-
-  // --- Get Google Maps API Key ---
-  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-
-  useEffect(() => {
-    if (!googleMapsApiKey) {
-      console.error(
-        "VITE_GOOGLE_MAPS_API_KEY is not defined in the environment. Address autocomplete will be disabled."
-      );
-      // Optionally, set an error state to inform the user
-    }
-  }, [googleMapsApiKey]);
+  const [attemptedFinalSubmit, setAttemptedFinalSubmit] = useState(false);
 
   const {
     register,
@@ -122,34 +104,6 @@ export function VetClinicSignup({
     },
     mode: "onChange", // Or "onBlur"
   });
-
-  // Add this function inside your VetClinicSignup component
-  const handleAddressSelection = useCallback(
-    (
-      address: string,
-      placeId?: string,
-      details?: { lat: number; lng: number }
-    ) => {
-      // Use setValue from React Hook Form to update the 'address' field value
-      setValue("address", address, {
-        shouldValidate: true,
-        shouldDirty: true,
-        shouldTouch: true,
-      });
-      console.log("Selected Address:", address);
-      console.log("Place ID:", placeId);
-      if (details) {
-        setCoordinates({ lat: details.lat, lng: details.lng });
-        console.log("Coordinates set:", { lat: details.lat, lng: details.lng });
-      } else {
-        setCoordinates(null);
-        console.warn("Coordinates not available for selected address.");
-      }
-      // Clear validation error on successful selection if field was previously invalid
-      clearErrors("address");
-    },
-    [setValue, clearErrors] // Add clearErrors to dependency array
-  );
 
   const handleCheckboxChange = (
     name: keyof VetClinicFormData,
@@ -268,10 +222,17 @@ export function VetClinicSignup({
       apiFormData.append("NIT", formData.nit);
 
       // Append coordinates if available and needed by backend
-      if (coordinates) {
-        apiFormData.append("latitud", coordinates.lat.toString());
-        apiFormData.append("longitud", coordinates.lng.toString());
-      }
+      // if (coordinates?.lat && coordinates?.lng) {
+      //   apiFormData.append("latitud", coordinates.lat.toString());
+      //   apiFormData.append("longitud", coordinates.lng.toString());
+      // } else {
+      //   console.error("Coordinates missing at submission");
+      //   setRegistrationError(
+      //     "No se pudieron determinar las coordenadas de la dirección. Por favor, seleccione una dirección válida."
+      //   );
+      //   setIsRegistering(false);
+      //   return;
+      // }
 
       // Append file if selected
       if (healthCertificateFile) {
@@ -348,7 +309,7 @@ export function VetClinicSignup({
 
     // Log data just before sending
     console.log("Final form data validated:", data);
-    console.log("Coordinates state at submission:", coordinates);
+    // console.log("Coordinates state at submission:", coordinates);
 
     // Proceed with the actual API call
     submitVetRegistration(data);
@@ -563,28 +524,27 @@ export function VetClinicSignup({
                       </p>
                     )}
                 </div>
-                {/* Address - Replaced with GooglePlacesAutocomplete */}
+                {/* Address - Uses AddressAutocompleteInput component */}
                 <Controller
                   name="address"
                   control={control}
-                  // Rules defined in Zod schema, but can add more here if needed
                   render={({ field, fieldState: { error } }) => (
                     <AddressAutocompleteInput
                       label="Dirección de la clínica"
-                      placeholder="Empezar a escribir la dirección..."
-                      onAddressSelect={handleAddressSelection}
-                      initialValue={field.value || ""}
+                      placeholder="Escribe la dirección completa..."
+                      name={field.name}
+                      value={field.value}
+                      onChange={(value) => {
+                        field.onChange(value);
+                      }}
+                      onBlur={field.onBlur}
                       required
-                      className={
-                        error
-                          ? "border-destructive focus-visible:ring-destructive"
-                          : ""
-                      }
-                      disabled={!googleMapsApiKey || isRegistering}
+                      className={error ? "border-destructive" : ""}
+                      disabled={isRegistering || field.disabled}
+                      errorMessage={error?.message}
                     />
                   )}
                 />
-                {/* Error message is now passed to the component via errorMessage prop */}
                 {/* Phone */}
                 <div className="grid gap-2">
                   <Label htmlFor="phone">Teléfono</Label>
