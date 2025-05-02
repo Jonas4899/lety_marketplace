@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -24,6 +24,8 @@ import {
 import axios from "axios";
 import ClinicImageCarousel from "./ClinicImageCarousel";
 import ClinicDefaultImage from "./ClinicDefaultImage";
+import MapView from "./MapView";
+import config from "~/config";
 
 interface ClinicPhoto {
   id_foto: number;
@@ -42,6 +44,9 @@ interface Clinic {
   telefono: string;
   correo: string;
   certificado_url?: string;
+  // Coordenadas
+  latitud?: number;
+  longitud?: number;
   // Propiedades adicionales para UI y filtrado
   photos?: ClinicPhoto[];
   rating?: number;
@@ -55,6 +60,9 @@ interface Clinic {
   petTypes?: string[];
   featured?: boolean;
   favorite?: boolean;
+  detalles?: {
+    especialidades?: string[];
+  };
 }
 
 export default function ClinicsPage() {
@@ -65,35 +73,97 @@ export default function ClinicsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [distance, setDistance] = useState([5]);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
-  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
   const [selectedPetTypes, setSelectedPetTypes] = useState<string[]>([]);
-  const [selectedAvailability, setSelectedAvailability] = useState<string[]>(
-    []
-  );
-  const [selectedPriceRange, setSelectedPriceRange] = useState<string>("any");
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const [mapInitialized, setMapInitialized] = useState(false);
+  const initialRenderDone = useRef(false);
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+
+  // Initialize the map with a delay to ensure DOM is fully rendered
+  useEffect(() => {
+    if (!initialRenderDone.current) {
+      initialRenderDone.current = true;
+
+      // Delay initialization to ensure DOM is ready
+      const timer = setTimeout(() => {
+        console.log("Delayed map initialization");
+        setMapInitialized(true);
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   useEffect(() => {
     // Función para cargar las clínicas desde el backend
     const fetchClinics = async () => {
       try {
         setLoading(true);
-        const response = await axios.get("http://localhost:3001/clinics");
+        const response = await axios.get(`${config.API_BASE_URL}/clinics`);
 
         if (response.data && response.data.clinicas) {
+          // Función para calcular la distancia entre dos puntos usando la fórmula de Haversine
+          const calculateDistance = (
+            lat1: number,
+            lon1: number,
+            lat2: number,
+            lon2: number
+          ) => {
+            const R = 6371; // Radio de la Tierra en km
+            const dLat = (lat2 - lat1) * (Math.PI / 180);
+            const dLon = (lon2 - lon1) * (Math.PI / 180);
+            const a =
+              Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * (Math.PI / 180)) *
+                Math.cos(lat2 * (Math.PI / 180)) *
+                Math.sin(dLon / 2) *
+                Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; // Distancia en km
+          };
+
+          // Obtener la ubicación del usuario
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                setUserLocation({
+                  lat: position.coords.latitude,
+                  lng: position.coords.longitude,
+                });
+              },
+              (error) => {
+                console.error("Error al obtener la ubicación:", error);
+              }
+            );
+          }
+
           // Transformar los datos del backend al formato que espera nuestra UI
-          const formattedClinics = response.data.clinicas.map(
-            (clinic: any) => ({
+          const formattedClinics = response.data.clinicas.map((clinic: any) => {
+            let distance = undefined;
+            if (userLocation && clinic.latitud && clinic.longitud) {
+              const dist = calculateDistance(
+                userLocation.lat,
+                userLocation.lng,
+                clinic.latitud,
+                clinic.longitud
+              );
+              distance = `${dist.toFixed(1)} km`;
+            }
+
+            return {
               id_clinica: clinic.id_clinica,
               nombre: clinic.nombre,
               direccion: clinic.direccion,
               telefono: clinic.telefono,
               correo: clinic.correo,
               certificado_url: clinic.certificado_url,
+              latitud: clinic.latitud || undefined,
+              longitud: clinic.longitud || undefined,
               photos: [], // Inicializar array vacío para fotos
-              // Valores por defecto para las propiedades de UI
-              rating: 4.5, // Valor por defecto
-              reviews: Math.floor(Math.random() * 100) + 20, // Valor aleatorio para demo
-              distance: (Math.random() * 5 + 0.5).toFixed(1) + " km", // Distancia aleatoria para demo
+              distance, // Usar la distancia calculada o undefined
               specialties: ["Consulta general", "Vacunación"], // Especialidades por defecto
               availability:
                 Math.random() > 0.3
@@ -104,11 +174,11 @@ export default function ClinicsPage() {
                 | "$"
                 | "$$"
                 | "$$$", // Precio aleatorio
-              petTypes: ["Perros", "Gatos"], // Tipos de mascotas por defecto
-              featured: Math.random() > 0.7, // Algunas clínicas destacadas
+              petTypes: clinic.detalles?.especialidades || ["Perros", "Gatos"],
+              featured: false,
               favorite: Math.random() > 0.8, // Algunas clínicas favoritas
-            })
-          );
+            };
+          });
 
           setClinics(formattedClinics);
 
@@ -137,7 +207,7 @@ export default function ClinicsPage() {
     for (const clinic of updatedClinics) {
       try {
         const response = await axios.get(
-          `http://localhost:3001/veterinary/photos/${clinic.id_clinica}`
+          `${config.API_BASE_URL}/veterinary/photos/${clinic.id_clinica}`
         );
 
         if (response.data && response.data.fotos) {
@@ -161,21 +231,11 @@ export default function ClinicsPage() {
     const matchesSearch =
       searchQuery === "" ||
       clinic.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      clinic.direccion.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (clinic.specialties &&
-        clinic.specialties.some((s) =>
-          s.toLowerCase().includes(searchQuery.toLowerCase())
-        ));
+      clinic.direccion.toLowerCase().includes(searchQuery.toLowerCase());
 
     // Filtro por distancia (si la distancia está disponible)
     const clinicDistance = clinic.distance ? parseFloat(clinic.distance) : 0;
     const matchesDistance = clinicDistance <= distance[0];
-
-    // Filtro por especialidades
-    const matchesSpecialties =
-      selectedSpecialties.length === 0 ||
-      (clinic.specialties &&
-        selectedSpecialties.some((s) => clinic.specialties?.includes(s)));
 
     // Filtro por tipos de mascotas
     const matchesPetTypes =
@@ -183,37 +243,8 @@ export default function ClinicsPage() {
       (clinic.petTypes &&
         selectedPetTypes.some((p) => clinic.petTypes?.includes(p)));
 
-    // Filtro por disponibilidad
-    const matchesAvailability =
-      selectedAvailability.length === 0 ||
-      (selectedAvailability.includes("openNow") && clinic.openNow);
-
-    // Filtro por rango de precios
-    const matchesPrice =
-      selectedPriceRange === "any" ||
-      (selectedPriceRange === "$" && clinic.price === "$") ||
-      (selectedPriceRange === "$$" && clinic.price === "$$") ||
-      (selectedPriceRange === "$$$" && clinic.price === "$$$");
-
-    return (
-      matchesSearch &&
-      matchesDistance &&
-      matchesSpecialties &&
-      matchesPetTypes &&
-      matchesAvailability &&
-      matchesPrice
-    );
+    return matchesSearch && matchesDistance && matchesPetTypes;
   });
-
-  const handleSpecialtyChange = (specialty: string, checked: boolean) => {
-    if (checked) {
-      setSelectedSpecialties([...selectedSpecialties, specialty]);
-    } else {
-      setSelectedSpecialties(
-        selectedSpecialties.filter((s) => s !== specialty)
-      );
-    }
-  };
 
   const handlePetTypeChange = (petType: string, checked: boolean) => {
     if (checked) {
@@ -223,23 +254,10 @@ export default function ClinicsPage() {
     }
   };
 
-  const handleAvailabilityChange = (availability: string, checked: boolean) => {
-    if (checked) {
-      setSelectedAvailability([...selectedAvailability, availability]);
-    } else {
-      setSelectedAvailability(
-        selectedAvailability.filter((a) => a !== availability)
-      );
-    }
-  };
-
   const clearFilters = () => {
     setSearchQuery("");
     setDistance([5]);
-    setSelectedSpecialties([]);
     setSelectedPetTypes([]);
-    setSelectedAvailability([]);
-    setSelectedPriceRange("any");
   };
 
   const toggleFavorite = (id: number) => {
@@ -261,6 +279,25 @@ export default function ClinicsPage() {
   const handleScheduleAppointment = (clinicId: number) => {
     navigate(`/pet-dashboard/appointments/schedule?clinic=${clinicId}`);
   };
+
+  // Manejar la selección de una clínica desde el mapa
+  const handleClinicSelect = (clinicId: number) => {
+    // Buscar la clínica seleccionada
+    const selectedClinic = clinics.find(
+      (clinic) => clinic.id_clinica === clinicId
+    );
+    if (selectedClinic) {
+      // Podemos redirigir a la vista de detalle o realizar alguna acción
+      navigate(`/pet-dashboard/clinics/${clinicId}`);
+    }
+  };
+
+  useEffect(() => {
+    // Initialize map once on component mount
+    if (!mapInitialized) {
+      setMapInitialized(true);
+    }
+  }, [mapInitialized]);
 
   // Mostrar mensaje de carga o error
   if (loading) {
@@ -308,11 +345,7 @@ export default function ClinicsPage() {
     );
 
     // Badge de "destacado" que se mostrará sobre la imagen
-    const featuredBadge = clinic.featured && (
-      <Badge className="absolute left-3 top-3 bg-primary text-primary-foreground z-10">
-        Destacado
-      </Badge>
-    );
+    const featuredBadge = null;
 
     if (hasPhotos) {
       return (
@@ -324,7 +357,6 @@ export default function ClinicsPage() {
             />
           </div>
           {favoriteButton}
-          {featuredBadge}
         </div>
       );
     } else {
@@ -334,7 +366,6 @@ export default function ClinicsPage() {
             <ClinicDefaultImage clinicName={clinic.nombre} />
           </div>
           {favoriteButton}
-          {featuredBadge}
         </div>
       );
     }
@@ -378,17 +409,21 @@ export default function ClinicsPage() {
         </div>
         <div className="flex gap-2">
           <Select
-            value={selectedPriceRange}
-            onValueChange={setSelectedPriceRange}
+            value={selectedPetTypes.join(",")}
+            onValueChange={(values) => setSelectedPetTypes(values.split(","))}
           >
             <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder="Precio" />
+              <SelectValue placeholder="Tipo de mascota" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="any">Cualquier precio</SelectItem>
-              <SelectItem value="$">$</SelectItem>
-              <SelectItem value="$$">$$</SelectItem>
-              <SelectItem value="$$$">$$$</SelectItem>
+              <SelectItem value="Perros">Perros</SelectItem>
+              <SelectItem value="Gatos">Gatos</SelectItem>
+              <SelectItem value="Aves">Aves</SelectItem>
+              <SelectItem value="Exóticos">Exóticos</SelectItem>
+              <SelectItem value="Reptiles">Reptiles</SelectItem>
+              <SelectItem value="Pequeños mamíferos">
+                Pequeños mamíferos
+              </SelectItem>
             </SelectContent>
           </Select>
 
@@ -433,42 +468,6 @@ export default function ClinicsPage() {
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-sm font-medium">Especialidades</h3>
-                <div className="space-y-2">
-                  {[
-                    "Emergencias",
-                    "Cirugía",
-                    "Dental",
-                    "Preventiva",
-                    "Dermatología",
-                    "Nutrición",
-                    "Ortopedia",
-                    "Cardiología",
-                    "Exóticos",
-                  ].map((specialty) => (
-                    <div
-                      key={specialty}
-                      className="flex items-center space-x-2"
-                    >
-                      <Checkbox
-                        id={`specialty-${specialty}`}
-                        checked={selectedSpecialties.includes(specialty)}
-                        onCheckedChange={(checked) =>
-                          handleSpecialtyChange(specialty, checked as boolean)
-                        }
-                      />
-                      <Label
-                        htmlFor={`specialty-${specialty}`}
-                        className="text-sm"
-                      >
-                        {specialty}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
                 <h3 className="text-sm font-medium">Tipo de mascotas</h3>
                 <div className="space-y-2">
                   {[
@@ -494,24 +493,6 @@ export default function ClinicsPage() {
                   ))}
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium">Disponibilidad</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="open-now"
-                      checked={selectedAvailability.includes("openNow")}
-                      onCheckedChange={(checked) =>
-                        handleAvailabilityChange("openNow", checked as boolean)
-                      }
-                    />
-                    <Label htmlFor="open-now" className="text-sm">
-                      Abierto ahora
-                    </Label>
-                  </div>
-                </div>
-              </div>
             </CardContent>
             <CardFooter>
               <Button
@@ -527,205 +508,149 @@ export default function ClinicsPage() {
 
         {/* Resultados */}
         <div className="lg:col-span-3">
-          {viewMode === "list" ? (
-            <div className="space-y-4">
-              {filteredClinics.length === 0 ? (
-                <Card className="p-8 text-center">
-                  <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-muted">
-                    <Search className="h-10 w-10 text-muted-foreground" />
-                  </div>
-                  <h3 className="mb-2 text-xl font-semibold">
-                    No se encontraron resultados
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Intenta ajustar tus filtros o buscar con otros términos
+          {/* List View - Hidden when map view is active */}
+          <div
+            className={`space-y-4 ${viewMode === "map" ? "hidden" : "block"}`}
+          >
+            {filteredClinics.length === 0 ? (
+              <Card className="p-8 text-center">
+                <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-muted">
+                  <Search className="h-10 w-10 text-muted-foreground" />
+                </div>
+                <h3 className="mb-2 text-xl font-semibold">
+                  No se encontraron resultados
+                </h3>
+                <p className="text-muted-foreground">
+                  Intenta ajustar tus filtros o buscar con otros términos
+                </p>
+                <Button className="mt-4" onClick={clearFilters}>
+                  Limpiar filtros
+                </Button>
+              </Card>
+            ) : (
+              <>
+                <div className="mb-4 flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    {filteredClinics.length}{" "}
+                    {filteredClinics.length === 1 ? "resultado" : "resultados"}{" "}
+                    encontrados
                   </p>
-                  <Button className="mt-4" onClick={clearFilters}>
-                    Limpiar filtros
-                  </Button>
-                </Card>
-              ) : (
-                <>
-                  <div className="mb-4 flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
-                      {filteredClinics.length}{" "}
-                      {filteredClinics.length === 1
-                        ? "resultado"
-                        : "resultados"}{" "}
-                      encontrados
-                    </p>
-                    <Select defaultValue="distance">
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Ordenar por" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="distance">
-                          Distancia: más cercanos
-                        </SelectItem>
-                        <SelectItem value="rating">
-                          Calificación: más alta
-                        </SelectItem>
-                        <SelectItem value="reviews">
-                          Reseñas: más numerosas
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <Select defaultValue="distance">
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Ordenar por" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="distance">
+                        Distancia: más cercanos
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                  {filteredClinics.map((clinic) => (
-                    <Card key={clinic.id_clinica} className="overflow-hidden">
-                      <CardContent className="p-0">
-                        <div className="flex flex-col md:flex-row">
-                          {renderClinicImage(clinic)}
+                {filteredClinics.map((clinic) => (
+                  <Card key={clinic.id_clinica} className="overflow-hidden">
+                    <CardContent className="p-0">
+                      <div className="flex flex-col md:flex-row">
+                        {renderClinicImage(clinic)}
 
-                          <div className="flex flex-1 flex-col p-4">
-                            <div className="mb-2 flex items-center justify-between">
-                              <h3 className="text-lg font-semibold">
-                                {clinic.nombre}
-                              </h3>
-                              <div className="flex items-center">
-                                <Star className="mr-1 h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                <span className="text-sm font-medium">
-                                  {clinic.rating}
-                                </span>
-                                <span className="ml-1 text-xs text-muted-foreground">
-                                  ({clinic.reviews})
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="mb-2 flex items-center text-sm text-muted-foreground">
-                              <MapPin className="mr-1 h-4 w-4" />
-                              <span>
-                                {clinic.distance} • {clinic.direccion}
+                        <div className="flex flex-1 flex-col p-4">
+                          <div className="mb-2 flex items-center justify-between">
+                            <h3 className="text-lg font-semibold">
+                              {clinic.nombre}
+                            </h3>
+                            {/* Comentado temporalmente hasta que se implemente el sistema de ratings
+                            <div className="flex items-center">
+                              <Star className="mr-1 h-4 w-4 fill-yellow-400 text-yellow-400" />
+                              <span className="text-sm font-medium">
+                                {clinic.rating}
+                              </span>
+                              <span className="ml-1 text-xs text-muted-foreground">
+                                ({clinic.reviews})
                               </span>
                             </div>
+                            */}
+                          </div>
 
-                            <div className="mb-2 flex items-center text-sm text-muted-foreground">
-                              <Clock className="mr-1 h-4 w-4" />
-                              <span>{clinic.availability}</span>
-                            </div>
+                          <div className="mb-2 flex items-center text-sm text-muted-foreground">
+                            <MapPin className="mr-1 h-4 w-4" />
+                            <span>
+                              {clinic.distance ? `${clinic.distance} • ` : ""}
+                              {clinic.direccion}
+                            </span>
+                          </div>
 
-                            <div className="mb-3 flex flex-wrap gap-1">
-                              {clinic.specialties?.map((specialty) => (
-                                <Badge
-                                  key={specialty}
-                                  variant="secondary"
-                                  className="text-xs"
+                          <div className="mb-2 flex items-center text-sm text-muted-foreground">
+                            <Clock className="mr-1 h-4 w-4" />
+                            <span>{clinic.availability}</span>
+                          </div>
+
+                          <div className="mb-3 flex flex-wrap gap-1">
+                            {clinic.specialties?.map((specialty) => (
+                              <Badge
+                                key={specialty}
+                                variant="secondary"
+                                className="text-xs"
+                              >
+                                {specialty}
+                              </Badge>
+                            ))}
+                          </div>
+
+                          <div className="mb-3 flex flex-wrap gap-1">
+                            {clinic.petTypes?.map((petType) => (
+                              <Badge
+                                key={petType}
+                                variant="outline"
+                                className="text-xs"
+                              >
+                                {petType}
+                              </Badge>
+                            ))}
+                          </div>
+
+                          <div className="mt-auto flex items-center justify-between">
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" asChild>
+                                <Link
+                                  to={`/pet-dashboard/clinics/${clinic.id_clinica}`}
                                 >
-                                  {specialty}
-                                </Badge>
-                              ))}
-                            </div>
-
-                            <div className="mb-3 flex flex-wrap gap-1">
-                              {clinic.petTypes?.map((petType) => (
-                                <Badge
-                                  key={petType}
-                                  variant="outline"
-                                  className="text-xs"
+                                  Ver perfil
+                                </Link>
+                              </Button>
+                              <Button className="w-full sm:w-auto" asChild>
+                                <Link
+                                  to={`/pet-dashboard/appointments/schedule?clinic=${clinic.id_clinica}`}
                                 >
-                                  {petType}
-                                </Badge>
-                              ))}
-                            </div>
-
-                            <div className="mt-auto flex items-center justify-between">
-                              <div className="flex gap-2">
-                                <Button variant="outline" size="sm" asChild>
-                                  <Link
-                                    to={`/pet-dashboard/clinics/${clinic.id_clinica}`}
-                                  >
-                                    Ver perfil
-                                  </Link>
-                                </Button>
-                                <Button className="w-full sm:w-auto" asChild>
-                                  <Link
-                                    to={`/pet-dashboard/appointments/schedule?clinic=${clinic.id_clinica}`}
-                                  >
-                                    Agendar cita
-                                  </Link>
-                                </Button>
-                              </div>
+                                  Agendar cita
+                                </Link>
+                              </Button>
                             </div>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </>
-              )}
-            </div>
-          ) : (
-            <Card className="overflow-hidden">
-              <div className="relative aspect-[16/9] w-full">
-                <div className="absolute inset-0 flex items-center justify-center bg-muted">
-                  <p className="text-muted-foreground">
-                    Mapa de veterinarias cercanas
-                  </p>
-                  {/* Aquí iría un componente de mapa real */}
-                </div>
-                <div className="absolute bottom-4 left-4 right-4 flex flex-col gap-2 md:w-1/3">
-                  {filteredClinics.slice(0, 3).map((clinic) => (
-                    <Card
-                      key={clinic.id_clinica}
-                      className="bg-background/95 backdrop-blur-sm shadow-sm overflow-hidden"
-                    >
-                      <CardContent className="p-3">
-                        <div className="flex items-center gap-3">
-                          <div className="h-12 w-12 overflow-hidden rounded-full bg-muted shadow-sm">
-                            <div className="relative h-full w-full">
-                              {clinic.photos && clinic.photos.length > 0 ? (
-                                <img
-                                  src={clinic.photos[0].url}
-                                  alt={clinic.nombre}
-                                  className="object-cover h-full w-full"
-                                />
-                              ) : (
-                                <ClinicDefaultImage
-                                  clinicName={clinic.nombre}
-                                  className="rounded-full"
-                                />
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="text-sm font-medium">
-                              {clinic.nombre}
-                            </h4>
-                            <p className="text-xs text-muted-foreground">
-                              {clinic.distance} • {clinic.rating} ★
-                            </p>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              asChild
-                              className="h-8"
-                            >
-                              <Link
-                                to={`/pet-dashboard/clinics/${clinic.id_clinica}`}
-                              >
-                                Ver
-                              </Link>
-                            </Button>
-                            <Button size="sm" className="h-8" asChild>
-                              <Link
-                                to={`/pet-dashboard/appointments/schedule?clinic=${clinic.id_clinica}`}
-                              >
-                                Agendar
-                              </Link>
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            </Card>
-          )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </>
+            )}
+          </div>
+
+          {/* Map View - Only load MapView component when needed */}
+          <div
+            ref={mapContainerRef}
+            className={`overflow-hidden rounded-lg shadow-sm ${
+              viewMode === "list" ? "hidden" : "block"
+            }`}
+            style={{ height: "calc(100vh - 250px)", minHeight: "500px" }}
+          >
+            {mapInitialized && (
+              <MapView
+                clinics={filteredClinics}
+                onClinicSelect={handleClinicSelect}
+                isMapViewActive={viewMode === "map"}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

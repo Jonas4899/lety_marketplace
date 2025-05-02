@@ -746,7 +746,7 @@ router.get("/clinics", async (req, res) => {
     const { data: clinicas, error } = await supabaseClient
       .from("clinicas")
       .select(
-        "id_clinica, nombre, direccion, telefono, correo, certificado_url"
+        "id_clinica, nombre, direccion, telefono, correo, certificado_url, latitud, longitud, detalles"
       );
 
     if (error) {
