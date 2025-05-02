@@ -1,6 +1,11 @@
 ---
 description: 
 globs: 
+alwaysApply: false
+---
+---
+description: 
+globs: 
 alwaysApply: true
 ---
 # Project Overview
@@ -25,6 +30,7 @@ In the frontend the technologies used are:
 In the backend the technologies used are:
 - Node.js
 - Express.js
+- Playwright (testing library)
 
 # Database
 For the database, currently is being used postgresql in a Supabase database. The SQL code for the structure of the database is:

@@ -135,4 +135,10 @@ export const getFilePathFromUrl = (url, bucketName) => {
   }
 };
 
-export default uploadFile;
+const validateDate = (dateStr) => {
+  if (!dateStr) return true; // Allow undefined/null dates
+  const date = new Date(dateStr);
+  return !isNaN(date.getTime());
+};
+
+export { uploadFile, validateDate, supabaseClient };
