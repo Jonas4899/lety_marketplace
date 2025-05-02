@@ -1,20 +1,14 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { MapPin, Phone, Clock, Star, MessageSquare, Heart, Share2, ChevronLeft, Check } from "lucide-react"
 import { Button } from "~/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent } from "~/components/ui/card"
 import { Separator } from "~/components/ui/separator"
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 
 // Datos de ejemplo para la clínica
 const clinicData = {
-  id: 1,
-  name: "Centro Veterinario PetCare",
-  address: "Av. Principal 123, Ciudad",
-  phone: "+1 (555) 123-4567",
-  website: "www.petcare.com",
-  email: "info@petcare.com",
   hours: [
     { day: "Lunes - Viernes", hours: "8:00 AM - 8:00 PM" },
     { day: "Sábado", hours: "9:00 AM - 6:00 PM" },
@@ -22,35 +16,6 @@ const clinicData = {
   ],
   rating: 4.8,
   reviewCount: 124,
-  description:
-    "Centro Veterinario PetCare ofrece servicios médicos de alta calidad para mascotas. Nuestro equipo de veterinarios certificados está comprometido con la salud y el bienestar de su mascota.",
-  services: [
-    "Consultas generales",
-    "Vacunación",
-    "Cirugía",
-    "Dermatología",
-    "Odontología",
-    "Análisis de laboratorio",
-    "Radiografía",
-    "Hospitalización",
-  ],
-  staff: [
-    {
-      name: "Dra. María Rodríguez",
-      specialty: "Medicina General",
-      image: "/placeholder.svg?height=100&width=100",
-    },
-    {
-      name: "Dr. Carlos Sánchez",
-      specialty: "Cirugía",
-      image: "/placeholder.svg?height=100&width=100",
-    },
-    {
-      name: "Dra. Ana López",
-      specialty: "Dermatología",
-      image: "/placeholder.svg?height=100&width=100",
-    },
-  ],
   images: [
     "/placeholder.svg?height=300&width=500",
     "/placeholder.svg?height=300&width=500",
@@ -86,23 +51,77 @@ const clinicData = {
   ],
 }
 
-export default function VetProdilePage() {
-  //const params = useParams()
-  //const clinicId = params.id
-  const [isFavorite, setIsFavorite] = useState(false)
 
-  // En una aplicación real, usaríamos el ID para obtener los datos de la clínica
-  // const clinic = getClinicById(clinicId)
-  const clinic = clinicData
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+export default function VetProdilePage() {
+  const params = useParams();
+  const clinicId = params.id;
+  const [clinicProfile, setClinicProfile] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchClinicProfile = async () => {
+      if (!clinicId) {
+        setError("No clinic ID provided in the URL.");
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch(`${API_URL}/veterinary/profile/${clinicId}`);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        console.log("Fetched Clinic Profile Data:", data);
+
+        setClinicProfile(data);
+        setError(null);
+
+      } catch (err: any) {
+        console.error("Error fetching clinic profile:", err);
+        setError(err.message || "An unexpected error occurred while fetching data.");
+        setClinicProfile(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchClinicProfile();
+
+  }, [clinicId]);
+
+  const clinic = clinicData;
+
+  if (isLoading) {
+    return <div className="container mx-auto px-4 py-12 text-center">Loading profile...</div>;
+  }
+
+  if (error && !clinicProfile) {
+    return <div className="container mx-auto px-4 py-12 text-center text-red-600">Error loading profile: {error}</div>;
+  }
 
   return (
     <div className="container mx-auto px-4 py-12">
+      <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="mb-4">
+        <ChevronLeft className="mr-2 h-4 w-4" /> Volver
+      </Button>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
           <div className="mb-6">
             <div className="flex justify-between items-start mb-2">
-              <h1 className="text-2xl font-bold">{clinic.name}</h1>
+              <h1 className="text-2xl font-bold">{clinicProfile?.nombre}</h1>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -126,17 +145,17 @@ export default function VetProdilePage() {
 
             <div className="flex items-center text-gray-600 mb-2">
               <MapPin size={16} className="mr-2" />
-              <span>{clinic.address}</span>
+              <span>{clinicProfile?.direccion}</span>
             </div>
 
             <div className="flex items-center text-gray-600 mb-2">
               <Phone size={16} className="mr-2" />
-              <span>{clinic.phone}</span>
+              <span>{clinicProfile?.telefono}</span>
             </div>
 
             <div className="flex items-center text-gray-600">
               <Clock size={16} className="mr-2" />
-              <span>{clinic.hours[0].hours} (Hoy)</span>
+              <span>{clinic.hours[0].hours} (Hoy) - Placeholder</span>
             </div>
           </div>
 
@@ -145,7 +164,7 @@ export default function VetProdilePage() {
               <div key={index} className={index === 0 ? "col-span-2" : ""}>
                 <img
                   src={image || "/placeholder.svg"}
-                  alt={`${clinic.name} - Imagen ${index + 1}`}
+                  alt={`${clinicProfile?.nombre} - Imagen ${index + 1}`}
                   className="w-full h-48 object-cover rounded-lg"
                 />
               </div>
@@ -153,16 +172,15 @@ export default function VetProdilePage() {
           </div>
 
           <Tabs defaultValue="about" className="mb-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="about">Acerca de</TabsTrigger>
               <TabsTrigger value="services">Servicios</TabsTrigger>
-              <TabsTrigger value="staff">Personal</TabsTrigger>
               <TabsTrigger value="reviews">Reseñas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="about" className="mt-4">
-              <h3 className="text-lg font-semibold mb-2">Acerca de {clinic.name}</h3>
-              <p className="text-gray-700 mb-4">{clinic.description}</p>
+              <h3 className="text-lg font-semibold mb-2">Acerca de {clinicProfile?.nombre}</h3>
+              <p className="text-gray-700 mb-4">{clinicProfile?.descripcion}</p>
 
               <h4 className="font-semibold mb-2">Horario de atención</h4>
               <div className="space-y-2 mb-4">
@@ -178,23 +196,23 @@ export default function VetProdilePage() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Teléfono</span>
-                  <span>{clinic.phone}</span>
+                  <span>{clinicProfile?.telefono}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Sitio web</span>
                   <a
-                    href={`https://${clinic.website}`}
+                    href={clinicProfile?.sitio_web ? `https://${clinicProfile.sitio_web}` : '#'}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600"
                   >
-                    {clinic.website}
+                    {clinicProfile?.sitio_web}
                   </a>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Email</span>
-                  <a href={`mailto:${clinic.email}`} className="text-blue-600">
-                    {clinic.email}
+                  <a href={`mailto:${clinicProfile?.correo}`} className="text-blue-600">
+                    {clinicProfile?.correo}
                   </a>
                 </div>
               </div>
@@ -203,33 +221,16 @@ export default function VetProdilePage() {
             <TabsContent value="services" className="mt-4">
               <h3 className="text-lg font-semibold mb-4">Servicios ofrecidos</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {clinic.services.map((service, index) => (
-                  <div key={index} className="flex items-center">
-                    <Check size={16} className="text-green-500 mr-2" />
-                    <span>{service}</span>
-                  </div>
-                ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="staff" className="mt-4">
-              <h3 className="text-lg font-semibold mb-4">Nuestro equipo</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {clinic.staff.map((person, index) => (
-                  <Card key={index}>
-                    <CardContent className="p-4">
-                      <div className="flex flex-col items-center text-center">
-                        <img
-                          src={person.image || "/placeholder.svg"}
-                          alt={person.name}
-                          className="w-24 h-24 rounded-full mb-3"
-                        />
-                        <h4 className="font-semibold">{person.name}</h4>
-                        <p className="text-gray-600">{person.specialty}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                {clinicProfile?.services && clinicProfile.services.length > 0 ? (
+                  clinicProfile.services.map((service: any, index: number) => (
+                    <div key={service.id_servicio || index} className="flex items-center">
+                      <Check size={16} className="text-green-500 mr-2" />
+                      <span>{service.nombre} ({service.precio ? `$${service.precio}` : 'Precio no disponible'})</span>
+                    </div>
+                  ))
+                ) : (
+                  <p>No hay servicios registrados para esta clínica.</p>
+                )}
               </div>
             </TabsContent>
 
@@ -281,7 +282,7 @@ export default function VetProdilePage() {
               <h3 className="text-lg font-semibold mb-4">Acciones rápidas</h3>
               <div className="space-y-3">
                 <Button size="lg" className="w-full" asChild>
-                  <Link to={`/pet-dashboard/appointments/schedule?clinic=${clinicData.id}`}>Agendar cita</Link>
+                  <Link to={`/pet-dashboard/appointments/schedule?clinic=${clinicId}`}>Agendar cita</Link>
                 </Button>
                 <Button variant="outline" className="w-full flex items-center justify-center gap-2">
                   <MessageSquare size={16} />
@@ -295,14 +296,16 @@ export default function VetProdilePage() {
             <CardContent className="p-4">
               <h3 className="text-lg font-semibold mb-4">Servicios destacados</h3>
               <div className="space-y-3">
-                {clinic.services.slice(0, 5).map((service, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <span>{service}</span>
-                    <Badge variant="outline">Disponible</Badge>
+                {clinicProfile?.services?.slice(0, 5).map((service: any, index: number) => (
+                  <div key={service.id_servicio || index} className="flex items-center justify-between">
+                    <span>{service.nombre}</span>
+                    <Badge variant={service.disponible ? "default" : "destructive"}>
+                      {service.disponible ? "Disponible" : "No Disponible"}
+                    </Badge>
                   </div>
                 ))}
-                <Separator />
-                <Link to="/pet-dashboard/appointments/schedule">
+                {clinicProfile?.services?.length > 0 && <Separator />}
+                <Link to={`/pet-dashboard/appointments/schedule?clinic=${clinicId}`}>
                   <Button variant="link" className="p-0">
                     Ver todos los servicios y precios
                   </Button>
