@@ -31,7 +31,7 @@ interface SidebarNavProps {
   }[];
 }
 
-import type { Owner } from "~/types/usersTypes"; 
+import type { Owner } from "~/types/usersTypes";
 
 function SidebarNav({ items }: SidebarNavProps) {
   const location = useLocation();
@@ -67,20 +67,21 @@ export default function PetDashboardLayout({
 }) {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
-    //Extraer la info del usuario
+  //Extraer la info del usuario
   const user = useAuthStore((state) => state.user);
   const userType = useAuthStore((state) => state.userType);
 
-  const userId = userType === 'owner' && user ? (user as Owner).id_usuario : undefined;
+  const userId =
+    userType === "owner" && user ? (user as Owner).id_usuario : undefined;
 
-  const logout = useAuthStore(state => state.logout);
+  const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
 
   const handleLogout = () => {
     Cookies.remove("auth_token");
     logout();
     navigate("/");
-  }
+  };
 
   const navItems = [
     {
@@ -110,7 +111,7 @@ export default function PetDashboardLayout({
     },
     {
       title: "Veterinarias",
-      href: "/pet-dashboard/clinics",
+      href: "/dashboard-client/vet-search",
       icon: <Search className="h-4 w-4" />,
     },
     {

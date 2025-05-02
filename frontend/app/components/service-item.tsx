@@ -11,13 +11,23 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 
+interface Service {
+  id: string;
+  name: string;
+  price: string;
+  category: string;
+}
+
 export interface ServiceItemProps {
   id: string;
   name: string;
   price: string;
   category: string;
   onRemove: (id: string) => void;
-  onChange: (id: string, field: string, value: string) => void;
+  // --- CHANGE THIS LINE ---
+  onChange: (id: string, field: keyof Service, value: string) => void; // Use keyof Service
+  // --- END CHANGE ---
+  isRemovable: boolean;
 }
 
 export function ServiceItem({
