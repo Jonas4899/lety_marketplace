@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import autenticacionToken from '../middleware/auth.js';
 import uploadFile from '../utils.js';
 import dotenv from 'dotenv';
+import { escape } from 'querystring';
 
 dotenv.config();
 
@@ -173,6 +174,51 @@ router.delete('/pets/delete', autenticacionToken, async (req, res) => {
     console.error('Error en el servidor: ', error);
     return res.status(500).json({
       message: 'Error interno del servidor',
+      error: error.message,
+    });
+  }
+});
+
+//Obtener una mascota con su ID
+router.get('/pets/get-a-pet', autenticacionToken, async (req, res) => {
+  const id_mascota = req.query.id_mascota;
+
+  try {
+    if (!id_mascota) {
+      return res.status(400).json({
+        message: 'Se requiere el ID de la mascota',
+      });
+    }
+
+    //obtener datos de la mascota
+    const { data: mascota, error } = await supabaseClient
+      .from('mascotas')
+      .select('*')
+      .eq('id_mascota', id_mascota)
+      .single();
+
+    if (error) {
+      console.error('Error al obtener mascota: ', error);
+      return res.status(400).json({
+        message: 'Error al obtener la informacion de la mascota',
+        error: error.message,
+      });
+    }
+
+    if (!mascota) {
+      return res.status(404).json({
+        message: 'Mascota NO encontrada',
+      });
+    }
+
+    return res.status(200).json({
+      message: 'Datos de la mascota obtenidos correctamente',
+      mascota: mascota,
+    });
+  } catch (error) {
+    console.error('Error en el servidor', error);
+    return res.status(500).json({
+      message: 'Internal server error',
       error: error.message,
     });
   }

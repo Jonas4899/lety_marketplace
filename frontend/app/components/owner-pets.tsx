@@ -317,10 +317,10 @@ export default function PetsPage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link to={`/pet-dashboard/pets/${pet.id_mascota}`}>Ver detalles</Link>
+              <Link to={`/dashboard-client/pets/${pet.id_mascota}`}>Ver detalles</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to={`/pet-dashboard/pets/${pet.id_mascota}/edit`}>
+              <Link to={`/dashboard-client/pets/${pet.id_mascota}/edit`}>
                 <Edit className="mr-2 h-4 w-4" />
                 Editar
               </Link>
@@ -374,13 +374,13 @@ export default function PetsPage() {
       </CardContent>
       <CardFooter className="flex justify-between">
         <Button variant="outline" size="sm" asChild>
-          <Link to={`/pet-dashboard/pets/${pet.id_mascota}/edit`}>
+          <Link to={`/dashboard-client/pets/${pet.id_mascota}/edit`}>
             <Edit className="mr-2 h-3 w-3" />
             Editar
           </Link>
         </Button>
         <Button variant="outline" size="sm" asChild>
-          <Link to={`/pet-dashboard/pets/${pet.id_mascota}`}>
+          <Link to={`/dashboard-client/pets/${pet.id_mascota}`}>
             Ver Detalles
             <ChevronRight className="ml-1 h-3 w-3" />
           </Link>
