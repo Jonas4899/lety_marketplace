@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
 import autenticacionToken from '../middleware/auth.js';
-import uploadFile, { deleteFile, getFilePathFromUrl } from '../utils.js';
+import { uploadFile, deleteFile, getFilePathFromUrl } from '../utils.js';
 import dotenv from 'dotenv';
 import { escape } from 'querystring';
 

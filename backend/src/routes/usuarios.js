@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt';
 import fs from 'fs';
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
-import uploadFile from '../utils.js';
+import { uploadFile } from '../utils.js';
 import dotenv from 'dotenv';
 import autenticacionToken from '../middleware/auth.js';
 
