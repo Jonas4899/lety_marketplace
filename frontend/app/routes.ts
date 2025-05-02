@@ -41,6 +41,8 @@ export default [
       "dashboard-client/appointments/:id",
       "routes/DashboardClient/Citas/ID_citas/id-schedule.tsx"
     ),
+    route("dashboard-client/pets", "routes/DashboardClient/pets.tsx"),
+    route("dashboard-client/pets/:id", "components/ui/pet-details.tsx"),
   ]),
   route("login", "routes/LoginPage/index.tsx"),
   route("unauthorized", "routes/Unauthorized/index.tsx"),

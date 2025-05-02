@@ -28,11 +28,19 @@ export const ownerFormSchema = z.object({
     .min(2, "El nombre debe tener minimo 2 caracteres")
     .max(20, "El nombre puede tener maximo 20 caracteres"),
   petAge: z
-    .number()
+    .number({
+    required_error: "La edad es requerida",
+    invalid_type_error: "La edad debe ser un número"
+  })
     .min(0, "la edad debe ser un numero positivo")
     .max(50, "la edad no puede exceder los 50 años"),
   petSpecies: z.string().min(1, "Debe seleccionar una especie"),
   petBreed: z.string().min(1, "Debe seleccionar una raza"),
+  petGender: z.string().min(1, 'Debe seleccionar un genero'),
+  petWeight: z.number({
+    required_error: "El peso es requerido",
+    invalid_type_error: "El peso debe ser un número"
+  }).min(0.1,'Debe ingresar un peso valido').max(150, 'Debe ingresar un peso valido'),
   petHistory: z.instanceof(File).optional(),
   petPhoto: z.instanceof(File).optional(),
 });

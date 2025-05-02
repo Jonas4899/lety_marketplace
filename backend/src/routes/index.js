@@ -1,6 +1,7 @@
 import express from "express";
 import authRoutes from "./autenticacion.js";
 import userRoutes from "./usuarios.js";
+import petRoutes from "./mascotas.js";
 import vetRoutes from "./vets.js";
 import serviceRoutes from "./servicios.js";
 import scheduleRoutes from "./horarios.js";
@@ -17,6 +18,9 @@ router.use("/", authRoutes);
 
 // Rutas de usuarios
 router.use("/", userRoutes);
+
+// Rutas de mascotas
+router.use("/", petRoutes);
 
 // Rutas de veterinarias
 router.use("/", vetRoutes);
@@ -38,7 +42,6 @@ router.use("/", appoinmentRoutes);
 
 // Rutas de mascotas y servicios
 router.use("/", pets);
-
 // Rutas de Google Places API (proxy)
 router.use("/", placesRoutes);
 

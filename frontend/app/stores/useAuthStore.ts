@@ -34,8 +34,9 @@ export const useAuthStore = create<AuthState>()(
       login: (data) => {
         Cookies.set("auth_token", data.token, { 
           expires: 1,
+          //path: '/',
           secure: process.env.NODE_ENV === 'production',
-          sameSite: "Strict", 
+          sameSite: "Lax", 
         });
 
         set({

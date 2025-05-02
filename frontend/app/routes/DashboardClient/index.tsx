@@ -199,7 +199,7 @@ export default function PetDashboardPage() {
                 ))}
 
                 <Button variant="outline" className="w-full" asChild>
-                  <Link to="/pet-dashboard/pets">Ver todas mis mascotas</Link>
+                  <Link to="/dashboard-client/pets">Ver todas mis mascotas</Link>
                 </Button>
               </div>
             </CardContent>

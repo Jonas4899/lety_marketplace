@@ -12,6 +12,6 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRolKey = process.env.SERVICE_ROL_KEY;
 const supabaseClient = createClient(supabaseUrl, supabaseServiceRolKey);
 
-roter.post('url', autenticacionToken, async (req, res) => {
+router.post('url', autenticacionToken, async (req, res) => {
   //Contenido de la ruta
 });

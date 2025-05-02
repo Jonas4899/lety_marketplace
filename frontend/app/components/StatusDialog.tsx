@@ -17,6 +17,7 @@ export interface StatusDialogProps {
   title?: string;
   message: string;
   hideRedirect?: boolean; // Opcional para ocultar el botón de redirección
+  redirectPath?: string;
 }
 
 export const StatusDialog = ({
@@ -27,6 +28,7 @@ export const StatusDialog = ({
   title,
   message,
   hideRedirect = false,
+  redirectPath = "/login"
 }: StatusDialogProps) => {
   // Determinar el título basado en el tipo si no se proporciona uno
   const dialogTitle = title || (
@@ -84,6 +86,7 @@ export const StatusDialog = ({
           {message}
         </DialogDescription>
         
+
         <DialogFooter className="flex justify-center w-full">
           {type === "loading" ? (
             <Button disabled className="hidden">Procesando...</Button>
@@ -92,11 +95,13 @@ export const StatusDialog = ({
               Entendido
             </Button>
           ) : (
-            !hideRedirect && (
-              <Button className="mx-auto" onClick={() => navigate("/login")}>
-                Continuar
-              </Button>
-            )
+            // Para tipo success, siempre mostrar un botón "Listo" o "Aceptar"
+            <Button 
+              className="mx-auto" 
+              onClick={handleClose} // Usar handleClose para ejecutar onSuccess y cerrar diálogo
+            >
+              Continuar
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>
