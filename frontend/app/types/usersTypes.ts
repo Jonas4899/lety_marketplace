@@ -3,6 +3,7 @@ export type Owner = {
   nombre: string;
   correo: string;
   telefono: string;
+  mascotas: Array<Pet>;
 }
 
 export type Vet = {
@@ -19,5 +20,8 @@ export type Pet = {
   edad: number;
   raza: string;
   especie: string;
+  genero: String;
+  peso: number,
   foto_url?: string;
+  historial_medico?: string;
 }

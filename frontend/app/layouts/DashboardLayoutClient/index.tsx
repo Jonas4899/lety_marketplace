@@ -90,7 +90,7 @@ export default function PetDashboardLayout({
     },
     {
       title: "Mis Mascotas",
-      href: "/pet-dashboard/pets",
+      href: "/dashboard-client/pets",
       icon: <PawPrint className="h-4 w-4" />,
     },
     {
