@@ -38,6 +38,7 @@ import {
 } from "~/components/ui/alert-dialog"
 import { AddPetDialog } from "./AddPetDialog";
 import { toast } from "sonner"
+import { PetEditDialog } from "./pet-edit-info";
 
 interface Pet extends PetType{
   id_mascota: number;
@@ -84,6 +85,10 @@ export default function PetsPage() {
   const [isAddPetDialogOpen, setIsAddPetDialogOpen] = useState(false);
   const [lastFetchTime, setLastFetchTime] = useState<number | null>(null);
 
+  // State for the edit dialog
+  const [isEditPetDialogOpen, setIsEditPetDialogOpen] = useState(false);
+  const [petToEdit, setPetToEdit] = useState<Pet | null>(null);
+
   // Función para guardar mascotas en localStorage
   const savePetsToLocalStorage = useCallback((petsData: Pet[]) => {
     try {
@@ -105,73 +110,76 @@ export default function PetsPage() {
     });
   };
 
-  // Efecto para cargar mascotas desde el servidor y actualizar localStorage
-  useEffect(() => {
-    const fetchPets = async () => {
-      if (!id_usuario) return;
-      
-      try {
-        setLoading(true);
-        const token = Cookies.get('auth_token');
-        
-        const response = await fetch(`${API_URL}/pets/get?id_usuario=${id_usuario}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.mascotas) {
-            // Actualizar el estado
-            setPets(data.mascotas);
-            
-            // Guardar en localStorage
-            savePetsToLocalStorage(data.mascotas);
-            
-            // Precargar imágenes
-            preloadImages(data.mascotas);
-            
-            // Actualizar tiempo de última carga
-            setLastFetchTime(Date.now());
-          }
-        } else {
-          const errorData = await response.json();
-          toast.error("Error al cargar mascotas", {
-            description: errorData.message || "No se pudieron cargar las mascotas"
-          });
-        }
-      } catch (error) {
-        console.error("Error al cargar mascotas:", error);
-        toast.error("Error al cargar mascotas", {
-          description: "Ocurrió un error al intentar cargar tus mascotas"
-        });
-      } finally {
-        setLoading(false);
+  // Modified fetchPets to accept a silent option
+  const fetchPets = useCallback(async (silent = false) => {
+    if (!id_usuario) return;
+
+    try {
+      if (!silent) { // Only show main loader if not a silent fetch
+          setLoading(true);
       }
-    };
-    
-    // Si ya hay mascotas en caché y no han pasado más de 5 minutos desde la última carga,
-    // no mostrar el indicador de carga
+      const token = Cookies.get('auth_token');
+
+      const response = await fetch(`${API_URL}/pets/get?id_usuario=${id_usuario}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.mascotas) {
+          setPets(data.mascotas);
+          savePetsToLocalStorage(data.mascotas);
+          preloadImages(data.mascotas);
+          setLastFetchTime(Date.now());
+        }
+      } else {
+        // Only show toast if not silent or if it's a critical error
+        if (!silent) {
+            const errorData = await response.json();
+            toast.error("Error al cargar mascotas", {
+                description: errorData.message || "No se pudieron cargar las mascotas"
+            });
+        } else {
+            console.error("Silent fetch failed:", response.status);
+        }
+      }
+    } catch (error) {
+      console.error("Error al cargar mascotas:", error);
+       if (!silent) {
+           toast.error("Error al cargar mascotas", {
+            description: "Ocurrió un error al intentar cargar tus mascotas"
+           });
+       }
+    } finally {
+       // Only stop main loader if it was shown
+       if (!silent) {
+           setLoading(false);
+       }
+    }
+  }, [id_usuario, API_URL, savePetsToLocalStorage]); // Added fetchPets dependencies
+
+  // useEffect for initial load and background refresh
+  useEffect(() => {
     const cachedPets = loadInitialPets();
     if (cachedPets.length > 0) {
       setPets(cachedPets);
-      setLoading(false);
-      
-      // Verificar si necesitamos recargar silenciosamente
+      setLoading(false); // Don't show loader if cache exists
+
       const currentTime = Date.now();
       const CACHE_DURATION = 300000; // 5 minutos
-      const shouldRefetchSilently = !lastFetchTime || (currentTime - lastFetchTime > CACHE_DURATION);
-      
+      const shouldRefetchSilently = !lastFetchTime || (currentTime - (lastFetchTime || 0) > CACHE_DURATION);
+
       if (shouldRefetchSilently) {
-        // Actualizar en segundo plano sin mostrar loading
-        fetchPets();
+        console.log("Refreshing pets silently in the background...");
+        fetchPets(true); // Fetch silently
       }
     } else {
-      // No hay caché, hacer la carga normal con indicador
-      fetchPets();
+      console.log("No cached pets found, fetching...");
+      fetchPets(false); // Normal fetch with loader
     }
-  }, [id_usuario, API_URL, savePetsToLocalStorage]);
+  }, [id_usuario, fetchPets]); // Dependency on fetchPets
 
   // Filtrar mascotas según la búsqueda
   const filteredPets = pets.filter(
@@ -181,55 +189,31 @@ export default function PetsPage() {
       pet.raza.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  // Function to open the edit dialog
+  const handleOpenEditDialog = (pet: Pet) => {
+    setPetToEdit(pet);
+    setIsEditPetDialogOpen(true);
+  };
+
+  // Function to handle successful pet update (will eventually call API)
+  const handlePetUpdated = async () => {
+    console.log("Pet update success callback triggered. Refetching pets...");
+    // For now, just refetch the list to show changes
+    // In the future, this would optimistically update the state or use the API response
+    await fetchPets(true); // Pass true to force refetch without showing main loader
+    // Ensure dialog is closed (although PetEditDialog might already close it)
+    setIsEditPetDialogOpen(false);
+    setPetToEdit(null);
+  };
+
   // Función para actualizar la lista de mascotas después de agregar una
   const handlePetAdded = async () => {
-    if (!id_usuario) {
-      toast.error("No se pudo identificar al usuario", {
-        description: "Por favor, inicia sesión nuevamente"
-      });
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      const token = Cookies.get('auth_token');
-      
-      const response = await fetch(`${API_URL}/pets/get?id_usuario=${id_usuario}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.mascotas) {
-          // Actualizar el estado con las mascotas obtenidas
-          setPets(data.mascotas);
-          
-          // Guardar en localStorage
-          savePetsToLocalStorage(data.mascotas);
-          
-          // Actualizar tiempo de última carga
-          setLastFetchTime(Date.now());
-          
-          // Mostrar mensaje de éxito
-          toast.success("Mascota registrada exitosamente", {
-            description: "Se ha actualizado tu lista de mascotas"
-          });
-        }
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al actualizar lista de mascotas");
-      }
-    } catch (error) {
-      console.error("Error al actualizar mascotas:", error);
-      toast.error("Error al actualizar mascotas", {
-        description: error instanceof Error ? error.message : "No se pudo actualizar la lista de mascotas"
-      });
-    } finally {
-      setLoading(false);
-    }
+    console.log("Pet added success callback triggered. Refetching pets...");
+    await fetchPets(true); // Refetch silently after adding
+    toast.success("Mascota registrada exitosamente", {
+        description: "Se ha actualizado tu lista de mascotas"
+    });
+    // Dialog closing is handled by AddPetDialog
   };
 
   // Componente de esqueleto para la carga
@@ -275,6 +259,7 @@ export default function PetsPage() {
         savePetsToLocalStorage(updatedPets);
 
         // Mostrar mensaje de éxito
+        await fetchPets(true); // Or simply refetch silently
         toast.success("Mascota eliminada", {
           description: "La mascota ha sido eliminada correctamente"
         });
@@ -319,11 +304,9 @@ export default function PetsPage() {
             <DropdownMenuItem asChild>
               <Link to={`/dashboard-client/pets/${pet.id_mascota}`}>Ver detalles</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to={`/dashboard-client/pets/${pet.id_mascota}/edit`}>
-                <Edit className="mr-2 h-4 w-4" />
-                Editar
-              </Link>
+            <DropdownMenuItem onSelect={() => handleOpenEditDialog(pet)}>
+              <Edit className="mr-2 h-4 w-4" />
+              Editar
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <AlertDialog>
@@ -373,11 +356,9 @@ export default function PetsPage() {
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button variant="outline" size="sm" asChild>
-          <Link to={`/dashboard-client/pets/${pet.id_mascota}/edit`}>
+        <Button variant="outline" size="sm" onClick={() => handleOpenEditDialog(pet)}>
             <Edit className="mr-2 h-3 w-3" />
             Editar
-          </Link>
         </Button>
         <Button variant="outline" size="sm" asChild>
           <Link to={`/dashboard-client/pets/${pet.id_mascota}`}>
@@ -536,6 +517,16 @@ export default function PetsPage() {
         onOpenChange={setIsAddPetDialogOpen}
         onSuccess={handlePetAdded}
       />
+
+      {/* Render the Edit Pet Dialog */}
+      {petToEdit && ( // Render only when a pet is selected for editing
+        <PetEditDialog
+            open={isEditPetDialogOpen}
+            onOpenChange={setIsEditPetDialogOpen}
+            petToEdit={petToEdit}
+            onSuccess={handlePetUpdated}
+        />
+      )}
     </div>
   );
 }

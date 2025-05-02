@@ -23,4 +23,5 @@ export type Pet = {
   genero: String;
   peso: number,
   foto_url?: string;
+  historial_medico?: string;
 }

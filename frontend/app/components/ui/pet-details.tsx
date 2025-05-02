@@ -29,57 +29,76 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog"
 import { Link, useNavigate } from "react-router";
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { toast } from "sonner"
 import { useAuthStore } from "~/stores/useAuthStore"
+import { PetEditDialog } from "../pet-edit-info";
+import type { Pet as PetType} from "~/types/usersTypes";
 
+interface PetDetailsType {
+  id: number;
+  name: string;
+  type: string;
+  breed: string;
+  age: number;
+  gender: string;
+  weight: string;
+  image?: string;
+  historial_medico?: string;
+  lastCheckup?: string;
+  notes?: string;
+  appointments?: any[];
+}
 
 export default function PetDetails() {
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
   const navigate = useNavigate();
-  const { id } = useParams(); // Get the pet ID from the URL
-  const [pet, setPet] = useState<any>(null);
+  const { id } = useParams<{ id: string }>();
+  const [pet, setPet] = useState<PetDetailsType | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadPetData = async () => {
-      try {
-        const user = useAuthStore.getState().user;
-        const userType = useAuthStore.getState().userType;
-        
-        if (user && userType === 'owner' && 'id_usuario' in user) {
-          const storedPets = localStorage.getItem(`user_pets_${user.id_usuario}`);
-          
-          if (storedPets) {
-            const pets = JSON.parse(storedPets);
-            const foundPet = pets.find((p: any) => p.id_mascota === Number(id));
-            
-            if (foundPet) {
-              // Map the localStorage pet data to match the component's expected structure
-              const mappedPet = {
-                id: foundPet.id_mascota,
-                name: foundPet.nombre,
-                type: foundPet.especie,
-                breed: foundPet.raza,
-                age: foundPet.edad,
-                gender: foundPet.genero,
-                weight: `${foundPet.peso} kg`,
-                image: foundPet.foto_url,
-                lastCheckup: "No registrado",
-                notes: "No hay notas registradas",
-                appointments: []
-              };
-              
-              setPet(mappedPet);
-              setLoading(false);
-              return;
-            }
+  const [isEditPetDialogOpen, setIsEditPetDialogOpen] = useState(false);
+  const [originalPetData, setOriginalPetData] = useState<PetType | null>(null);
+
+  const loadPetData = useCallback(async (forceRefresh = false) => {
+    setLoading(true);
+    try {
+      const user = useAuthStore.getState().user;
+      const userType = useAuthStore.getState().userType;
+      let foundInCache = false;
+
+      if (!forceRefresh && user && userType === 'owner' && 'id_usuario' in user) {
+        const storedPets = localStorage.getItem(`user_pets_${user.id_usuario}`);
+        if (storedPets) {
+          const pets: PetType[] = JSON.parse(storedPets);
+          const foundPet = pets.find((p) => p.id_mascota === Number(id));
+
+          if (foundPet) {
+            const mappedPet: PetDetailsType = {
+              id: foundPet.id_mascota,
+              name: foundPet.nombre,
+              type: foundPet.especie,
+              breed: foundPet.raza,
+              age: foundPet.edad,
+              gender: foundPet.genero.toString(),
+              weight: `${foundPet.peso} kg`,
+              image: foundPet.foto_url,
+              historial_medico: foundPet.historial_medico,
+              lastCheckup: "No registrado",
+              notes: "No hay notas registradas",
+              appointments: []
+            };
+            setPet(mappedPet);
+            setOriginalPetData(foundPet);
+            setLoading(false);
+            foundInCache = true;
           }
         }
+      }
 
-        // If not found in localStorage, fetch from API
+      if (!foundInCache || forceRefresh) {
         const token = Cookies.get('auth_token');
         const response = await fetch(`${API_URL}/pets/get-a-pet?id_mascota=${id}`, {
           headers: {
@@ -94,42 +113,106 @@ export default function PetDetails() {
 
         const data = await response.json();
         if (data.mascota) {
-          setPet(data.mascota);
+          const fetchedPet: PetType = data.mascota;
+          const mappedPet: PetDetailsType = {
+            id: fetchedPet.id_mascota,
+            name: fetchedPet.nombre,
+            type: fetchedPet.especie,
+            breed: fetchedPet.raza,
+            age: fetchedPet.edad,
+            gender: fetchedPet.genero.toString(),
+            weight: `${fetchedPet.peso} kg`,
+            image: fetchedPet.foto_url,
+            historial_medico: fetchedPet.historial_medico,
+            lastCheckup: "No registrado",
+            notes: "No hay notas registradas",
+            appointments: []
+          };
+          setPet(mappedPet);
+          setOriginalPetData(fetchedPet);
         } else {
+          toast.error("Mascota no encontrada", {
+            description: "No se pudo encontrar la información de la mascota."
+          });
           navigate("/dashboard-client/pets");
         }
-      } catch (error) {
-        console.error("Error al cargar la mascota:", error);
-        toast.error("Error", {
-          description: error instanceof Error ? error.message : "No se pudo cargar la información de la mascota"
-        });
-        navigate("/dashboard-client/pets");
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error("Error al cargar la mascota:", error);
+      toast.error("Error al cargar", {
+        description: error instanceof Error ? error.message : "No se pudo cargar la información de la mascota"
+      });
+      navigate("/dashboard-client/pets");
+    } finally {
+      setLoading(false);
+    }
+  }, [id, navigate, API_URL]);
 
+  useEffect(() => {
     if (id) {
       loadPetData();
     }
-  }, [id, navigate]);
+  }, [id, loadPetData]);
+
+  const handleOpenEditDialog = () => {
+    if (!originalPetData) {
+        toast.error("Error", { description: "No se pueden cargar los datos para editar." });
+        return;
+    }
+    setIsEditPetDialogOpen(true);
+  };
+
+  const handlePetUpdated = () => {
+    console.log("Pet update success callback triggered in details page. Refetching...");
+    loadPetData(true);
+    setIsEditPetDialogOpen(false);
+  };
 
   const handleDelete = async () => {
+    if (!pet) return;
     try {
-      // Simulación de eliminación - en una aplicación real, esto sería una llamada a API
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const token = Cookies.get('auth_token');
+      const user = useAuthStore.getState().user;
+      const id_usuario = user && 'id_usuario' in user ? user.id_usuario : undefined;
 
-      toast.success("Mascota eliminada", {
-        description: `${pet.name} ha sido eliminado de tus mascotas`,
-      })
+      if (!id_usuario) {
+        throw new Error("No se pudo identificar al usuario.");
+      }
 
-      navigate("/pet-dashboard/pets")
+      const response = await fetch(`${API_URL}/pets/delete?id_usuario=${id_usuario}&id_mascota=${pet.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        try {
+            const storedPets = localStorage.getItem(`user_pets_${id_usuario}`);
+            if (storedPets) {
+                let pets: PetType[] = JSON.parse(storedPets);
+                pets = pets.filter(p => p.id_mascota !== pet.id);
+                localStorage.setItem(`user_pets_${id_usuario}`, JSON.stringify(pets));
+            }
+        } catch (e) {
+            console.error("Error updating localStorage after delete:", e);
+        }
+
+        toast.success("Mascota eliminada", {
+          description: `${pet.name} ha sido eliminado de tus mascotas`,
+        });
+        navigate("/dashboard-client/pets");
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al eliminar la mascota");
+      }
     } catch (error) {
-      toast.error("Error", {
-        description: "Ocurrió un error al eliminar la mascota",
-      })
+      console.error("Error deleting pet:", error);
+      toast.error("Error al eliminar", {
+        description: error instanceof Error ? error.message : "Ocurrió un error al eliminar la mascota",
+      });
     }
-  }
+  };
 
   const calculateAge = (birthDate: Date) => {
     const today = new Date()
@@ -143,37 +226,12 @@ export default function PetDetails() {
     return age
   }
 
-  /*
   if (loading) {
-    return (
-      <div className="container mx-auto p-4 md:p-8">
-        <div className="mb-6">
-          <Skeleton className="h-8 w-64" />
-        </div>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-8 w-48 mb-2" />
-            <Skeleton className="h-4 w-72" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-8">
-              <Skeleton className="h-64 w-64 rounded-lg" />
-              <div className="space-y-4 flex-1">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-6 w-1/2" />
-                <Skeleton className="h-6 w-2/3" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
+      return <div className="container mx-auto p-4 md:p-8">Cargando detalles de la mascota...</div>;
   }
-   */
 
-  if (!pet) {
-    return null // Esto no debería ocurrir debido a la redirección en useEffect
+  if (!pet || !originalPetData) {
+    return <div className="container mx-auto p-4 md:p-8">No se encontró la mascota.</div>;
   }
 
   return (
@@ -187,11 +245,9 @@ export default function PetDetails() {
           </Link>
         </Button>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/pet-dashboard/pets/${pet.id}/edit`}>
-              <Edit className="mr-2 h-4 w-4" />
-              Editar
-            </Link>
+          <Button variant="outline" size="sm" onClick={handleOpenEditDialog}>
+            <Edit className="mr-2 h-4 w-4" />
+            Editar
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -210,7 +266,7 @@ export default function PetDetails() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
                   Eliminar
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -225,9 +281,9 @@ export default function PetDetails() {
             <div className="flex flex-col md:flex-row gap-8">
               <div className="relative h-64 w-64 overflow-hidden rounded-lg border">
                 {pet.image ? (
-                  <img 
-                    src={pet.image} 
-                    alt={pet.name} 
+                  <img
+                    src={pet.image}
+                    alt={pet.name}
                     className="h-full w-full object-cover"
                   />
                 ) : (
@@ -255,9 +311,7 @@ export default function PetDetails() {
                     <Cake className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-medium">Edad</p>
-                      <p>
-                        {12}
-                      </p>
+                      <p>{pet.age} años</p>
                     </div>
                   </div>
 
@@ -269,15 +323,31 @@ export default function PetDetails() {
                     </div>
                   </div>
 
+                  {pet.historial_medico && (
+                    <div className="flex items-center gap-2">
+                      <Clipboard className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">Historial Médico</p>
+                        {pet.historial_medico.startsWith('http') ? (
+                           <a href={pet.historial_medico} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm inline-flex items-center gap-1">
+                               <Clipboard className="h-4 w-4" /> Ver/Descargar Historial
+                           </a>
+                        ) : (
+                           <p className="text-sm text-muted-foreground"> {pet.historial_medico.split('/').pop() || 'Archivo adjunto disponible'}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-medium">Último chequeo</p>
-                      <p>{pet.lastCheckup}</p>
+                      <p>{pet.lastCheckup || "No registrado"}</p>
                     </div>
                   </div>
                   {pet.notes && (
-                    <div className="mt-4">
+                    <div className="mt-4 col-span-full">
                       <p className="text-sm font-medium">Notas</p>
                       <p className="text-muted-foreground">{pet.notes}</p>
                     </div>
@@ -304,20 +374,26 @@ export default function PetDetails() {
             <Card>
               <CardHeader>
                 <CardTitle>Historial Médico</CardTitle>
-                <CardDescription>Registro médico completo de {pet.name}</CardDescription>
+                <CardDescription>Información médica relevante de {pet.name}</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="rounded-md border p-4">
-                  <p className="text-center text-muted-foreground">
-                    No hay registros médicos disponibles. Las visitas al veterinario se mostrarán aquí.
-                  </p>
-                </div>
+                {pet.historial_medico ? (
+                  <div className="rounded-md border p-4">
+                     <p className="font-medium mb-2">Archivo de Historial Médico:</p>
+                      {pet.historial_medico.startsWith('http') ? (
+                           <a href={pet.historial_medico} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm inline-flex items-center gap-1">
+                               <Clipboard className="h-4 w-4" /> Ver/Descargar Historial
+                           </a>
+                        ) : (
+                           <p className="text-sm text-muted-foreground"> {pet.historial_medico.split('/').pop() || 'Archivo adjunto disponible'}</p>
+                        )}
+                  </div>
+                ) : (
+                   <div className="rounded-md border p-4 text-center text-muted-foreground">
+                     No hay historial médico adjunto.
+                   </div>
+                )}
               </CardContent>
-              <CardFooter className="flex justify-end">
-                <Button variant="outline" size="sm" asChild>
-                  <Link to="/pet-dashboard/medical-records">Ver historial médico completo</Link>
-                </Button>
-              </CardFooter>
             </Card>
           </TabsContent>
 
@@ -352,13 +428,22 @@ export default function PetDetails() {
               </CardContent>
               <CardFooter className="flex justify-end">
                 <Button asChild>
-                  <Link to="/pet-dashboard/appointments/schedule">Agendar cita</Link>
+                  <Link to="/dashboard-client/schedule-appointment">
+                     Agendar cita
+                  </Link>
                 </Button>
               </CardFooter>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
+
+      <PetEditDialog
+        open={isEditPetDialogOpen}
+        onOpenChange={setIsEditPetDialogOpen}
+        petToEdit={originalPetData}
+        onSuccess={handlePetUpdated}
+      />
     </div>
   )
 }
