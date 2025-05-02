@@ -262,7 +262,7 @@ export default function PetDetails() {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                         <AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Esta acción no se puede deshacer. Se eliminará permanentemente a {pet.name}.</AlertDialogDescription></AlertDialogHeader>
-                        <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Eliminar</AlertDialogAction></AlertDialogFooter>
+                        <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground text-white">Eliminar</AlertDialogAction></AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
                 </div>
