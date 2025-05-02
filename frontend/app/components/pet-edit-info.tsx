@@ -24,8 +24,8 @@ import {
   SelectValue,
 } from '~/components/ui/select';
 import { PawPrint as Paw } from 'lucide-react';
-import type { Pet as PetType } from '~/types/usersTypes'; // Assuming PetType definition exists
-import { useAuthStore } from '~/stores/useAuthStore'; // Import auth store if needed for user ID
+import type { Pet as PetType, Owner } from '~/types/usersTypes'; // Import Owner type
+import { useAuthStore } from '~/stores/useAuthStore';
 
 // Reuse breed lists (consider extracting these to a shared file)
 const dogBreeds = [
@@ -62,10 +62,15 @@ export function PetEditDialog({
   petToEdit,
   onSuccess,
 }: PetEditDialogProps) {
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const user = useAuthStore((state) => state.user);
+  const userType = useAuthStore((state) => state.userType);
+  const id_usuario = userType === 'owner' && user ? (user as Owner).id_usuario : undefined;
+
   const [isLoading, setIsLoading] = useState(false);
   const [petFiles, setPetFiles] = useState({
-    petHistory: null as File | null,
-    petPhoto: null as File | null,
+    historial: null as File | null, // Changed to match backend field name
+    foto: null as File | null,      // Changed to match backend field name
   });
 
   const {
@@ -75,12 +80,15 @@ export function PetEditDialog({
     reset,
     setValue,
     watch,
+    control,
   } = useForm<PetEditFormData>({
     resolver: zodResolver(petEditSchema),
     mode: 'onTouched',
   });
 
-  const formValues = watch();
+  const petSpeciesValue = watch('petSpecies');
+  const petBreedValue = watch('petBreed');
+  const petGenderValue = watch('petGender');
 
   // Populate form when petToEdit changes or dialog opens
   useEffect(() => {
@@ -94,7 +102,7 @@ export function PetEditDialog({
         petWeight: petToEdit.peso,
       });
       // Reset file inputs
-      setPetFiles({ petHistory: null, petPhoto: null });
+      setPetFiles({ historial: null, foto: null });
       // Clear file input elements visually
        const historyInput = document.getElementById('editPetHistory') as HTMLInputElement | null;
        if (historyInput) historyInput.value = '';
@@ -104,55 +112,103 @@ export function PetEditDialog({
     } else if (!open) {
         // Optionally reset form when dialog closes to prevent stale data flicker
         reset();
-        setPetFiles({ petHistory: null, petPhoto: null });
+        setPetFiles({ historial: null, foto: null });
     }
   }, [petToEdit, open, reset]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.name) return;
     const file = e.target.files[0];
-    const name = e.target.name === 'editPetHistory' ? 'petHistory' : 'petPhoto';
+    // Map input name to state key based on backend expected field names
+    const name = e.target.name === 'editPetHistory' ? 'historial' : 'foto';
     setPetFiles(prev => ({ ...prev, [name]: file }));
   };
 
   const onSubmit = async (data: PetEditFormData) => {
-    if (!petToEdit) return;
+    if (!petToEdit || !id_usuario) {
+        toast.error("Error", { description: "No se puede identificar la mascota o el usuario." });
+        return;
+    }
 
     setIsLoading(true);
-    console.log("Submitting edit data:", data);
-    console.log("Submitting files:", petFiles);
+    const token = Cookies.get('auth_token');
 
-    // --- BACKEND INTEGRATION WILL GO HERE ---
-    // For now, simulate success and call the onSuccess callback
+    if (!token) {
+        toast.error("Error de autenticación", { description: "Por favor, inicia sesión de nuevo." });
+        setIsLoading(false);
+        return;
+    }
+
+    // Create FormData
+    const formData = new FormData();
+    formData.append('petName', data.petName);
+    formData.append('petAge', data.petAge.toString());
+    formData.append('petSpecies', data.petSpecies);
+    formData.append('petBreed', data.petBreed);
+    formData.append('petGender', data.petGender);
+    formData.append('petWeight', data.petWeight.toString());
+
+    // Append files if they exist
+    if (petFiles.foto) {
+        formData.append('foto', petFiles.foto);
+    }
+    if (petFiles.historial) {
+        formData.append('historial', petFiles.historial);
+    }
+
+     console.log("Sending update data:", Object.fromEntries(formData.entries())); // Log form data before sending
+
+
     try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log("Simulated update successful for pet ID:", petToEdit.id_mascota);
+        const response = await fetch(`${API_URL}/pets/update?id_usuario=${id_usuario}&id_mascota=${petToEdit.id_mascota}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                // DO NOT set 'Content-Type': 'multipart/form-data',
+                // Fetch API sets it automatically with the correct boundary when body is FormData
+            },
+            body: formData,
+        });
+
+        if (!response.ok) {
+            let errorData;
+            try {
+                 errorData = await response.json();
+            } catch (e) {
+                 errorData = { message: `Error ${response.status}: ${response.statusText}` };
+            }
+            console.error("Update error response:", errorData);
+            throw new Error(errorData.message || 'Error al actualizar la mascota.');
+        }
+
+        const result = await response.json();
+        console.log("Update successful:", result);
+
         toast.success("Mascota actualizada", {
-           description: `${data.petName} ha sido actualizado correctamente.`
+           description: `${result.mascota.nombre} ha sido actualizado correctamente.`
         });
         onSuccess(); // Call the success handler passed from parent
         onOpenChange(false); // Close the dialog
 
     } catch (error) {
-        console.error("Error updating pet (simulated):", error);
+        console.error("Error updating pet:", error);
         toast.error("Error al actualizar", {
-            description: "No se pudo actualizar la información de la mascota."
+            description: error instanceof Error ? error.message : "No se pudo actualizar la información de la mascota."
         });
     } finally {
         setIsLoading(false);
     }
-    // ----------------------------------------
-
   };
 
   // Close dialog function
   const handleClose = () => {
-      onOpenChange(false);
+      if (!isLoading) { // Prevent closing while loading
+        onOpenChange(false);
+      }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[425px] md:max-w-[525px]">
         <DialogHeader>
            <div className="flex flex-col items-center justify-center w-full">
@@ -168,8 +224,7 @@ export function PetEditDialog({
 
         {petToEdit && (
           <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2"> {/* Added scroll */}
-              {/* Pet Name */}
+            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
               <div className="grid gap-2">
                 <Label htmlFor="editPetName">Nombre</Label>
                 <div className="relative">
@@ -183,7 +238,6 @@ export function PetEditDialog({
                 {errors.petName && (<p className="text-sm text-red-500">{errors.petName.message}</p>)}
               </div>
 
-              {/* Pet Age */}
               <div className="grid gap-2">
                 <Label htmlFor="editPetAge">Edad</Label>
                 <div className="relative">
@@ -200,13 +254,12 @@ export function PetEditDialog({
                 {errors.petAge && (<p className="text-sm text-red-500">{errors.petAge.message}</p>)}
               </div>
 
-              {/* Pet Species */}
               <div className="grid gap-2">
                 <Label htmlFor="editPetSpecies">Especie</Label>
                 <Select
                     name="petSpecies"
-                    value={formValues.petSpecies} // Controlled component
-                    onValueChange={(value) => setValue('petSpecies', value, { shouldValidate: true })}
+                    value={petSpeciesValue}
+                    onValueChange={(value) => setValue('petSpecies', value, { shouldValidate: true, shouldDirty: true })}
                 >
                     <SelectTrigger id="editPetSpecies">
                     <SelectValue placeholder="Selecciona especie" />
@@ -219,38 +272,36 @@ export function PetEditDialog({
                 {errors.petSpecies && (<p className="text-sm text-red-500 mt-1.5">{errors.petSpecies.message}</p>)}
               </div>
 
-              {/* Pet Breed */}
               <div className="grid gap-2">
                 <Label htmlFor="editPetBreed">Raza</Label>
                 <Select
                     name="petBreed"
-                    value={formValues.petBreed} // Controlled component
-                    onValueChange={(value) => setValue('petBreed', value, { shouldValidate: true })}
-                    disabled={!formValues.petSpecies} // Disable if no species selected
+                    value={petBreedValue}
+                    onValueChange={(value) => setValue('petBreed', value, { shouldValidate: true, shouldDirty: true })}
+                    disabled={!petSpeciesValue}
                  >
                     <SelectTrigger id="editPetBreed">
                     <SelectValue placeholder="Selecciona raza" />
                     </SelectTrigger>
                     <SelectContent>
-                    {formValues.petSpecies === "canino" && dogBreeds.map((breed) => (
+                    {petSpeciesValue === "canino" && dogBreeds.map((breed) => (
                         <SelectItem key={breed} value={breed}>{breed}</SelectItem>
                     ))}
-                    {formValues.petSpecies === "felino" && catBreeds.map((breed) => (
+                    {petSpeciesValue === "felino" && catBreeds.map((breed) => (
                         <SelectItem key={breed} value={breed}>{breed}</SelectItem>
                     ))}
-                     {!formValues.petSpecies && <SelectItem value="" disabled>Selecciona una especie primero</SelectItem>}
+                     {!petSpeciesValue && <SelectItem value="" disabled>Selecciona una especie primero</SelectItem>}
                     </SelectContent>
                 </Select>
                 {errors.petBreed && (<p className="text-sm text-red-500 mt-1.5">{errors.petBreed.message}</p>)}
               </div>
 
-              {/* Pet Gender */}
               <div className="grid gap-2">
                 <Label htmlFor="editPetGender">Género</Label>
                 <Select
                     name="petGender"
-                    value={formValues.petGender} // Controlled component
-                    onValueChange={(value) => setValue('petGender', value, { shouldValidate: true })}
+                    value={petGenderValue}
+                    onValueChange={(value) => setValue('petGender', value, { shouldValidate: true, shouldDirty: true })}
                 >
                     <SelectTrigger id="editPetGender">
                     <SelectValue placeholder="Selecciona género" />
@@ -263,7 +314,6 @@ export function PetEditDialog({
                 {errors.petGender && (<p className="text-sm text-red-500 mt-1.5">{errors.petGender.message}</p>)}
               </div>
 
-              {/* Pet Weight */}
               <div className="grid gap-2">
                 <Label htmlFor="editPetWeight">Peso (kg)</Label>
                 <div className="relative">
@@ -281,24 +331,24 @@ export function PetEditDialog({
                 {errors.petWeight && (<p className="text-sm text-red-500">{errors.petWeight.message}</p>)}
               </div>
 
-              {/* Pet History (Optional) */}
               <div className="grid gap-2">
                 <Label htmlFor="editPetHistory">Historial médico (opcional)</Label>
                 <p className="text-sm text-gray-600">Adjunta un nuevo historial médico si deseas reemplazar el actual (PDF).</p>
                 <div className="relative">
-                    {petFiles.petHistory ? (
+                    {petFiles.historial ? (
                       <div className="flex items-center justify-between px-3 py-2 border rounded-md">
                         <div className="flex items-center">
                           <Paw className="h-4 w-4 text-primary mr-2" />
-                          <span className="text-sm font-medium text-blue-500">{petFiles.petHistory.name}</span>
+                          <span className="text-sm font-medium text-blue-500">{petFiles.historial.name}</span>
                         </div>
                         <Button
                           type="button" variant="ghost" size="sm"
                           onClick={() => {
-                              setPetFiles({...petFiles, petHistory: null});
+                              setPetFiles({...petFiles, historial: null});
                               const input = document.getElementById('editPetHistory') as HTMLInputElement | null;
-                              if (input) input.value = ''; // Clear file input
+                              if (input) input.value = '';
                           }}
+                          disabled={isLoading}
                         >
                           <span className="text-red-600">Quitar</span>
                         </Button>
@@ -308,45 +358,44 @@ export function PetEditDialog({
                         <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="editPetHistory"
-                          name="editPetHistory" // Use different name for input element
+                          name="editPetHistory"
                           className="pl-9"
                           type="file"
                           onChange={handleFileChange}
                           accept=".pdf"
+                          disabled={isLoading}
                         />
                       </>
                     )}
                  </div>
-                 {/* Optionally show current history file name if available in petToEdit */}
-                 {petToEdit.historial_medico && !petFiles.petHistory && (
+                 {petToEdit.historial_medico && !petFiles.historial && (
                     <p className="text-xs text-gray-500 mt-1">Archivo actual: {petToEdit.historial_medico.split('/').pop() || 'Archivo existente'}</p>
                  )}
               </div>
 
-              {/* Pet Photo (Optional) */}
               <div className="grid gap-2">
                 <Label htmlFor="editPetPhoto">Foto (Opcional)</Label>
                  <p className="text-sm text-gray-600">Sube una nueva foto si deseas reemplazar la actual (imagen).</p>
                 <div className="relative">
-                    {petFiles.petPhoto ? (
+                    {petFiles.foto ? (
                       <div className="flex items-center justify-between px-3 py-2 border rounded-md">
                          <div className="flex items-center">
                            <Paw className="h-4 w-4 text-primary mr-2" />
-                           <span className="text-sm font-medium text-blue-500">{petFiles.petPhoto.name}</span>
+                           <span className="text-sm font-medium text-blue-500">{petFiles.foto.name}</span>
                            <div className="ml-2 h-8 w-8 overflow-hidden rounded-md">
-                               <img src={URL.createObjectURL(petFiles.petPhoto)} alt="Previa" className="h-full w-full object-cover"/>
+                               <img src={URL.createObjectURL(petFiles.foto)} alt="Previa" className="h-full w-full object-cover"/>
                            </div>
                          </div>
                          <Button
                            type="button" variant="ghost" size="sm"
                            onClick={() => {
-                               setPetFiles({...petFiles, petPhoto: null});
+                               const objectUrl = URL.createObjectURL(petFiles.foto!);
+                               setPetFiles({...petFiles, foto: null});
                                const input = document.getElementById('editPetPhoto') as HTMLInputElement | null;
-                               if (input) input.value = ''; // Clear file input
-                               if (petFiles.petPhoto) {
-                                 URL.revokeObjectURL(URL.createObjectURL(petFiles.petPhoto)); // Clean up object URL
-                               }
+                               if (input) input.value = '';
+                               URL.revokeObjectURL(objectUrl);
                            }}
+                           disabled={isLoading}
                          >
                            <span className="text-red-600">Quitar</span>
                          </Button>
@@ -356,26 +405,26 @@ export function PetEditDialog({
                          <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                          <Input
                            id="editPetPhoto"
-                           name="editPetPhoto" // Use different name for input element
+                           name="editPetPhoto"
                            className="pl-9"
                            type="file"
                            onChange={handleFileChange}
                            accept="image/*"
+                           disabled={isLoading}
                          />
                        </>
                      )}
                  </div>
-                  {/* Optionally show current photo preview */}
-                 {petToEdit.foto_url && !petFiles.petPhoto && (
-                    <div className="mt-2">
-                        <p className="text-xs text-gray-500 mb-1">Foto actual:</p>
-                        <img src={petToEdit.foto_url} alt="Foto actual" className="h-16 w-16 object-cover rounded-md"/>
-                    </div>
+                  {petToEdit.foto_url && !petFiles.foto && (
+                     <div className="mt-2">
+                         <p className="text-xs text-gray-500 mb-1">Foto actual:</p>
+                         <img src={petToEdit.foto_url} alt="Foto actual" className="h-16 w-16 object-cover rounded-md"/>
+                     </div>
                  )}
               </div>
             </div>
 
-            <DialogFooter className="mt-4 pt-4 border-t"> {/* Added spacing and border */}
+            <DialogFooter className="mt-4 pt-4 border-t">
               <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
                 Cancelar
               </Button>

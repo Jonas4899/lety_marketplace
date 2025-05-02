@@ -16,6 +16,7 @@ import {
   Trash2,
   MoreVertical,
   ChevronRight,
+  Loader2,
 } from "lucide-react"
 
 import {
@@ -62,7 +63,7 @@ export default function PetsPage() {
   const id_usuario = userType === 'owner' && user ? (user as Owner).id_usuario : undefined;
   
   // Cargar mascotas iniciales desde localStorage o desde el estado del usuario
-  const loadInitialPets = () => {
+  const loadPetsFromCache = useCallback(() => {
     try {
       if (id_usuario) {
         const storedPets = localStorage.getItem(`${LOCAL_STORAGE_KEY}_${id_usuario}`);
@@ -71,23 +72,23 @@ export default function PetsPage() {
         }
       }
     } catch (error) {
-      console.error("Error al cargar mascotas desde localStorage:", error);
+      console.error("Error loading pets from localStorage:", error);
     }
-    
-    // Si no hay en localStorage, usar las del usuario si existen
-    const userPets = userType === 'owner' && user ? (user as Owner).mascotas : [];
-    return userPets || [];
-  };
+    return [];
+  }, [id_usuario]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [pets, setPets] = useState<Pet[]>(loadInitialPets());
+  const [pets, setPets] = useState<Pet[]>([]);
   const [isAddPetDialogOpen, setIsAddPetDialogOpen] = useState(false);
   const [lastFetchTime, setLastFetchTime] = useState<number | null>(null);
 
   // State for the edit dialog
   const [isEditPetDialogOpen, setIsEditPetDialogOpen] = useState(false);
   const [petToEdit, setPetToEdit] = useState<Pet | null>(null);
+
+  // --- New State for Action Processing ---
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
 
   // Función para guardar mascotas en localStorage
   const savePetsToLocalStorage = useCallback((petsData: Pet[]) => {
@@ -111,75 +112,73 @@ export default function PetsPage() {
   };
 
   // Modified fetchPets to accept a silent option
-  const fetchPets = useCallback(async (silent = false) => {
-    if (!id_usuario) return;
+  const fetchPets = useCallback(async (triggeredByAction = false) => {
+    if (!id_usuario) {
+        setLoading(false);
+        return;
+    }
+
+    // Read current pets length directly inside
+    const currentPetsLength = pets.length;
+    const showMainLoader = currentPetsLength === 0 && !triggeredByAction;
+
+    if (showMainLoader) {
+        setLoading(true);
+    }
 
     try {
-      if (!silent) { // Only show main loader if not a silent fetch
-          setLoading(true);
-      }
       const token = Cookies.get('auth_token');
-
       const response = await fetch(`${API_URL}/pets/get?id_usuario=${id_usuario}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data.mascotas) {
-          setPets(data.mascotas);
-          savePetsToLocalStorage(data.mascotas);
-          preloadImages(data.mascotas);
-          setLastFetchTime(Date.now());
-        }
+        const fetchedPets = data.mascotas || [];
+        setPets(fetchedPets);
+        savePetsToLocalStorage(fetchedPets);
+        preloadImages(fetchedPets);
+        setLastFetchTime(Date.now());
       } else {
-        // Only show toast if not silent or if it's a critical error
-        if (!silent) {
-            const errorData = await response.json();
-            toast.error("Error al cargar mascotas", {
-                description: errorData.message || "No se pudieron cargar las mascotas"
-            });
-        } else {
-            console.error("Silent fetch failed:", response.status);
-        }
+        const errorData = await response.json().catch(() => ({ message: `Error ${response.status}` }));
+        toast.error("Error al cargar mascotas", {
+            description: errorData.message || "No se pudieron cargar las mascotas"
+        });
       }
     } catch (error) {
       console.error("Error al cargar mascotas:", error);
-       if (!silent) {
-           toast.error("Error al cargar mascotas", {
-            description: "Ocurrió un error al intentar cargar tus mascotas"
-           });
-       }
+      toast.error("Error al cargar mascotas", {
+        description: error instanceof Error ? error.message : "Ocurrió un error al intentar cargar tus mascotas"
+      });
     } finally {
-       // Only stop main loader if it was shown
-       if (!silent) {
-           setLoading(false);
-       }
+      if (showMainLoader) {
+        setLoading(false);
+      }
     }
-  }, [id_usuario, API_URL, savePetsToLocalStorage]); // Added fetchPets dependencies
+  }, [id_usuario, API_URL, savePetsToLocalStorage]);
 
   // useEffect for initial load and background refresh
   useEffect(() => {
-    const cachedPets = loadInitialPets();
-    if (cachedPets.length > 0) {
-      setPets(cachedPets);
-      setLoading(false); // Don't show loader if cache exists
-
-      const currentTime = Date.now();
-      const CACHE_DURATION = 300000; // 5 minutos
-      const shouldRefetchSilently = !lastFetchTime || (currentTime - (lastFetchTime || 0) > CACHE_DURATION);
-
-      if (shouldRefetchSilently) {
-        console.log("Refreshing pets silently in the background...");
-        fetchPets(true); // Fetch silently
+    if (id_usuario) {
+      console.log("OwnerPets: Initial load effect - id_usuario available.");
+      const cachedPets = loadPetsFromCache();
+      if (cachedPets.length > 0) {
+        console.log("OwnerPets: Initial load from cache.");
+        setPets(cachedPets);
+        setLoading(false);
+        // Use setTimeout to fetch in background after initial render with cache
+        const timerId = setTimeout(() => fetchPets(true), 0);
+        return () => clearTimeout(timerId); // Cleanup timeout
+      } else {
+        console.log("OwnerPets: No cache, fetching from API for initial load.");
+        fetchPets(false);
       }
     } else {
-      console.log("No cached pets found, fetching...");
-      fetchPets(false); // Normal fetch with loader
+        // Handle case where user logs out or id_usuario becomes undefined
+        setPets([]);
+        setLoading(false); // Not loading if no user
     }
-  }, [id_usuario, fetchPets]); // Dependency on fetchPets
+  }, [id_usuario, fetchPets, loadPetsFromCache]);
 
   // Filtrar mascotas según la búsqueda
   const filteredPets = pets.filter(
@@ -196,24 +195,48 @@ export default function PetsPage() {
   };
 
   // Function to handle successful pet update (will eventually call API)
-  const handlePetUpdated = async () => {
-    console.log("Pet update success callback triggered. Refetching pets...");
-    // For now, just refetch the list to show changes
-    // In the future, this would optimistically update the state or use the API response
-    await fetchPets(true); // Pass true to force refetch without showing main loader
-    // Ensure dialog is closed (although PetEditDialog might already close it)
-    setIsEditPetDialogOpen(false);
-    setPetToEdit(null);
+  const handlePetUpdated = () => {
+    console.log("Pet update success callback triggered. Setting processing state.");
+    setIsProcessingAction(true);
+
+    // Use setTimeout to allow state update to render before fetching
+    const timerId = setTimeout(() => {
+        console.log("OwnerPets: Fetching after update...");
+        fetchPets(true) // Indicate triggered by action
+            .catch(err => console.error("Error refetching after update:", err))
+            .finally(() => {
+                console.log("OwnerPets: Finished refetching after update.");
+                setIsProcessingAction(false);
+            });
+    }, 0); // Delay of 0 pushes to next event loop tick
+
+    // Optional: Cleanup timeout if component unmounts during the delay
+    // This might be overly cautious but good practice in some scenarios.
+    // useEffect(() => {
+    //     return () => clearTimeout(timerId);
+    // }, [timerId]); // Need timerId in state or ref if using this cleanup pattern
   };
 
   // Función para actualizar la lista de mascotas después de agregar una
-  const handlePetAdded = async () => {
-    console.log("Pet added success callback triggered. Refetching pets...");
-    await fetchPets(true); // Refetch silently after adding
-    toast.success("Mascota registrada exitosamente", {
-        description: "Se ha actualizado tu lista de mascotas"
-    });
-    // Dialog closing is handled by AddPetDialog
+  const handlePetAdded = () => {
+    console.log("Pet added success callback triggered. Setting processing state.");
+    setIsProcessingAction(true);
+
+    // Use setTimeout
+    const timerId = setTimeout(() => {
+        console.log("OwnerPets: Fetching after add...");
+        fetchPets(true) // Indicate triggered by action
+            .then(() => {
+                toast.success("Mascota registrada exitosamente", {
+                    description: "Se ha actualizado tu lista de mascotas"
+                });
+            })
+            .catch(err => console.error("Error refetching after add:", err))
+            .finally(() => {
+                 console.log("OwnerPets: Finished refetching after add.");
+                setIsProcessingAction(false);
+            });
+    }, 0);
   };
 
   // Componente de esqueleto para la carga
@@ -242,29 +265,25 @@ export default function PetsPage() {
   );
 
   const handleDeletePet = async (petId: number) => {
+    setIsProcessingAction(true); // Set loading state immediately
+    let deleteSuccess = false;
     try {
       const token = Cookies.get('auth_token');
       const response = await fetch(`${API_URL}/pets/delete?id_usuario=${id_usuario}&id_mascota=${petId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
-        const updatedPets = pets.filter((pet) => pet.id_mascota !== petId);
-        setPets(updatedPets);
-
-        // Actualizar localStorage
-        savePetsToLocalStorage(updatedPets);
-
-        // Mostrar mensaje de éxito
-        await fetchPets(true); // Or simply refetch silently
+        deleteSuccess = true;
+        console.log(`Pet ${petId} deleted successfully. Refetching...`);
+        // Use await here because we want the success toast *after* refetch completes
+        await fetchPets(true);
         toast.success("Mascota eliminada", {
           description: "La mascota ha sido eliminada correctamente"
         });
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ message: "Error al eliminar" }));
         throw new Error(errorData.message || "Error al eliminar la mascota");
       }
     } catch (error) {
@@ -272,6 +291,10 @@ export default function PetsPage() {
       toast.error("Error al eliminar", {
         description: error instanceof Error ? error.message : "No se pudo eliminar la mascota"
       });
+    } finally {
+      // Ensure processing state is turned off regardless of outcome
+      console.log("OwnerPets: Finished processing delete action.");
+      setIsProcessingAction(false);
     }
   };
 
@@ -390,7 +413,7 @@ export default function PetsPage() {
     <div className="flex flex-col gap-4 p-4 md:gap-8 md:p-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Mis Mascotas</h1>
-        <Button onClick={() => setIsAddPetDialogOpen(true)}>
+        <Button onClick={() => setIsAddPetDialogOpen(true)} disabled={isProcessingAction || loading}>
           <Plus className="mr-2 h-4 w-4" />
           Agregar Mascota
         </Button>
@@ -405,110 +428,93 @@ export default function PetsPage() {
             className="pl-8"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            disabled={isProcessingAction || loading}
           />
         </div>
       </div>
 
       <Tabs defaultValue="all" className="space-y-2">
         <TabsList>
-          <TabsTrigger value="all" className="flex items-center gap-2">
+          <TabsTrigger value="all" className="flex items-center gap-2" disabled={isProcessingAction || loading}>
             <PawPrint className="h-4 w-4" />
             <span>Todas</span>
           </TabsTrigger>
-          <TabsTrigger value="dogs" className="flex items-center gap-2">
+          <TabsTrigger value="dogs" className="flex items-center gap-2" disabled={isProcessingAction || loading}>
             <span>Perros</span>
           </TabsTrigger>
-          <TabsTrigger value="cats" className="flex items-center gap-2">
+          <TabsTrigger value="cats" className="flex items-center gap-2" disabled={isProcessingAction || loading}>
             <span>Gatos</span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="all" className="space-y-1">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-14 lg:auto-rows-[640px]">
-            {loading && pets.length === 0 ? (
-              // Mostrar esqueletos solo si está cargando Y no hay datos en caché
-              Array(3).fill(0).map((_, index) => (
-                <PetCardSkeleton key={`skeleton-${index}`} />
-              ))
-            ) : filteredPets.length > 0 ? (
-              // Mostrar las mascotas cuando estén cargadas o desde caché
-              <>
-                {filteredPets.map((pet) => renderPetCard(pet))}
-                <Card 
-                  className="flex aspect-square flex-col items-center justify-center cursor-pointer h-full w-full" 
-                  onClick={() => setIsAddPetDialogOpen(true)}
-                > 
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-                    <Plus className="h-10 w-10 text-primary" />
-                  </div>
-                  <h3 className="mt-4 text-xl font-medium">Agregar Mascota</h3>
-                  <p className="mt-2 text-center text-sm text-muted-foreground">
-                    Registra una nueva mascota en tu familia
-                  </p>
-                  <Button className="mt-4">
-                    Agregar
-                  </Button>
-                </Card>
-              </>
-            ) : (
-              // Mensaje cuando no hay mascotas
-              <NoPetsMessage />
-            )}
-          </div>
+        <TabsContent value="all" className="relative min-h-[200px]">
+           {isProcessingAction && ( <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/70 backdrop-blur-sm"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> )}
+           <div className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-14 lg:auto-rows-[640px] ${isProcessingAction ? 'opacity-50 pointer-events-none' : ''}`}>
+                {loading ? (
+                    Array(3).fill(0).map((_, index) => (
+                        <PetCardSkeleton key={`skeleton-${index}`} />
+                    ))
+                ) : filteredPets.length > 0 ? (
+                    <>
+                        {filteredPets.map((pet) => renderPetCard(pet))}
+                        <Card
+                            className="flex aspect-square flex-col items-center justify-center cursor-pointer h-full w-full hover:border-primary transition-colors"
+                            onClick={() => setIsAddPetDialogOpen(true)}
+                        >
+                            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+                                <Plus className="h-10 w-10 text-primary" />
+                            </div>
+                            <h3 className="mt-4 text-xl font-medium">Agregar Mascota</h3>
+                            <p className="mt-2 text-center text-sm text-muted-foreground">
+                                Registra una nueva mascota
+                            </p>
+                            <Button className="mt-4">Agregar</Button>
+                        </Card>
+                    </>
+                ) : pets.length === 0 ? (
+                   <NoPetsMessage />
+                ) : (
+                     <div className="col-span-full text-center p-8">No se encontraron mascotas con ese criterio.</div>
+                )}
+            </div>
         </TabsContent>
 
-        <TabsContent value="dogs" className="space-y-4">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-14 lg:auto-rows-[640px]">
-            {filteredPets.filter((pet) => pet.especie === "Canino").length > 0 ? (
-              <>
-                {filteredPets.filter((pet) => pet.especie === "Canino").map((pet) => renderPetCard(pet))}
-                <Card   
-                  className="flex aspect-square flex-col items-center justify-center cursor-pointer h-full w-full" 
-                  onClick={() => setIsAddPetDialogOpen(true)}
-                > 
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-                    <Plus className="h-10 w-10 text-primary" />
-                  </div>
-                  <h3 className="mt-4 text-xl font-medium">Agregar Perro</h3>
-                  <p className="mt-2 text-center text-sm text-muted-foreground">
-                    Registra un nuevo perro en tu familia
-                  </p>
-                  <Button className="mt-4">
-                    Agregar
-                  </Button>
-                </Card>
-              </>
-            ) : (
-              <NoPetsMessage />
-            )}
-          </div>
+        <TabsContent value="dogs" className="relative min-h-[200px]">
+             {isProcessingAction && ( <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/70 backdrop-blur-sm"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> )}
+             <div className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-14 lg:auto-rows-[640px] ${isProcessingAction ? 'opacity-50 pointer-events-none' : ''}`}>
+                {!loading && filteredPets.filter((pet) => pet.especie === "Canino").length > 0 ? (
+                   <>
+                        {filteredPets.filter((pet) => pet.especie === "Canino").map((pet) => renderPetCard(pet))}
+                        <Card className="flex aspect-square flex-col items-center justify-center cursor-pointer h-full w-full hover:border-primary transition-colors" onClick={() => setIsAddPetDialogOpen(true)}>
+                           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10"><Plus className="h-10 w-10 text-primary" /></div>
+                           <h3 className="mt-4 text-xl font-medium">Agregar Perro</h3>
+                           <p className="mt-2 text-center text-sm text-muted-foreground">Registra un nuevo perro</p>
+                           <Button className="mt-4">Agregar</Button>
+                         </Card>
+                   </>
+                ) : !loading && (
+                   <NoPetsMessage />
+                )}
+             </div>
         </TabsContent>
 
-        <TabsContent value="cats" className="space-y-4">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-14 lg:auto-rows-[640px]">
-            {filteredPets.filter((pet) => pet.especie === "Felino").length > 0 ? (
-              <>
-                {filteredPets.filter((pet) => pet.especie === "Felino").map((pet) => renderPetCard(pet))}
-                <Card 
-                  className="flex aspect-square flex-col items-center justify-center cursor-pointer h-full w-full" 
-                  onClick={() => setIsAddPetDialogOpen(true)}
-                > 
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-                    <Plus className="h-10 w-10 text-primary" />
-                  </div>
-                  <h3 className="mt-4 text-xl font-medium">Agregar Gato</h3>
-                  <p className="mt-2 text-center text-sm text-muted-foreground">
-                    Registra un nuevo gato en tu familia
-                  </p>
-                  <Button className="mt-4">
-                    Agregar
-                  </Button>
-                </Card>
-              </>
-            ) : (
-              <NoPetsMessage />
-            )}
-          </div>
+        <TabsContent value="cats" className="relative min-h-[200px]">
+             {isProcessingAction && ( <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/70 backdrop-blur-sm"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> )}
+             <div className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-14 lg:auto-rows-[640px] ${isProcessingAction ? 'opacity-50 pointer-events-none' : ''}`}>
+                 {!loading && filteredPets.filter((pet) => pet.especie === "Felino").length > 0 ? (
+                    <>
+                         {filteredPets.filter((pet) => pet.especie === "Felino").map((pet) => renderPetCard(pet))}
+                         <Card className="flex aspect-square flex-col items-center justify-center cursor-pointer h-full w-full hover:border-primary transition-colors" onClick={() => setIsAddPetDialogOpen(true)}>
+                            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10"><Plus className="h-10 w-10 text-primary" /></div>
+                            <h3 className="mt-4 text-xl font-medium">Agregar Gato</h3>
+                            <p className="mt-2 text-center text-sm text-muted-foreground">Registra un nuevo gato</p>
+                            <Button className="mt-4">Agregar</Button>
+                          </Card>
+                    </>
+                 ) : !loading && (
+                    <NoPetsMessage />
+                 )}
+             </div>
         </TabsContent>
       </Tabs>
 
@@ -519,7 +525,7 @@ export default function PetsPage() {
       />
 
       {/* Render the Edit Pet Dialog */}
-      {petToEdit && ( // Render only when a pet is selected for editing
+      {petToEdit && (
         <PetEditDialog
             open={isEditPetDialogOpen}
             onOpenChange={setIsEditPetDialogOpen}

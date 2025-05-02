@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
 import autenticacionToken from '../middleware/auth.js';
-import uploadFile from '../utils.js';
+import uploadFile, { deleteFile, getFilePathFromUrl } from '../utils.js';
 import dotenv from 'dotenv';
 import { escape } from 'querystring';
 
@@ -20,16 +20,34 @@ const supabaseClient = createClient(supabaseUrl, supabaseServiceRolKey);
 // Configurar multer para subir archivos
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Guardar temporalmente en la carpeta local /uploads
+    const uploadPath = 'uploads/';
+    fs.mkdirSync(uploadPath, { recursive: true });
+    cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname); // Obtener la extensión del archivo
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`; // Crear un nombre único
+    const ext = path.extname(file.originalname);
+    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
     cb(null, uniqueName);
   },
 });
 
 const upload = multer({ storage });
+
+const cleanupFiles = (files) => {
+  if (!files) return;
+  Object.values(files).forEach((fileList) => {
+    if (Array.isArray(fileList)) {
+      fileList.forEach((file) => {
+        if (file && file.path && fs.existsSync(file.path)) {
+          fs.unlink(file.path, (err) => {
+            if (err)
+              console.error(`Error deleting temp file ${file.path}:`, err);
+          });
+        }
+      });
+    }
+  });
+};
 
 //Registrar una nueva mascota a nombre de un usuario
 router.post(
@@ -166,6 +184,30 @@ router.delete('/pets/delete', autenticacionToken, async (req, res) => {
       });
     }
 
+    // Delete files from storage AFTER successful DB deletion
+    try {
+      if (mascotaCheck.foto_url) {
+        const photoPath = getFilePathFromUrl(
+          mascotaCheck.foto_url,
+          'fotos-mascotas'
+        );
+        if (photoPath) await deleteFile(photoPath, 'fotos-mascotas');
+      }
+      if (mascotaCheck.historial_medico) {
+        const historyPath = getFilePathFromUrl(
+          mascotaCheck.historial_medico,
+          'historiales-mascotas'
+        );
+        if (historyPath) await deleteFile(historyPath, 'historiales-mascotas');
+      }
+    } catch (storageError) {
+      console.error(
+        'Error deleting associated files from storage (DB record deleted successfully):',
+        storageError
+      );
+      // Log error but proceed, as main record is gone
+    }
+
     return res.status(200).json({
       message: 'Mascota eliminada correctamente',
       id_mascota: id_mascota,
@@ -264,5 +306,245 @@ router.get('/pets/get', autenticacionToken, async (req, res) => {
     return res.status(500).json({ message: 'Error interno en el servidor' });
   }
 });
+
+router.put(
+  '/pets/update',
+  autenticacionToken,
+  upload.fields([
+    { name: 'foto', maxCount: 1 },
+    { name: 'historial', maxCount: 1 },
+  ]),
+  async (req, res) => {
+    const id_usuario = req.query.id_usuario;
+    const id_mascota = req.query.id_mascota;
+    const { petName, petAge, petBreed, petSpecies, petGender, petWeight } =
+      req.body;
+
+    const fotoMascotaFile = req.files?.foto?.[0];
+    const historialMedicoFile = req.files?.historial?.[0];
+
+    // --- FIX SCOPE: Declare URLs outside try ---
+    let oldFotoUrl = null;
+    let oldHistorialUrl = null;
+    let newFotoUrl = null; // Initialize as null
+    let newHistorialUrl = null; // Initialize as null
+    let fotoUploadedInThisRequest = false; // Track if a new file was actually uploaded
+    let historialUploadedInThisRequest = false;
+
+    try {
+      console.log('Datos recibidos para UPDATE:', req.body);
+      console.log('Archivos recibidos para UPDATE:', req.files);
+      console.log('Query params UPDATE:', req.query);
+
+      if (!id_usuario || !id_mascota) {
+        cleanupFiles(req.files);
+        return res
+          .status(400)
+          .json({ message: 'Faltan id_usuario o id_mascota en la consulta.' });
+      }
+
+      const { data: existingPet, error: fetchError } = await supabaseClient
+        .from('mascotas')
+        .select(
+          'id_mascota, id_usuario, foto_url, historial_medico, nombre, edad, raza, especie, genero, peso'
+        ) // Select all fields for comparison
+        .eq('id_mascota', id_mascota)
+        .eq('id_usuario', id_usuario)
+        .single();
+
+      if (fetchError || !existingPet) {
+        cleanupFiles(req.files);
+        console.error(
+          'Error fetching pet for update or not found/unauthorized:',
+          fetchError
+        );
+        return res.status(404).json({
+          message: 'Mascota no encontrada o no pertenece al usuario.',
+        });
+      }
+
+      // Assign old URLs, these will be the defaults if no new file is uploaded
+      oldFotoUrl = existingPet.foto_url;
+      oldHistorialUrl = existingPet.historial_medico;
+      newFotoUrl = oldFotoUrl; // Initialize new URLs with old ones
+      newHistorialUrl = oldHistorialUrl;
+
+      // --- Handle Foto Upload ---
+      if (fotoMascotaFile) {
+        console.log('Uploading new photo...');
+        const uploadedUrl = await uploadFile(fotoMascotaFile, 'fotos-mascotas');
+        if (uploadedUrl) {
+          newFotoUrl = uploadedUrl; // Update URL on successful upload
+          fotoUploadedInThisRequest = true;
+          console.log('New photo URL:', newFotoUrl);
+          // Delete old photo *after* successful upload of new one
+          if (oldFotoUrl) {
+            const oldPath = getFilePathFromUrl(oldFotoUrl, 'fotos-mascotas'); // Use imported function
+            if (oldPath) {
+              console.log('Deleting old photo:', oldPath);
+              await deleteFile(oldPath, 'fotos-mascotas'); // Use imported function
+            }
+          }
+        } else {
+          console.warn(
+            'Photo upload failed. Will attempt to keep the old photo URL if it exists.'
+          );
+          // newFotoUrl remains oldFotoUrl
+        }
+      }
+
+      // --- Handle Historial Upload ---
+      if (historialMedicoFile) {
+        console.log('Uploading new history...');
+        const uploadedUrl = await uploadFile(
+          historialMedicoFile,
+          'historiales-mascotas'
+        );
+        if (uploadedUrl) {
+          newHistorialUrl = uploadedUrl; // Update URL on successful upload
+          historialUploadedInThisRequest = true;
+          console.log('New history URL:', newHistorialUrl);
+          // Delete old history *after* successful upload of new one
+          if (oldHistorialUrl) {
+            const oldPath = getFilePathFromUrl(
+              oldHistorialUrl,
+              'historiales-mascotas'
+            ); // Use imported function
+            if (oldPath) {
+              console.log('Deleting old history:', oldPath);
+              await deleteFile(oldPath, 'historiales-mascotas'); // Use imported function
+            }
+          }
+        } else {
+          console.warn(
+            'History upload failed. Will attempt to keep the old history URL if it exists.'
+          );
+          // newHistorialUrl remains oldHistorialUrl
+        }
+      }
+
+      // Prepare update data object - compare with existingPet data
+      const updateData = {};
+      if (petName !== undefined && petName !== existingPet.nombre)
+        updateData.nombre = petName;
+      // Ensure comparison with number type
+      const petAgeNum = petAge !== undefined ? parseInt(petAge, 10) : undefined;
+      if (
+        petAgeNum !== undefined &&
+        !isNaN(petAgeNum) &&
+        petAgeNum !== existingPet.edad
+      )
+        updateData.edad = petAgeNum;
+      if (petBreed !== undefined && petBreed !== existingPet.raza)
+        updateData.raza = petBreed;
+      if (petSpecies !== undefined && petSpecies !== existingPet.especie)
+        updateData.especie = petSpecies;
+      if (petGender !== undefined && petGender !== existingPet.genero)
+        updateData.genero = petGender;
+      // Ensure comparison with number type
+      const petWeightNum =
+        petWeight !== undefined ? parseFloat(petWeight) : undefined;
+      if (
+        petWeightNum !== undefined &&
+        !isNaN(petWeightNum) &&
+        petWeightNum !== existingPet.peso
+      )
+        updateData.peso = petWeightNum;
+
+      // Update URLs only if they actually changed during this request
+      if (newFotoUrl !== oldFotoUrl) updateData.foto_url = newFotoUrl;
+      if (newHistorialUrl !== oldHistorialUrl)
+        updateData.historial_medico = newHistorialUrl;
+
+      if (Object.keys(updateData).length === 0) {
+        cleanupFiles(req.files);
+        console.log('No actual data changes detected for update.');
+        return res.status(200).json({
+          message: 'No se detectaron cambios para actualizar.',
+          mascota: existingPet, // Return existing data fetched earlier
+        });
+      }
+
+      console.log('Data to update in DB:', updateData);
+
+      const { data: updatedPetData, error: updateError } = await supabaseClient
+        .from('mascotas')
+        .update(updateData)
+        .eq('id_mascota', id_mascota)
+        .eq('id_usuario', id_usuario)
+        .select('*') // Select updated data
+        .single();
+
+      if (updateError) {
+        console.error('Error updating pet in DB:', updateError);
+        // Attempt to revert file changes ONLY if a new file was uploaded in *this* request
+        try {
+          if (fotoUploadedInThisRequest && newFotoUrl) {
+            const uploadedPath = getFilePathFromUrl(
+              newFotoUrl,
+              'fotos-mascotas'
+            );
+            if (uploadedPath) await deleteFile(uploadedPath, 'fotos-mascotas');
+          }
+          if (historialUploadedInThisRequest && newHistorialUrl) {
+            const uploadedPath = getFilePathFromUrl(
+              newHistorialUrl,
+              'historiales-mascotas'
+            );
+            if (uploadedPath)
+              await deleteFile(uploadedPath, 'historiales-mascotas');
+          }
+        } catch (revertError) {
+          console.error(
+            'Error attempting to revert file uploads after DB update failure:',
+            revertError
+          );
+        }
+        cleanupFiles(req.files); // Clean local files regardless of revert attempt
+        return res.status(400).json({
+          message:
+            'Error al actualizar la mascota en la base de datos: ' +
+            updateError.message,
+        });
+      }
+
+      cleanupFiles(req.files); // Clean up local temp files on success
+
+      return res.status(200).json({
+        message: 'Mascota actualizada exitosamente',
+        mascota: updatedPetData,
+      });
+    } catch (error) {
+      console.error('Error inesperado en UPDATE:', error);
+      // Use the URLs declared outside the try block
+      try {
+        // Delete newly uploaded files only if they were uploaded in *this* request
+        if (fotoUploadedInThisRequest && newFotoUrl) {
+          const uploadedPath = getFilePathFromUrl(newFotoUrl, 'fotos-mascotas');
+          if (uploadedPath) await deleteFile(uploadedPath, 'fotos-mascotas');
+        }
+        if (historialUploadedInThisRequest && newHistorialUrl) {
+          const uploadedPath = getFilePathFromUrl(
+            newHistorialUrl,
+            'historiales-mascotas'
+          );
+          if (uploadedPath)
+            await deleteFile(uploadedPath, 'historiales-mascotas');
+        }
+      } catch (cleanupError) {
+        console.error(
+          'Error during error cleanup of uploaded files:',
+          cleanupError
+        );
+      } finally {
+        cleanupFiles(req.files); // Always cleanup local files
+      }
+      return res.status(500).json({
+        message:
+          'Error en el servidor: ' + (error.message || 'Error desconocido'),
+      });
+    }
+  }
+);
 
 export default router;
