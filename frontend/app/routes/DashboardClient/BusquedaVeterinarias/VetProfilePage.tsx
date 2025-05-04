@@ -111,6 +111,11 @@ export default function VetProdilePage() {
     return <div className="container mx-auto px-4 py-12 text-center text-red-600">Error loading profile: {error}</div>;
   }
 
+  console.log('fotos')
+  console.log(clinicProfile.photos)
+  console.log('horarios')
+  console.log(clinicProfile.openingHours);
+
   return (
     <div className="container mx-auto px-4 py-12">
       <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="mb-4">
@@ -304,12 +309,6 @@ export default function VetProdilePage() {
                     </Badge>
                   </div>
                 ))}
-                {clinicProfile?.services?.length > 0 && <Separator />}
-                <Link to={`/pet-dashboard/appointments/schedule?clinic=${clinicId}`}>
-                  <Button variant="link" className="p-0">
-                    Ver todos los servicios y precios
-                  </Button>
-                </Link>
               </div>
             </CardContent>
           </Card>

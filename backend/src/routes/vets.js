@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import { uploadFile } from '../utils.js';
 import dotenv from 'dotenv';
 import axios from 'axios';
+import e from 'express';
 
 dotenv.config();
 
@@ -663,7 +664,24 @@ router.get('/veterinary/profile/:id_clinica', async (req, res) => {
       });
     }
 
-    let services = []; // Default to empty array
+    //Obtener imagenes de la clinica
+    let photos = [];
+    const { data: fetchedPhotos, error: errorPhotos } = await supabaseClient
+      .from('fotos_clinicas')
+      .select('*')
+      .eq('id_clinica', id_clinica);
+
+    if (errorPhotos) {
+      console.log(
+        `Error obteniendo las fotos de la clinica ${id_clinica}:`,
+        errorPhotos.message
+      );
+    } else {
+      photos = fetchedPhotos || [];
+    }
+
+    //obtener los servicios de la clinica
+    let services = [];
     const { data: fetchedServices, error: errorServices } = await supabaseClient
       .from('servicios')
       .select('*') // Select all columns for services
@@ -672,12 +690,31 @@ router.get('/veterinary/profile/:id_clinica', async (req, res) => {
     if (errorServices) {
       // Log the error, but don't stop the entire profile retrieval
       console.error(
-        `Error fetching services for clinic ${id_clinica}:`,
+        `Error obteniendo los servicios de la clinica ${id_clinica}:`,
         errorServices.message
       );
       // Optionally, you could add an indicator to the response that services failed to load
     } else {
       services = fetchedServices || []; // Assign fetched services or empty array if null/undefined
+    }
+
+    //Obtener las reseñas de la clinica
+    let reviews = [];
+    const { data: fetchedReviews, error: errorReviews } = await supabaseClient
+      .from('reseñas')
+      // Format the 'fecha' column to 'YYYY-MM-DD HH24:MI' format
+      .select(
+        'id_resena, calificacion, comentario, fecha:fecha::text, usuarios(nombre)'
+      )
+      .eq('id_clinica', id_clinica);
+
+    if (errorReviews) {
+      console.error(
+        `Error obteniendo las reseñas de la clinica ${id_clinica}: `,
+        errorReviews.message // Corrected variable name here
+      );
+    } else {
+      reviews = fetchedReviews || []; // Assign fetched reviews or empty array
     }
 
     // Formatear los horarios para el frontend
@@ -743,7 +780,9 @@ router.get('/veterinary/profile/:id_clinica', async (req, res) => {
       specialties,
       facilities,
       paymentMethods,
+      photos,
       services,
+      reviews,
     };
 
     res.status(200).json(perfilCompleto);
