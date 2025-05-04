@@ -54,10 +54,41 @@ const clinicData = {
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
+interface ClinicPhoto {
+  id_foto: number;
+  titulo: string;
+  url: string;
+  tipo: string;
+}
+
+interface ClinicService {
+  id_servicio: number;
+  nombre: string;
+  descripcion: string;
+  precio: number | null;
+  disponible: boolean;
+}
+
+interface ClinicProfileData {
+  id_clinica: number;
+  nombre: string;
+  direccion: string;
+  telefono: string;
+  correo: string;
+  descripcion: string | null;
+  sitio_web: string | null;
+  latitud: number | null;
+  longitud: number | null;
+  photos: ClinicPhoto[];
+  services: ClinicService[];
+  openingHours: any[]; // Define a proper type if available
+}
+
+
 export default function VetProdilePage() {
   const params = useParams();
   const clinicId = params.id;
-  const [clinicProfile, setClinicProfile] = useState<any>(null);
+  const [clinicProfile, setClinicProfile] = useState<ClinicProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -101,6 +132,7 @@ export default function VetProdilePage() {
 
   }, [clinicId]);
 
+  // Remove this line once API data is fully integrated
   const clinic = clinicData;
 
   if (isLoading) {
@@ -110,6 +142,11 @@ export default function VetProdilePage() {
   if (error && !clinicProfile) {
     return <div className="container mx-auto px-4 py-12 text-center text-red-600">Error loading profile: {error}</div>;
   }
+
+  if (!clinicProfile) {
+    return <div className="container mx-auto px-4 py-12 text-center">Clinic profile not found.</div>;
+  }
+
 
   console.log('fotos')
   console.log(clinicProfile.photos)
@@ -164,16 +201,24 @@ export default function VetProdilePage() {
             </div>
           </div>
 
+          {/* Render Clinic Photos */}
           <div className="grid grid-cols-2 gap-4 mb-6">
-            {clinic.images.map((image, index) => (
-              <div key={index} className={index === 0 ? "col-span-2" : ""}>
-                <img
-                  src={image || "/placeholder.svg"}
-                  alt={`${clinicProfile?.nombre} - Imagen ${index + 1}`}
-                  className="w-full h-48 object-cover rounded-lg"
-                />
+            {clinicProfile?.photos && clinicProfile.photos.length > 0 ? (
+              clinicProfile.photos.map((photo, index) => (
+                <div key={photo.id_foto} className={index === 0 ? "col-span-2" : ""}>
+                  <img
+                    src={photo.url}
+                    alt={photo.titulo || `${clinicProfile?.nombre} - Imagen ${index + 1}`}
+                    className="w-full h-48 object-cover rounded-lg"
+                  />
+                </div>
+              ))
+            ) : (
+              // Optional: Show a placeholder if no photos are available
+              <div className="col-span-2 text-center text-gray-500">
+                No hay fotos disponibles para esta clínica.
               </div>
-            ))}
+            )}
           </div>
 
           <Tabs defaultValue="about" className="mb-6">
@@ -185,10 +230,11 @@ export default function VetProdilePage() {
 
             <TabsContent value="about" className="mt-4">
               <h3 className="text-lg font-semibold mb-2">Acerca de {clinicProfile?.nombre}</h3>
-              <p className="text-gray-700 mb-4">{clinicProfile?.descripcion}</p>
+              <p className="text-gray-700 mb-4">{clinicProfile?.descripcion || "No hay descripción disponible."}</p>
 
               <h4 className="font-semibold mb-2">Horario de atención</h4>
               <div className="space-y-2 mb-4">
+                {/* TODO: Replace with actual opening hours data */}
                 {clinic.hours.map((schedule, index) => (
                   <div key={index} className="flex justify-between">
                     <span className="text-gray-600">{schedule.day}</span>
@@ -209,9 +255,9 @@ export default function VetProdilePage() {
                     href={clinicProfile?.sitio_web ? `https://${clinicProfile.sitio_web}` : '#'}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600"
+                    className={`text-blue-600 ${!clinicProfile?.sitio_web ? 'pointer-events-none text-gray-400' : ''}`}
                   >
-                    {clinicProfile?.sitio_web}
+                    {clinicProfile?.sitio_web || 'No disponible'}
                   </a>
                 </div>
                 <div className="flex justify-between">
@@ -227,8 +273,8 @@ export default function VetProdilePage() {
               <h3 className="text-lg font-semibold mb-4">Servicios ofrecidos</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {clinicProfile?.services && clinicProfile.services.length > 0 ? (
-                  clinicProfile.services.map((service: any, index: number) => (
-                    <div key={service.id_servicio || index} className="flex items-center">
+                  clinicProfile.services.map((service) => (
+                    <div key={service.id_servicio} className="flex items-center">
                       <Check size={16} className="text-green-500 mr-2" />
                       <span>{service.nombre} ({service.precio ? `$${service.precio}` : 'Precio no disponible'})</span>
                     </div>
@@ -301,14 +347,18 @@ export default function VetProdilePage() {
             <CardContent className="p-4">
               <h3 className="text-lg font-semibold mb-4">Servicios destacados</h3>
               <div className="space-y-3">
-                {clinicProfile?.services?.slice(0, 5).map((service: any, index: number) => (
-                  <div key={service.id_servicio || index} className="flex items-center justify-between">
-                    <span>{service.nombre}</span>
-                    <Badge variant={service.disponible ? "default" : "destructive"}>
-                      {service.disponible ? "Disponible" : "No Disponible"}
-                    </Badge>
-                  </div>
-                ))}
+                {clinicProfile?.services && clinicProfile.services.length > 0 ? (
+                  clinicProfile.services.slice(0, 5).map((service) => (
+                    <div key={service.id_servicio} className="flex items-center justify-between">
+                      <span>{service.nombre}</span>
+                      <Badge variant={service.disponible ? "default" : "destructive"}>
+                        {service.disponible ? "Disponible" : "No Disponible"}
+                      </Badge>
+                    </div>
+                  ))
+                ) : (
+                  <p>No hay servicios destacados.</p>
+                )}
               </div>
             </CardContent>
           </Card>

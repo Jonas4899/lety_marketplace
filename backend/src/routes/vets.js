@@ -668,7 +668,7 @@ router.get('/veterinary/profile/:id_clinica', async (req, res) => {
     let photos = [];
     const { data: fetchedPhotos, error: errorPhotos } = await supabaseClient
       .from('fotos_clinicas')
-      .select('*')
+      .select('id_foto, titulo, url, tipo')
       .eq('id_clinica', id_clinica);
 
     if (errorPhotos) {
