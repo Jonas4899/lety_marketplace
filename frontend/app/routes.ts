@@ -14,6 +14,7 @@ export default [
       "dashboard-vet/analytics",
       "routes/DashboardVet/VetAnalytics/index.tsx"
     ), // Ruta para analytics
+    route("dashboard-vet/appointments", "routes/DashboardVet/appointments.tsx"), // Ruta para citas
     route(
       "dashboard-vet/general-information",
       "routes/DashboardVet/GeneralInformation/index.tsx"

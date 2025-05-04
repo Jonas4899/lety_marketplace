@@ -612,14 +612,14 @@ export default function ClinicsPage() {
                             <div className="flex gap-2">
                               <Button variant="outline" size="sm" asChild>
                                 <Link
-                                  to={`/pet-dashboard/clinics/${clinic.id_clinica}`}
+                                  to={`/dashboard-client/clinics/${clinic.id_clinica}`}
                                 >
                                   Ver perfil
                                 </Link>
                               </Button>
                               <Button className="w-full sm:w-auto" asChild>
                                 <Link
-                                  to={`/pet-dashboard/appointments/schedule?clinic=${clinic.id_clinica}`}
+                                  to={`/dashboard-client/appointments/schedule?clinic=${clinic.id_clinica}`}
                                 >
                                   Agendar cita
                                 </Link>

@@ -1,43 +1,50 @@
-import { useState, useEffect } from "react"
-import { Card, CardContent } from "~/components/ui/card"
-import { Button } from "~/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
-import { Input } from "~/components/ui/input"
-import { Search, Clock, CheckCircle, XCircle, Plus, Calendar } from "lucide-react"
-import { Link} from "react-router";
-import { Badge } from "~/components/ui/badge"
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "~/components/ui/card";
+import { Button } from "~/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { Input } from "~/components/ui/input";
+import {
+  Search,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Plus,
+  Calendar,
+} from "lucide-react";
+import { Link } from "react-router";
+import { Badge } from "~/components/ui/badge";
 
 interface Appointment {
-  id: number
-  petName: string
-  petImage: string
-  clinicName: string
-  clinicAddress: string
-  date: string
-  time: string
-  reason: string
-  status: "confirmed" | "pending" | "completed" | "cancelled"
-  notes?: string
+  id: number;
+  petName: string;
+  petImage: string;
+  clinicName: string;
+  clinicAddress: string;
+  date: string;
+  time: string;
+  reason: string;
+  status: "confirmed" | "pending" | "completed" | "cancelled";
+  notes?: string;
 }
 
 export default function AppointmentsPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000"
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
   useEffect(() => {
     const fetchAppointments = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem("token");
 
         if (!token) {
-          console.error('Token no encontrado');
+          console.error("Token no encontrado");
           return;
         }
 
         const response = await fetch(`${API_URL}/appointments/user`, {
           headers: {
-            "Authorization": `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
         });
 
@@ -55,40 +62,57 @@ export default function AppointmentsPage() {
 
     fetchAppointments();
   }, []);
-  
 
-  const filteredAppointments = appointments.filter(
-    (appointment) =>
-      appointment.petName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      appointment.clinicName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      appointment.reason.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  const filteredAppointments = appointments.filter((appointment) => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      appointment.petName.toLowerCase().includes(searchLower) ||
+      appointment.clinicName.toLowerCase().includes(searchLower) ||
+      appointment.reason.toLowerCase().includes(searchLower)
+    );
+  });
 
   const getStatusBadge = (status: Appointment["status"]) => {
     switch (status) {
       case "confirmed":
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Confirmada</Badge>
+        return (
+          <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
+            Confirmada
+          </Badge>
+        );
       case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pendiente</Badge>
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
+            Pendiente
+          </Badge>
+        );
       case "completed":
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">Completada</Badge>
+        return (
+          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+            Completada
+          </Badge>
+        );
       case "cancelled":
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Cancelada</Badge>
+        return (
+          <Badge className="bg-red-100 text-red-800 hover:bg-red-200">
+            Cancelada
+          </Badge>
+        );
     }
-  }
+  };
 
   const getStatusIcon = (status: Appointment["status"]) => {
     switch (status) {
       case "confirmed":
-        return <CheckCircle className="h-5 w-5 text-green-600" />
+        return <CheckCircle className="h-5 w-5 text-green-600" />;
       case "pending":
-        return <Clock className="h-5 w-5 text-yellow-600" />
+        return <Clock className="h-5 w-5 text-yellow-600" />;
       case "completed":
-        return <CheckCircle className="h-5 w-5 text-blue-600" />
+        return <CheckCircle className="h-5 w-5 text-blue-600" />;
       case "cancelled":
-        return <XCircle className="h-5 w-5 text-red-600" />
+        return <XCircle className="h-5 w-5 text-red-600" />;
     }
-  }
+  };
 
   return (
     <div className="flex flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -138,10 +162,16 @@ export default function AppointmentsPage() {
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted">
                 <Calendar className="h-10 w-10 text-muted-foreground" />
               </div>
-              <h3 className="mt-4 text-lg font-medium">No se encontraron citas</h3>
-              <p className="mt-2 text-sm text-muted-foreground">No hay citas que coincidan con tu búsqueda</p>
+              <h3 className="mt-4 text-lg font-medium">
+                No se encontraron citas
+              </h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                No hay citas que coincidan con tu búsqueda
+              </p>
               <Button className="mt-4" asChild>
-                <Link to="/pet-dashboard/appointments/schedule">Agendar Cita</Link>
+                <Link to="/dashboard-client/appointments/schedule">
+                  Agendar Cita
+                </Link>
               </Button>
             </div>
           ) : (
@@ -171,30 +201,45 @@ export default function AppointmentsPage() {
                       <div className="flex flex-1 flex-col justify-between p-4">
                         <div>
                           <div className="mb-2 flex items-center justify-between">
-                            <h4 className="font-medium">{appointment.clinicName}</h4>
+                            <h4 className="font-medium">
+                              {appointment.clinicName}
+                            </h4>
                             {getStatusBadge(appointment.status)}
                           </div>
-                          <p className="text-sm text-muted-foreground">{appointment.clinicAddress}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {appointment.clinicAddress}
+                          </p>
                           <div className="mt-2 flex items-start gap-2">
-                            <div className="mt-0.5">{getStatusIcon(appointment.status)}</div>
+                            <div className="mt-0.5">
+                              {getStatusIcon(appointment.status)}
+                            </div>
                             <div>
                               <p className="text-sm">
-                                <span className="font-medium">Motivo:</span> {appointment.reason}
+                                <span className="font-medium">Motivo:</span>{" "}
+                                {appointment.reason}
                               </p>
                               {appointment.notes && (
-                                <p className="mt-1 text-sm text-muted-foreground">{appointment.notes}</p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  {appointment.notes}
+                                </p>
                               )}
                             </div>
                           </div>
                         </div>
 
                         <div className="mt-4 flex justify-end gap-2">
-                          {(appointment.status === "confirmed" || appointment.status === "pending") && (
-                            <Button variant="outline" size="sm">
-                              Reprogramar
+                          {(appointment.status === "confirmed" ||
+                            appointment.status === "pending") && (
+                            <Button variant="outline" size="sm" asChild>
+                              <Link
+                                to={`/dashboard-client/appointments/schedule?reschedule=true&appointment=${appointment.id}`}
+                              >
+                                Reprogramar
+                              </Link>
                             </Button>
                           )}
-                          {(appointment.status === "confirmed" || appointment.status === "pending") && (
+                          {(appointment.status === "confirmed" ||
+                            appointment.status === "pending") && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -204,7 +249,11 @@ export default function AppointmentsPage() {
                             </Button>
                           )}
                           <Button size="sm" asChild>
-                            <Link to={`/dashboard-client/appointments/${appointment.id}`}>Ver Detalles</Link>
+                            <Link
+                              to={`/dashboard-client/appointments/${appointment.id}`}
+                            >
+                              Ver Detalles
+                            </Link>
                           </Button>
                         </div>
                       </div>
@@ -219,7 +268,11 @@ export default function AppointmentsPage() {
         <TabsContent value="upcoming" className="space-y-4">
           <div className="space-y-4">
             {filteredAppointments
-              .filter((appointment) => appointment.status === "confirmed" || appointment.status === "pending")
+              .filter(
+                (appointment) =>
+                  appointment.status === "confirmed" ||
+                  appointment.status === "pending"
+              )
               .map((appointment) => (
                 <Card key={appointment.id} className="overflow-hidden">
                   <CardContent className="p-0">
@@ -245,18 +298,27 @@ export default function AppointmentsPage() {
                       <div className="flex flex-1 flex-col justify-between p-4">
                         <div>
                           <div className="mb-2 flex items-center justify-between">
-                            <h4 className="font-medium">{appointment.clinicName}</h4>
+                            <h4 className="font-medium">
+                              {appointment.clinicName}
+                            </h4>
                             {getStatusBadge(appointment.status)}
                           </div>
-                          <p className="text-sm text-muted-foreground">{appointment.clinicAddress}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {appointment.clinicAddress}
+                          </p>
                           <div className="mt-2 flex items-start gap-2">
-                            <div className="mt-0.5">{getStatusIcon(appointment.status)}</div>
+                            <div className="mt-0.5">
+                              {getStatusIcon(appointment.status)}
+                            </div>
                             <div>
                               <p className="text-sm">
-                                <span className="font-medium">Motivo:</span> {appointment.reason}
+                                <span className="font-medium">Motivo:</span>{" "}
+                                {appointment.reason}
                               </p>
                               {appointment.notes && (
-                                <p className="mt-1 text-sm text-muted-foreground">{appointment.notes}</p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  {appointment.notes}
+                                </p>
                               )}
                             </div>
                           </div>
@@ -274,7 +336,11 @@ export default function AppointmentsPage() {
                             Cancelar
                           </Button>
                           <Button size="sm" asChild>
-                            <Link to={`/pet-dashboard/appointments/${appointment.id}`}>Ver Detalles</Link>
+                            <Link
+                              to={`/pet-dashboard/appointments/${appointment.id}`}
+                            >
+                              Ver Detalles
+                            </Link>
                           </Button>
                         </div>
                       </div>
@@ -314,18 +380,27 @@ export default function AppointmentsPage() {
                       <div className="flex flex-1 flex-col justify-between p-4">
                         <div>
                           <div className="mb-2 flex items-center justify-between">
-                            <h4 className="font-medium">{appointment.clinicName}</h4>
+                            <h4 className="font-medium">
+                              {appointment.clinicName}
+                            </h4>
                             {getStatusBadge(appointment.status)}
                           </div>
-                          <p className="text-sm text-muted-foreground">{appointment.clinicAddress}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {appointment.clinicAddress}
+                          </p>
                           <div className="mt-2 flex items-start gap-2">
-                            <div className="mt-0.5">{getStatusIcon(appointment.status)}</div>
+                            <div className="mt-0.5">
+                              {getStatusIcon(appointment.status)}
+                            </div>
                             <div>
                               <p className="text-sm">
-                                <span className="font-medium">Motivo:</span> {appointment.reason}
+                                <span className="font-medium">Motivo:</span>{" "}
+                                {appointment.reason}
                               </p>
                               {appointment.notes && (
-                                <p className="mt-1 text-sm text-muted-foreground">{appointment.notes}</p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  {appointment.notes}
+                                </p>
                               )}
                             </div>
                           </div>
@@ -333,7 +408,11 @@ export default function AppointmentsPage() {
 
                         <div className="mt-4 flex justify-end gap-2">
                           <Button size="sm" asChild>
-                            <Link to={`/pet-dashboard/appointments/${appointment.id}`}>Ver Detalles</Link>
+                            <Link
+                              to={`/pet-dashboard/appointments/${appointment.id}`}
+                            >
+                              Ver Detalles
+                            </Link>
                           </Button>
                         </div>
                       </div>
@@ -373,18 +452,27 @@ export default function AppointmentsPage() {
                       <div className="flex flex-1 flex-col justify-between p-4">
                         <div>
                           <div className="mb-2 flex items-center justify-between">
-                            <h4 className="font-medium">{appointment.clinicName}</h4>
+                            <h4 className="font-medium">
+                              {appointment.clinicName}
+                            </h4>
                             {getStatusBadge(appointment.status)}
                           </div>
-                          <p className="text-sm text-muted-foreground">{appointment.clinicAddress}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {appointment.clinicAddress}
+                          </p>
                           <div className="mt-2 flex items-start gap-2">
-                            <div className="mt-0.5">{getStatusIcon(appointment.status)}</div>
+                            <div className="mt-0.5">
+                              {getStatusIcon(appointment.status)}
+                            </div>
                             <div>
                               <p className="text-sm">
-                                <span className="font-medium">Motivo:</span> {appointment.reason}
+                                <span className="font-medium">Motivo:</span>{" "}
+                                {appointment.reason}
                               </p>
                               {appointment.notes && (
-                                <p className="mt-1 text-sm text-muted-foreground">{appointment.notes}</p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  {appointment.notes}
+                                </p>
                               )}
                             </div>
                           </div>
@@ -392,7 +480,9 @@ export default function AppointmentsPage() {
 
                         <div className="mt-4 flex justify-end gap-2">
                           <Button size="sm" asChild>
-                            <Link to="/pet-dashboard/appointments/schedule">Reagendar</Link>
+                            <Link to="/pet-dashboard/appointments/schedule">
+                              Reagendar
+                            </Link>
                           </Button>
                         </div>
                       </div>
@@ -404,6 +494,5 @@ export default function AppointmentsPage() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
-

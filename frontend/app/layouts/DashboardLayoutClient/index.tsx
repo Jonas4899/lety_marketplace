@@ -101,12 +101,12 @@ export default function PetDashboardLayout({
     },
     {
       title: "Mensajes",
-      href: "/pet-dashboard/messages",
+      href: "/dashboard-client/messages",
       icon: <MessageSquare className="h-4 w-4" />,
     },
     {
       title: "Historial Médico",
-      href: "/pet-dashboard/medical-records",
+      href: "/dashboard-client/medical-records",
       icon: <Clipboard className="h-4 w-4" />,
     },
     {
@@ -116,17 +116,17 @@ export default function PetDashboardLayout({
     },
     {
       title: "Recursos",
-      href: "/pet-dashboard/resources",
+      href: "/dashboard-client/resources",
       icon: <BookOpen className="h-4 w-4" />,
     },
     {
       title: "Favoritos",
-      href: "/pet-dashboard/favorites",
+      href: "/dashboard-client/favorites",
       icon: <Heart className="h-4 w-4" />,
     },
     {
       title: "Configuración",
-      href: "/pet-dashboard/settings",
+      href: "/dashboard-client/settings",
       icon: <Settings className="h-4 w-4" />,
     },
   ];
