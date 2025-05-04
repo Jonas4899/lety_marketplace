@@ -86,6 +86,18 @@ router.post("/appointments/schedule", async (req, res) => {
       return res.status(400).json({ message: "Fecha inválida." });
     }
 
+    const trazabilidad = [
+      {
+        accion: "creacion",
+        usuario: userId,
+        fecha: new Date().toISOString(),
+        detalles: {
+          estado: "pendiente",
+          motivo: reason || "",
+          notas: notes || "",
+        },
+      },
+    ];
     const { data, error } = await supabase.from("citas").insert([
       {
         id_usuario: userId,
@@ -100,6 +112,7 @@ router.post("/appointments/schedule", async (req, res) => {
         acepto_terminos: true,
         estado: "pendiente",
         created_at: new Date().toISOString(),
+        trazabilidad,
       },
     ]);
 
@@ -346,7 +359,7 @@ router.put("/appointments/:appointmentId/status", async (req, res) => {
     // Verificar que la cita pertenezca a la clínica
     const { data: cita, error: errorCita } = await supabase
       .from("citas")
-      .select("id_cita, id_clinica, id_usuario")
+      .select("id_cita, id_clinica, id_usuario, trazabilidad")
       .eq("id_cita", appointmentId)
       .eq("id_clinica", clinicaId)
       .single();
@@ -367,6 +380,21 @@ router.put("/appointments/:appointmentId/status", async (req, res) => {
     if (message) {
       actualizacion.notas_veterinaria = message;
     }
+
+    // Manejo de trazabilidad
+    const nuevaTrazabilidad = Array.isArray(cita.trazabilidad)
+      ? [...cita.trazabilidad]
+      : [];
+    nuevaTrazabilidad.push({
+      accion: "cambio_estado",
+      usuario: clinicaId,
+      fecha: new Date().toISOString(),
+      detalles: {
+        nuevo_estado: status,
+        mensaje: message || "",
+      },
+    });
+    actualizacion.trazabilidad = nuevaTrazabilidad;
 
     const { error: errorActualizacion } = await supabase
       .from("citas")
@@ -393,6 +421,167 @@ router.put("/appointments/:appointmentId/status", async (req, res) => {
     });
   } catch (error) {
     console.error("Error general actualizando estado de cita:", error);
+    res.status(500).json({ message: "Error en el servidor" });
+  }
+});
+
+// Editar datos generales de la cita (solo dueño)
+router.put("/appointments/:appointmentId/edit", async (req, res) => {
+  const { appointmentId } = req.params;
+  const { userId, userType } = req.user;
+  const {
+    petId,
+    serviceId,
+    date,
+    timeSlot,
+    reason,
+    notes,
+    reminderPreference,
+  } = req.body;
+
+  if (userType !== "owner") {
+    return res
+      .status(403)
+      .json({ message: "Solo el dueño puede editar la cita" });
+  }
+
+  try {
+    // Verificar que la cita pertenezca al usuario
+    const { data: cita, error: errorCita } = await supabase
+      .from("citas")
+      .select("id_cita, id_usuario, trazabilidad")
+      .eq("id_cita", appointmentId)
+      .eq("id_usuario", userId)
+      .single();
+
+    if (errorCita || !cita) {
+      return res
+        .status(404)
+        .json({ message: "Cita no encontrada o no pertenece al usuario" });
+    }
+
+    const actualizacion = {};
+    if (petId) actualizacion.id_mascota = petId;
+    if (serviceId) actualizacion.id_servicio = serviceId;
+    if (date) actualizacion.fecha_inicio = date;
+    if (timeSlot) actualizacion.horario = timeSlot;
+    if (reason !== undefined) actualizacion.motivo = reason;
+    if (notes !== undefined) actualizacion.notas_adicionales = notes;
+    if (reminderPreference)
+      actualizacion.preferencia_recordatorio = reminderPreference;
+
+    // Trazabilidad
+    const nuevaTrazabilidad = Array.isArray(cita.trazabilidad)
+      ? [...cita.trazabilidad]
+      : [];
+    nuevaTrazabilidad.push({
+      accion: "modificacion",
+      usuario: userId,
+      fecha: new Date().toISOString(),
+      detalles: { ...actualizacion },
+    });
+    actualizacion.trazabilidad = nuevaTrazabilidad;
+
+    const { error: errorUpdate } = await supabase
+      .from("citas")
+      .update(actualizacion)
+      .eq("id_cita", appointmentId);
+
+    if (errorUpdate) {
+      return res.status(500).json({ message: "Error al editar la cita" });
+    }
+
+    res.status(200).json({ message: "Cita editada exitosamente" });
+  } catch (error) {
+    res.status(500).json({ message: "Error en el servidor" });
+  }
+});
+
+// Finalizar cita (solo vet)
+router.put("/appointments/:appointmentId/finalize", async (req, res) => {
+  const { appointmentId } = req.params;
+  const { clinicaId, userType } = req.user;
+  const {
+    diagnostico,
+    tratamiento,
+    medicamentos,
+    recomendaciones,
+    instrucciones_seguimiento,
+    notas_internas,
+    servicios_adicionales,
+    productos_vendidos,
+  } = req.body;
+
+  if (userType !== "vet") {
+    return res
+      .status(403)
+      .json({ message: "Solo la clínica puede finalizar la cita" });
+  }
+
+  try {
+    // Verificar que la cita pertenezca a la clínica
+    const { data: cita, error: errorCita } = await supabase
+      .from("citas")
+      .select("id_cita, id_clinica, trazabilidad")
+      .eq("id_cita", appointmentId)
+      .eq("id_clinica", clinicaId)
+      .single();
+
+    if (errorCita || !cita) {
+      return res
+        .status(404)
+        .json({ message: "Cita no encontrada o no pertenece a la clínica" });
+    }
+
+    const actualizacion = {
+      estado: "finalizada",
+    };
+    if (diagnostico !== undefined) actualizacion.diagnostico = diagnostico;
+    if (tratamiento !== undefined) actualizacion.tratamiento = tratamiento;
+    if (medicamentos !== undefined) actualizacion.medicamentos = medicamentos;
+    if (recomendaciones !== undefined)
+      actualizacion.recomendaciones = recomendaciones;
+    if (instrucciones_seguimiento !== undefined)
+      actualizacion.instrucciones_seguimiento = instrucciones_seguimiento;
+    if (notas_internas !== undefined)
+      actualizacion.notas_internas = notas_internas;
+    if (servicios_adicionales !== undefined)
+      actualizacion.servicios_adicionales = servicios_adicionales;
+    if (productos_vendidos !== undefined)
+      actualizacion.productos_vendidos = productos_vendidos;
+
+    // Trazabilidad
+    const nuevaTrazabilidad = Array.isArray(cita.trazabilidad)
+      ? [...cita.trazabilidad]
+      : [];
+    nuevaTrazabilidad.push({
+      accion: "finalizacion",
+      usuario: clinicaId,
+      fecha: new Date().toISOString(),
+      detalles: {
+        diagnostico,
+        tratamiento,
+        medicamentos,
+        recomendaciones,
+        instrucciones_seguimiento,
+        notas_internas,
+        servicios_adicionales,
+        productos_vendidos,
+      },
+    });
+    actualizacion.trazabilidad = nuevaTrazabilidad;
+
+    const { error: errorUpdate } = await supabase
+      .from("citas")
+      .update(actualizacion)
+      .eq("id_cita", appointmentId);
+
+    if (errorUpdate) {
+      return res.status(500).json({ message: "Error al finalizar la cita" });
+    }
+
+    res.status(200).json({ message: "Cita finalizada exitosamente" });
+  } catch (error) {
     res.status(500).json({ message: "Error en el servidor" });
   }
 });
