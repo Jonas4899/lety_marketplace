@@ -118,7 +118,28 @@ export default function VetAppointmentsPage() {
       toast.success(successMessage);
     } catch (err: any) {
       console.error("Error al actualizar cita:", err);
-      toast.error(err.message || "Error al actualizar cita");
+      let errorMessage = "Error al actualizar el estado de la cita";
+
+      try {
+        // Para errores de fetch, intentamos extraer los datos del error
+        if (err.message && err.message.includes("Error al actualizar cita")) {
+          errorMessage = err.message;
+        } else {
+          // Ver si podemos mostrar detalles adicionales del error que viene del backend
+          const errorJson = err.error || err.details;
+          if (errorJson) {
+            errorMessage = `${errorMessage}: ${
+              typeof errorJson === "string"
+                ? errorJson
+                : JSON.stringify(errorJson)
+            }`;
+          }
+        }
+      } catch (parseError) {
+        console.error("Error parseando detalles del error:", parseError);
+      }
+
+      toast.error(errorMessage);
     } finally {
       setUpdatingAppointment(false);
       setDialogOpen(false);

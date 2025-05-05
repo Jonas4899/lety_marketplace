@@ -7,6 +7,7 @@ import {
   Save,
   AlertCircle,
   Loader2,
+  Star,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
@@ -24,6 +25,7 @@ import { Alert, AlertDescription } from "~/components/ui/alert";
 import { useAuthStore } from "~/stores/useAuthStore";
 import { v4 as uuidv4 } from "uuid";
 import toast from "react-hot-toast"; // <--- Importamos react-hot-toast
+import { Switch } from "~/components/ui/switch";
 
 // API URL from environment or default to localhost
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -39,7 +41,7 @@ interface Photo {
 
 export default function PhotosPage() {
   // const { toast } = useToast(); // <--- Eliminado
-  const { user, userType } = useAuthStore();
+  const { user, userType, token } = useAuthStore();
   const clinicId = userType === "vet" && user ? (user as any).id_clinica : null;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,7 +65,12 @@ export default function PhotosPage() {
 
       try {
         const response = await fetch(
-          `${API_URL}/veterinary/photos/${clinicId}`
+          `${API_URL}/veterinary/photos/${clinicId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
 
         if (!response.ok) {
@@ -103,7 +110,7 @@ export default function PhotosPage() {
     };
 
     fetchPhotos();
-  }, [clinicId]); // Dependencia clinicId es correcta
+  }, [clinicId, token]); // Dependencia clinicId es correcta
 
   const handleDragStart = (id: string) => {
     setDraggedPhoto(id);
@@ -155,8 +162,7 @@ export default function PhotosPage() {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
-            // Aquí podrías necesitar añadir headers de autenticación si tu API lo requiere
-            // "Authorization": `Bearer ${token}`
+            Authorization: `Bearer ${token}`,
           },
         });
 
@@ -198,14 +204,12 @@ export default function PhotosPage() {
         const response = await fetch(
           `${API_URL}/veterinary/photos/${id}/set-primary`,
           {
-            // Asumiendo endpoint dedicado o ajusta según tu API
-            method: "PUT", // O POST según tu API
+            method: "PUT",
             headers: {
               "Content-Type": "application/json",
-              // "Authorization": `Bearer ${token}` // Si se requiere auth
+              Authorization: `Bearer ${token}`,
             },
-            // No necesitas body si el ID va en la URL, o ajusta si tu API espera `isPrimary: true`
-            body: JSON.stringify({ isPrimary: true }), // Opcional según tu API
+            body: JSON.stringify({ isPrimary: true }),
           }
         );
 
@@ -374,8 +378,9 @@ export default function PhotosPage() {
             {
               method: "POST",
               body: formData,
-              // Headers: No 'Content-Type', FormData lo maneja. Añadir Auth si es necesario.
-              // "Authorization": `Bearer ${token}`
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
             }
           );
 
@@ -436,17 +441,15 @@ export default function PhotosPage() {
         // Crear un array de promesas para actualizar todas las fotos existentes
         const updatePromises = photosToUpdate.map((photo) => {
           return fetch(`${API_URL}/veterinary/photos/${photo.id}`, {
-            // Usar ID de la foto existente
             method: "PUT",
             headers: {
               "Content-Type": "application/json",
-              // "Authorization": `Bearer ${token}`
+              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
               title: photo.title,
               type: photo.type,
               isPrimary: photo.isPrimary || false,
-              // Podrías necesitar enviar el order/posición si tu API lo soporta
             }),
           });
         });
@@ -689,11 +692,26 @@ export default function PhotosPage() {
                             }} // Fallback si la imagen no carga
                           />
                           {/* Indicador de Foto Principal */}
-                          {photo.isPrimary && (
-                            <div className="absolute left-2 top-2 rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground shadow">
-                              Principal
-                            </div>
-                          )}
+                          <div className="absolute left-2 top-2 z-10 flex items-center gap-1 bg-black/60 rounded-full px-2 py-1">
+                            <Switch
+                              checked={!!photo.isPrimary}
+                              onCheckedChange={(checked) => {
+                                if (checked && !photo.isPrimary)
+                                  handleSetPrimary(photo.id);
+                              }}
+                              disabled={isLoading || photo.isPrimary}
+                              id={`switch-primary-${photo.id}`}
+                              className="data-[state=checked]:bg-yellow-400 data-[state=unchecked]:bg-gray-300 border-none size-5"
+                            />
+                            <Star
+                              className={`size-4 ${
+                                photo.isPrimary
+                                  ? "text-yellow-400 fill-yellow-400"
+                                  : "text-gray-300"
+                              }`}
+                              fill={photo.isPrimary ? "#facc15" : "none"}
+                            />
+                          </div>
                           {/* Indicador de Foto Nueva (pendiente de guardar) */}
                           {photo.file && (
                             <div className="absolute right-2 top-2 rounded-md bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground shadow animate-pulse">
@@ -743,19 +761,6 @@ export default function PhotosPage() {
 
                         {/* Botones de acción (hover) */}
                         <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                          {/* Botón para marcar como principal (si no lo es ya) */}
-                          {!photo.isPrimary && (
-                            <Button
-                              variant="secondary"
-                              size="icon"
-                              className="h-7 w-7 rounded-md bg-background/80 backdrop-blur-sm"
-                              title="Marcar como principal"
-                              onClick={() => handleSetPrimary(photo.id)}
-                              disabled={isLoading}
-                            >
-                              <ImageIcon className="h-4 w-4" />
-                            </Button>
-                          )}
                           {/* Botón para eliminar */}
                           <Button
                             variant="destructive"
@@ -856,11 +861,26 @@ export default function PhotosPage() {
                               }}
                             />
                             {/* Indicador de Foto Principal */}
-                            {photo.isPrimary && (
-                              <div className="absolute left-2 top-2 rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground shadow">
-                                Principal
-                              </div>
-                            )}
+                            <div className="absolute left-2 top-2 z-10 flex items-center gap-1 bg-black/60 rounded-full px-2 py-1">
+                              <Switch
+                                checked={!!photo.isPrimary}
+                                onCheckedChange={(checked) => {
+                                  if (checked && !photo.isPrimary)
+                                    handleSetPrimary(photo.id);
+                                }}
+                                disabled={isLoading || photo.isPrimary}
+                                id={`switch-primary-${photo.id}`}
+                                className="data-[state=checked]:bg-yellow-400 data-[state=unchecked]:bg-gray-300 border-none size-5"
+                              />
+                              <Star
+                                className={`size-4 ${
+                                  photo.isPrimary
+                                    ? "text-yellow-400 fill-yellow-400"
+                                    : "text-gray-300"
+                                }`}
+                                fill={photo.isPrimary ? "#facc15" : "none"}
+                              />
+                            </div>
                             {/* Indicador de Foto Nueva */}
                             {photo.file && (
                               <div className="absolute right-2 top-2 rounded-md bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground shadow animate-pulse">
@@ -885,18 +905,6 @@ export default function PhotosPage() {
 
                           {/* Botones de acción (hover) */}
                           <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                            {!photo.isPrimary && (
-                              <Button
-                                variant="secondary"
-                                size="icon"
-                                className="h-7 w-7 rounded-md bg-background/80 backdrop-blur-sm"
-                                title="Marcar como principal"
-                                onClick={() => handleSetPrimary(photo.id)}
-                                disabled={isLoading}
-                              >
-                                <ImageIcon className="h-4 w-4" />
-                              </Button>
-                            )}
                             <Button
                               variant="destructive"
                               size="icon"

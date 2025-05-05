@@ -377,9 +377,8 @@ router.put("/appointments/:appointmentId/status", async (req, res) => {
     };
 
     // Si hay mensaje/nota, guardarlo
-    if (message) {
-      actualizacion.notas_veterinaria = message;
-    }
+    // No actualizamos notas_veterinaria porque no existe en la tabla
+    // El mensaje se guardará en la trazabilidad
 
     // Manejo de trazabilidad
     const nuevaTrazabilidad = Array.isArray(cita.trazabilidad)
@@ -403,9 +402,11 @@ router.put("/appointments/:appointmentId/status", async (req, res) => {
 
     if (errorActualizacion) {
       console.error("Error actualizando cita:", errorActualizacion);
-      return res
-        .status(500)
-        .json({ message: "Error al actualizar el estado de la cita" });
+      return res.status(500).json({
+        message: "Error al actualizar el estado de la cita",
+        error: errorActualizacion.message,
+        details: errorActualizacion.details || errorActualizacion,
+      });
     }
 
     // TODO: Aquí se podría implementar el envío de notificaciones al cliente

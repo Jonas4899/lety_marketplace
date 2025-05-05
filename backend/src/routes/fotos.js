@@ -5,6 +5,7 @@ import fs from "fs";
 import { createClient } from "@supabase/supabase-js";
 import { uploadFile } from "../utils.js";
 import dotenv from "dotenv";
+import autenticacionToken from "../middleware/auth.js";
 
 dotenv.config();
 
@@ -28,6 +29,9 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
+
+// Aplica el middleware a todas las rutas de este router:
+router.use(autenticacionToken);
 
 // Endpoint para subir una foto de la clínica veterinaria
 router.post(
