@@ -615,7 +615,7 @@ export default function ClinicsPage() {
                             <div className="flex gap-2">
                               <Button variant="outline" size="sm" asChild>
                                 <Link
-                                  to={`/dashboard-client/clinics/${clinic.id_clinica}`}
+                                  to={`/dashboard-client/vet-search/${clinic.id_clinica}`}
                                 >
                                   Ver perfil
                                 </Link>

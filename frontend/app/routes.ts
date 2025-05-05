@@ -44,6 +44,7 @@ export default [
     ),
     route("dashboard-client/pets", "routes/DashboardClient/pets.tsx"),
     route("dashboard-client/pets/:id", "components/ui/pet-details.tsx"),
+    route("dashboard-client/vet-search/:id", "routes/DashboardClient/BusquedaVeterinarias/VetProfilePage.tsx"),
   ]),
   route("login", "routes/LoginPage/index.tsx"),
   route("unauthorized", "routes/Unauthorized/index.tsx"),

@@ -100,11 +100,6 @@ export default function PetDashboardLayout({
       icon: <Calendar className="h-4 w-4" />,
     },
     {
-      title: "Mensajes",
-      href: "/dashboard-client/messages",
-      icon: <MessageSquare className="h-4 w-4" />,
-    },
-    {
       title: "Historial Médico",
       href: "/dashboard-client/medical-records",
       icon: <Clipboard className="h-4 w-4" />,
