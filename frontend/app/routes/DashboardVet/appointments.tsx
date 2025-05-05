@@ -3,7 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
-import { CheckCircle, XCircle, CalendarClock, RefreshCw } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  CalendarClock,
+  RefreshCw,
+  ClipboardCheck,
+  Plus,
+  Trash,
+} from "lucide-react";
 import { useAuthStore } from "~/stores/useAuthStore";
 import {
   Dialog,
@@ -34,6 +42,39 @@ interface Appointment {
 
 type StatusAction = "confirmada" | "rechazada" | "reprogramacion_sugerida";
 
+// Tipos para formulario de finalización
+interface Medicamento {
+  id: string;
+  nombre: string;
+  dosis: string;
+  frecuencia: string;
+  duracion: string;
+}
+
+interface ServicioAdicional {
+  id: string;
+  nombre: string;
+  costo: number;
+}
+
+interface ProductoVendido {
+  id: string;
+  nombre: string;
+  cantidad: number;
+  precio: number;
+}
+
+interface FinalizacionForm {
+  diagnostico: string;
+  tratamiento: string;
+  medicamentos: Medicamento[];
+  recomendaciones: string;
+  instrucciones_seguimiento: string;
+  notas_internas: string;
+  servicios_adicionales: ServicioAdicional[];
+  productos_vendidos: ProductoVendido[];
+}
+
 export default function VetAppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +86,17 @@ export default function VetAppointmentsPage() {
   const [statusAction, setStatusAction] = useState<StatusAction | null>(null);
   const [message, setMessage] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [finalizarDialogOpen, setFinalizarDialogOpen] = useState(false);
+  const [finalizacionForm, setFinalizacionForm] = useState<FinalizacionForm>({
+    diagnostico: "",
+    tratamiento: "",
+    medicamentos: [],
+    recomendaciones: "",
+    instrucciones_seguimiento: "",
+    notas_internas: "",
+    servicios_adicionales: [],
+    productos_vendidos: [],
+  });
 
   const token = useAuthStore((state) => state.token);
 
@@ -171,6 +223,194 @@ export default function VetAppointmentsPage() {
   const handleActionConfirm = () => {
     if (!selectedAppointment || !statusAction) return;
     updateAppointmentStatus(selectedAppointment.id, statusAction, message);
+  };
+
+  // Funciones para la finalización de citas
+  const handleFinalizarStart = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setFinalizarDialogOpen(true);
+    // Reiniciar el formulario
+    setFinalizacionForm({
+      diagnostico: "",
+      tratamiento: "",
+      medicamentos: [],
+      recomendaciones: "",
+      instrucciones_seguimiento: "",
+      notas_internas: "",
+      servicios_adicionales: [],
+      productos_vendidos: [],
+    });
+  };
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFinalizacionForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const addMedicamento = () => {
+    setFinalizacionForm((prev) => ({
+      ...prev,
+      medicamentos: [
+        ...prev.medicamentos,
+        {
+          id: crypto.randomUUID(),
+          nombre: "",
+          dosis: "",
+          frecuencia: "",
+          duracion: "",
+        },
+      ],
+    }));
+  };
+
+  const updateMedicamento = (
+    id: string,
+    field: keyof Medicamento,
+    value: string
+  ) => {
+    setFinalizacionForm((prev) => ({
+      ...prev,
+      medicamentos: prev.medicamentos.map((med) =>
+        med.id === id ? { ...med, [field]: value } : med
+      ),
+    }));
+  };
+
+  const removeMedicamento = (id: string) => {
+    setFinalizacionForm((prev) => ({
+      ...prev,
+      medicamentos: prev.medicamentos.filter((med) => med.id !== id),
+    }));
+  };
+
+  const addServicioAdicional = () => {
+    setFinalizacionForm((prev) => ({
+      ...prev,
+      servicios_adicionales: [
+        ...prev.servicios_adicionales,
+        {
+          id: crypto.randomUUID(),
+          nombre: "",
+          costo: 0,
+        },
+      ],
+    }));
+  };
+
+  const updateServicioAdicional = (
+    id: string,
+    field: keyof ServicioAdicional,
+    value: string | number
+  ) => {
+    setFinalizacionForm((prev) => ({
+      ...prev,
+      servicios_adicionales: prev.servicios_adicionales.map((serv) =>
+        serv.id === id ? { ...serv, [field]: value } : serv
+      ),
+    }));
+  };
+
+  const removeServicioAdicional = (id: string) => {
+    setFinalizacionForm((prev) => ({
+      ...prev,
+      servicios_adicionales: prev.servicios_adicionales.filter(
+        (serv) => serv.id !== id
+      ),
+    }));
+  };
+
+  const addProductoVendido = () => {
+    setFinalizacionForm((prev) => ({
+      ...prev,
+      productos_vendidos: [
+        ...prev.productos_vendidos,
+        {
+          id: crypto.randomUUID(),
+          nombre: "",
+          cantidad: 1,
+          precio: 0,
+        },
+      ],
+    }));
+  };
+
+  const updateProductoVendido = (
+    id: string,
+    field: keyof ProductoVendido,
+    value: string | number
+  ) => {
+    setFinalizacionForm((prev) => ({
+      ...prev,
+      productos_vendidos: prev.productos_vendidos.map((prod) =>
+        prod.id === id ? { ...prod, [field]: value } : prod
+      ),
+    }));
+  };
+
+  const removeProductoVendido = (id: string) => {
+    setFinalizacionForm((prev) => ({
+      ...prev,
+      productos_vendidos: prev.productos_vendidos.filter(
+        (prod) => prod.id !== id
+      ),
+    }));
+  };
+
+  const finalizarCita = async () => {
+    if (!selectedAppointment || !token) return;
+
+    setUpdatingAppointment(true);
+    try {
+      const res = await fetch(
+        `${API_URL}/appointments/${selectedAppointment.id}/finalize`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(finalizacionForm),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Error al finalizar la cita");
+      }
+
+      // Actualizar la lista de citas para reflejar el cambio
+      setAppointments((prev) =>
+        prev.map((app) =>
+          app.id === selectedAppointment.id
+            ? { ...app, status: "finalizada" }
+            : app
+        )
+      );
+
+      toast.success("Cita finalizada exitosamente");
+    } catch (err: any) {
+      console.error("Error al finalizar cita:", err);
+      let errorMessage = "Error al finalizar la cita";
+
+      try {
+        if (err.message) {
+          errorMessage = err.message;
+        }
+      } catch (parseError) {
+        console.error("Error parseando detalles del error:", parseError);
+      }
+
+      toast.error(errorMessage);
+    } finally {
+      setUpdatingAppointment(false);
+      setFinalizarDialogOpen(false);
+      setSelectedAppointment(null);
+    }
   };
 
   return (
@@ -313,6 +553,24 @@ export default function VetAppointmentsPage() {
                           ? "Reprogramada"
                           : "Reprogramar"}
                       </Button>
+
+                      {/* Botón para finalizar cita, solo habilitado si está confirmada */}
+                      <Button
+                        size="sm"
+                        variant={
+                          a.status === "finalizada" ? "outline" : "default"
+                        }
+                        disabled={
+                          updatingAppointment ||
+                          a.status === "finalizada" ||
+                          a.status === "rechazada" ||
+                          a.status !== "confirmada" // Solo disponible si está confirmada
+                        }
+                        onClick={() => handleFinalizarStart(a)}
+                      >
+                        <ClipboardCheck className="h-4 w-4 mr-1" />
+                        {a.status === "finalizada" ? "Finalizada" : "Finalizar"}
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -322,46 +580,359 @@ export default function VetAppointmentsPage() {
         </CardContent>
       </Card>
 
-      {/* Diálogo para agregar mensaje */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+      {/* Diálogo para finalizar cita */}
+      <Dialog open={finalizarDialogOpen} onOpenChange={setFinalizarDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {statusAction === "rechazada"
-                ? "Rechazar cita"
-                : "Sugerir reprogramación"}
-            </DialogTitle>
+            <DialogTitle>Finalizar cita</DialogTitle>
             <DialogDescription>
-              {statusAction === "rechazada"
-                ? "Por favor, indique el motivo del rechazo."
-                : "Sugiera una nueva fecha/hora o indique instrucciones para reprogramar."}
+              Complete la información de atención médica para finalizar la cita.
+              Esta información será visible para el propietario de la mascota.
             </DialogDescription>
           </DialogHeader>
 
-          <Textarea
-            placeholder="Escriba un mensaje para el cliente..."
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            rows={4}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            {/* Diagnóstico */}
+            <div className="space-y-2">
+              <label htmlFor="diagnostico" className="font-medium text-sm">
+                Diagnóstico
+              </label>
+              <Textarea
+                id="diagnostico"
+                name="diagnostico"
+                placeholder="Diagnóstico de la mascota"
+                value={finalizacionForm.diagnostico}
+                onChange={handleInputChange}
+                rows={3}
+              />
+            </div>
 
-          <DialogFooter className="flex gap-2 justify-end mt-4">
+            {/* Tratamiento */}
+            <div className="space-y-2">
+              <label htmlFor="tratamiento" className="font-medium text-sm">
+                Tratamiento
+              </label>
+              <Textarea
+                id="tratamiento"
+                name="tratamiento"
+                placeholder="Tratamiento indicado"
+                value={finalizacionForm.tratamiento}
+                onChange={handleInputChange}
+                rows={3}
+              />
+            </div>
+
+            {/* Medicamentos */}
+            <div className="col-span-1 md:col-span-2 space-y-3">
+              <div className="flex justify-between items-center">
+                <label className="font-medium text-sm">Medicamentos</label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={addMedicamento}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Añadir medicamento
+                </Button>
+              </div>
+
+              {finalizacionForm.medicamentos.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No hay medicamentos añadidos.
+                </p>
+              )}
+
+              {finalizacionForm.medicamentos.map((med) => (
+                <div
+                  key={med.id}
+                  className="grid grid-cols-1 md:grid-cols-5 gap-3 p-3 border rounded-md"
+                >
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-xs font-medium">Nombre</label>
+                    <input
+                      type="text"
+                      className="w-full border rounded-md px-2 py-1 text-sm"
+                      value={med.nombre}
+                      onChange={(e) =>
+                        updateMedicamento(med.id, "nombre", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">Dosis</label>
+                    <input
+                      type="text"
+                      className="w-full border rounded-md px-2 py-1 text-sm"
+                      value={med.dosis}
+                      onChange={(e) =>
+                        updateMedicamento(med.id, "dosis", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">Frecuencia</label>
+                    <input
+                      type="text"
+                      className="w-full border rounded-md px-2 py-1 text-sm"
+                      value={med.frecuencia}
+                      onChange={(e) =>
+                        updateMedicamento(med.id, "frecuencia", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="flex items-end space-x-2">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-xs font-medium">Duración</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-md px-2 py-1 text-sm"
+                        value={med.duracion}
+                        onChange={(e) =>
+                          updateMedicamento(med.id, "duracion", e.target.value)
+                        }
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-red-500"
+                      onClick={() => removeMedicamento(med.id)}
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Recomendaciones */}
+            <div className="space-y-2">
+              <label htmlFor="recomendaciones" className="font-medium text-sm">
+                Recomendaciones
+              </label>
+              <Textarea
+                id="recomendaciones"
+                name="recomendaciones"
+                placeholder="Recomendaciones generales"
+                value={finalizacionForm.recomendaciones}
+                onChange={handleInputChange}
+                rows={3}
+              />
+            </div>
+
+            {/* Instrucciones de seguimiento */}
+            <div className="space-y-2">
+              <label
+                htmlFor="instrucciones_seguimiento"
+                className="font-medium text-sm"
+              >
+                Instrucciones de seguimiento
+              </label>
+              <Textarea
+                id="instrucciones_seguimiento"
+                name="instrucciones_seguimiento"
+                placeholder="Instrucciones para el seguimiento"
+                value={finalizacionForm.instrucciones_seguimiento}
+                onChange={handleInputChange}
+                rows={3}
+              />
+            </div>
+
+            {/* Notas internas (solo para la clínica) */}
+            <div className="col-span-1 md:col-span-2 space-y-2">
+              <label htmlFor="notas_internas" className="font-medium text-sm">
+                Notas internas (solo visibles para la clínica)
+              </label>
+              <Textarea
+                id="notas_internas"
+                name="notas_internas"
+                placeholder="Notas internas para la clínica"
+                value={finalizacionForm.notas_internas}
+                onChange={handleInputChange}
+                rows={2}
+              />
+            </div>
+
+            {/* Servicios adicionales */}
+            <div className="col-span-1 md:col-span-2 space-y-3">
+              <div className="flex justify-between items-center">
+                <label className="font-medium text-sm">
+                  Servicios adicionales realizados
+                </label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={addServicioAdicional}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Añadir servicio
+                </Button>
+              </div>
+
+              {finalizacionForm.servicios_adicionales.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No hay servicios adicionales añadidos.
+                </p>
+              )}
+
+              {finalizacionForm.servicios_adicionales.map((serv) => (
+                <div
+                  key={serv.id}
+                  className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 border rounded-md"
+                >
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-xs font-medium">
+                      Nombre del servicio
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border rounded-md px-2 py-1 text-sm"
+                      value={serv.nombre}
+                      onChange={(e) =>
+                        updateServicioAdicional(
+                          serv.id,
+                          "nombre",
+                          e.target.value
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="flex items-end space-x-2">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-xs font-medium">Costo ($)</label>
+                      <input
+                        type="number"
+                        className="w-full border rounded-md px-2 py-1 text-sm"
+                        value={serv.costo}
+                        onChange={(e) =>
+                          updateServicioAdicional(
+                            serv.id,
+                            "costo",
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-red-500"
+                      onClick={() => removeServicioAdicional(serv.id)}
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Productos vendidos */}
+            <div className="col-span-1 md:col-span-2 space-y-3">
+              <div className="flex justify-between items-center">
+                <label className="font-medium text-sm">
+                  Productos vendidos
+                </label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={addProductoVendido}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Añadir producto
+                </Button>
+              </div>
+
+              {finalizacionForm.productos_vendidos.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No hay productos vendidos añadidos.
+                </p>
+              )}
+
+              {finalizacionForm.productos_vendidos.map((prod) => (
+                <div
+                  key={prod.id}
+                  className="grid grid-cols-1 md:grid-cols-4 gap-3 p-3 border rounded-md"
+                >
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-xs font-medium">
+                      Nombre del producto
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border rounded-md px-2 py-1 text-sm"
+                      value={prod.nombre}
+                      onChange={(e) =>
+                        updateProductoVendido(prod.id, "nombre", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">Cantidad</label>
+                    <input
+                      type="number"
+                      min="1"
+                      className="w-full border rounded-md px-2 py-1 text-sm"
+                      value={prod.cantidad}
+                      onChange={(e) =>
+                        updateProductoVendido(
+                          prod.id,
+                          "cantidad",
+                          parseInt(e.target.value) || 1
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="flex items-end space-x-2">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-xs font-medium">Precio ($)</label>
+                      <input
+                        type="number"
+                        className="w-full border rounded-md px-2 py-1 text-sm"
+                        value={prod.precio}
+                        onChange={(e) =>
+                          updateProductoVendido(
+                            prod.id,
+                            "precio",
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-red-500"
+                      onClick={() => removeProductoVendido(prod.id)}
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2 justify-end mt-6">
             <Button
               variant="outline"
-              onClick={() => setDialogOpen(false)}
+              onClick={() => setFinalizarDialogOpen(false)}
               disabled={updatingAppointment}
             >
               Cancelar
             </Button>
             <Button
-              onClick={handleActionConfirm}
-              disabled={updatingAppointment || !message.trim()}
-              variant={statusAction === "rechazada" ? "destructive" : "default"}
+              onClick={finalizarCita}
+              disabled={
+                updatingAppointment || !finalizacionForm.diagnostico.trim()
+              }
             >
               {updatingAppointment && (
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
               )}
-              {statusAction === "rechazada" ? "Rechazar" : "Enviar sugerencia"}
+              Finalizar cita
             </Button>
           </DialogFooter>
         </DialogContent>
