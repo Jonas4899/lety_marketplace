@@ -587,4 +587,84 @@ router.put("/appointments/:appointmentId/finalize", async (req, res) => {
   }
 });
 
+// Editar cita desde la clínica veterinaria (reprogramación)
+router.put("/appointments/:appointmentId/reschedule", async (req, res) => {
+  const { appointmentId } = req.params;
+  const { clinicaId, userType } = req.user;
+  const { date, timeSlot, message } = req.body;
+
+  if (userType !== "vet") {
+    return res
+      .status(403)
+      .json({ message: "Solo la clínica puede reprogramar la cita" });
+  }
+
+  if (!date || !timeSlot) {
+    return res
+      .status(400)
+      .json({ message: "La fecha y el horario son obligatorios" });
+  }
+
+  try {
+    // Verificar que la cita pertenezca a la clínica
+    const { data: cita, error: errorCita } = await supabase
+      .from("citas")
+      .select("id_cita, id_clinica, trazabilidad")
+      .eq("id_cita", appointmentId)
+      .eq("id_clinica", clinicaId)
+      .single();
+
+    if (errorCita || !cita) {
+      return res
+        .status(404)
+        .json({ message: "Cita no encontrada o no pertenece a la clínica" });
+    }
+
+    const actualizacion = {
+      fecha_inicio: date,
+      horario: timeSlot,
+      estado: "reprogramacion_sugerida",
+    };
+
+    // Trazabilidad
+    const nuevaTrazabilidad = Array.isArray(cita.trazabilidad)
+      ? [...cita.trazabilidad]
+      : [];
+    nuevaTrazabilidad.push({
+      accion: "reprogramacion",
+      usuario: clinicaId,
+      fecha: new Date().toISOString(),
+      detalles: {
+        fecha_anterior: cita.fecha_inicio,
+        horario_anterior: cita.horario,
+        nueva_fecha: date,
+        nuevo_horario: timeSlot,
+        mensaje: message || "Reprogramado por la clínica",
+      },
+    });
+    actualizacion.trazabilidad = nuevaTrazabilidad;
+
+    const { error: errorUpdate } = await supabase
+      .from("citas")
+      .update(actualizacion)
+      .eq("id_cita", appointmentId);
+
+    if (errorUpdate) {
+      console.error("Error reprogramando cita:", errorUpdate);
+      return res.status(500).json({
+        message: "Error al reprogramar la cita",
+        error: errorUpdate.message,
+        details: errorUpdate.details || errorUpdate,
+      });
+    }
+
+    // TODO: Aquí se podría implementar el envío de notificaciones al cliente
+
+    res.status(200).json({ message: "Cita reprogramada exitosamente" });
+  } catch (error) {
+    console.error("Error general reprogramando cita:", error);
+    res.status(500).json({ message: "Error en el servidor" });
+  }
+});
+
 export default router;

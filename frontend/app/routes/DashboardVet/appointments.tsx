@@ -11,6 +11,8 @@ import {
   ClipboardCheck,
   Plus,
   Trash,
+  Calendar,
+  Clock,
 } from "lucide-react";
 import { useAuthStore } from "~/stores/useAuthStore";
 import {
@@ -87,6 +89,9 @@ export default function VetAppointmentsPage() {
   const [message, setMessage] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [finalizarDialogOpen, setFinalizarDialogOpen] = useState(false);
+  const [reprogramarDialogOpen, setReprogramarDialogOpen] = useState(false);
+  const [nuevaFecha, setNuevaFecha] = useState("");
+  const [nuevoHorario, setNuevoHorario] = useState("");
   const [finalizacionForm, setFinalizacionForm] = useState<FinalizacionForm>({
     diagnostico: "",
     tratamiento: "",
@@ -413,6 +418,85 @@ export default function VetAppointmentsPage() {
     }
   };
 
+  // Funciones adicionales para reprogramar citas
+  const handleReprogramarStart = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setReprogramarDialogOpen(true);
+    setNuevaFecha("");
+    setNuevoHorario("");
+    setMessage("");
+  };
+
+  const reprogramarCita = async () => {
+    if (!selectedAppointment || !token || !nuevaFecha || !nuevoHorario) return;
+
+    setUpdatingAppointment(true);
+    try {
+      const res = await fetch(
+        `${API_URL}/appointments/${selectedAppointment.id}/reschedule`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            date: nuevaFecha,
+            timeSlot: nuevoHorario,
+            message: message || "Cita reprogramada por la clínica",
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Error al reprogramar la cita");
+      }
+
+      // Actualizar la lista de citas
+      const fechaFormateada = new Date(nuevaFecha).toLocaleDateString("es-ES", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      setAppointments((prev) =>
+        prev.map((app) =>
+          app.id === selectedAppointment.id
+            ? {
+                ...app,
+                date: fechaFormateada,
+                time: nuevoHorario,
+                status: "reprogramacion_sugerida",
+              }
+            : app
+        )
+      );
+
+      toast.success("Cita reprogramada exitosamente");
+    } catch (err: any) {
+      console.error("Error al reprogramar cita:", err);
+      let errorMessage = "Error al reprogramar la cita";
+
+      try {
+        if (err.message) {
+          errorMessage = err.message;
+        }
+      } catch (parseError) {
+        console.error("Error parseando detalles del error:", parseError);
+      }
+
+      toast.error(errorMessage);
+    } finally {
+      setUpdatingAppointment(false);
+      setReprogramarDialogOpen(false);
+      setSelectedAppointment(null);
+      setNuevaFecha("");
+      setNuevoHorario("");
+      setMessage("");
+    }
+  };
+
   return (
     <div className="p-4">
       <Card>
@@ -542,11 +626,11 @@ export default function VetAppointmentsPage() {
                         }
                         disabled={
                           updatingAppointment ||
-                          a.status === "reprogramacion_sugerida"
+                          a.status === "reprogramacion_sugerida" ||
+                          a.status === "finalizada" ||
+                          a.status === "rechazada"
                         }
-                        onClick={() =>
-                          handleActionStart(a, "reprogramacion_sugerida")
-                        }
+                        onClick={() => handleReprogramarStart(a)}
                       >
                         <CalendarClock className="h-4 w-4 mr-1" />
                         {a.status === "reprogramacion_sugerida"
@@ -933,6 +1017,98 @@ export default function VetAppointmentsPage() {
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
               )}
               Finalizar cita
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo para reprogramar cita */}
+      <Dialog
+        open={reprogramarDialogOpen}
+        onOpenChange={setReprogramarDialogOpen}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reprogramar cita</DialogTitle>
+            <DialogDescription>
+              Seleccione una nueva fecha y hora para la cita.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <label
+                htmlFor="nuevaFecha"
+                className="text-sm font-medium flex gap-2 items-center"
+              >
+                <Calendar className="h-4 w-4" /> Nueva fecha
+              </label>
+              <input
+                type="date"
+                id="nuevaFecha"
+                className="w-full px-3 py-2 border rounded-md"
+                value={nuevaFecha}
+                onChange={(e) => setNuevaFecha(e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label
+                htmlFor="nuevoHorario"
+                className="text-sm font-medium flex gap-2 items-center"
+              >
+                <Clock className="h-4 w-4" /> Nuevo horario
+              </label>
+              <select
+                id="nuevoHorario"
+                className="w-full px-3 py-2 border rounded-md"
+                value={nuevoHorario}
+                onChange={(e) => setNuevoHorario(e.target.value)}
+              >
+                <option value="">Seleccione un horario</option>
+                <option value="08:00 - 09:00">08:00 - 09:00</option>
+                <option value="09:00 - 10:00">09:00 - 10:00</option>
+                <option value="10:00 - 11:00">10:00 - 11:00</option>
+                <option value="11:00 - 12:00">11:00 - 12:00</option>
+                <option value="12:00 - 13:00">12:00 - 13:00</option>
+                <option value="14:00 - 15:00">14:00 - 15:00</option>
+                <option value="15:00 - 16:00">15:00 - 16:00</option>
+                <option value="16:00 - 17:00">16:00 - 17:00</option>
+                <option value="17:00 - 18:00">17:00 - 18:00</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="mensaje" className="text-sm font-medium">
+                Mensaje para el cliente (opcional)
+              </label>
+              <Textarea
+                id="mensaje"
+                placeholder="Indique el motivo de la reprogramación"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2 justify-end mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setReprogramarDialogOpen(false)}
+              disabled={updatingAppointment}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={reprogramarCita}
+              disabled={updatingAppointment || !nuevaFecha || !nuevoHorario}
+            >
+              {updatingAppointment && (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              Reprogramar
             </Button>
           </DialogFooter>
         </DialogContent>
