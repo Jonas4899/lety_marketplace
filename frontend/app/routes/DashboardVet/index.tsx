@@ -205,7 +205,7 @@ export default function DashboardPage() {
                         </div>
                         <Button variant="ghost" size="sm" asChild>
                           <Link
-                            to={`/dashboard/appointments/${appointment.id}`}
+                            to={`/dashboard-vet/appointments/${appointment.id}`}
                           >
                             Ver
                           </Link>
@@ -213,7 +213,7 @@ export default function DashboardPage() {
                       </div>
                     ))}
                     <Button variant="outline" className="w-full" asChild>
-                      <Link to="/dashboard/appointments">
+                      <Link to="/dashboard-vet/appointments">
                         Ver todas las citas
                       </Link>
                     </Button>
