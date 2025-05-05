@@ -595,7 +595,9 @@ export default function VetAppointmentsPage() {
                           a.status === "confirmada" ? "outline" : "default"
                         }
                         disabled={
-                          updatingAppointment || a.status === "confirmada"
+                          updatingAppointment ||
+                          a.status === "confirmada" ||
+                          a.status === "finalizada"
                         }
                         onClick={() => handleActionStart(a, "confirmada")}
                       >
@@ -609,7 +611,9 @@ export default function VetAppointmentsPage() {
                           a.status === "rechazada" ? "outline" : "destructive"
                         }
                         disabled={
-                          updatingAppointment || a.status === "rechazada"
+                          updatingAppointment ||
+                          a.status === "rechazada" ||
+                          a.status === "finalizada"
                         }
                         onClick={() => handleActionStart(a, "rechazada")}
                       >
@@ -663,6 +667,65 @@ export default function VetAppointmentsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Diálogo para confirmar/rechazar citas */}
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedAppointment(null);
+            setStatusAction(null);
+            setMessage("");
+          }
+          setDialogOpen(open);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {statusAction === "rechazada"
+                ? "Rechazar cita"
+                : "Sugerir reprogramación"}
+            </DialogTitle>
+            <DialogDescription>
+              {statusAction === "rechazada"
+                ? "Ingrese el motivo de rechazo"
+                : "Ingrese un mensaje para el cliente"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <Textarea
+            id="message"
+            placeholder="Mensaje..."
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={3}
+          />
+
+          <DialogFooter className="flex gap-2 justify-end mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDialogOpen(false);
+                setSelectedAppointment(null);
+                setStatusAction(null);
+                setMessage("");
+              }}
+              disabled={updatingAppointment}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleActionConfirm}
+              disabled={updatingAppointment || !message.trim()}
+            >
+              {statusAction === "rechazada"
+                ? "Rechazar"
+                : "Sugerir reprogramación"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Diálogo para finalizar cita */}
       <Dialog open={finalizarDialogOpen} onOpenChange={setFinalizarDialogOpen}>

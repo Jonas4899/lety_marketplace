@@ -201,17 +201,14 @@ export default function PhotosPage() {
     try {
       // Si la foto ya existe en el servidor (URL http) Y tenemos clinicId
       if (clinicId && photoToSet.url.startsWith("http")) {
-        const response = await fetch(
-          `${API_URL}/veterinary/photos/${id}/set-primary`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ isPrimary: true }),
-          }
-        );
+        const response = await fetch(`${API_URL}/veterinary/photos/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ isPrimary: true }),
+        });
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
