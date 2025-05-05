@@ -1,10 +1,19 @@
 import { useState, useEffect } from "react"
-import { MapPin, Phone, Clock, Star, MessageSquare, Heart, Share2, ChevronLeft, Check } from "lucide-react"
 import { Button } from "~/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent } from "~/components/ui/card"
 import { Link, useNavigate, useParams } from "react-router";
+import { MapPin, Phone, Clock, Star, MessageSquare, Heart, Share2, ChevronLeft, Check, ArrowLeft, ArrowRight, X } from "lucide-react" // Added ArrowLeft, ArrowRight, X
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "~/components/ui/dialog" // Added Dialog components
+
 
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -47,7 +56,11 @@ export default function VetProdilePage() {
   const [clinicProfile, setClinicProfile] = useState<ClinicProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isFavorite, setIsFavorite] = useState(false);
+    const [isFavorite, setIsFavorite] = useState(false);
+
+  const [isModalOpen, setIsModalOpen] = useState(false); // State for modal visibility
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -101,6 +114,15 @@ export default function VetProdilePage() {
   }
 
 
+  const openImageModal = (index: number) => {
+    setCurrentImageIndex(index);
+    setIsModalOpen(true);
+  };
+
+  const photos = clinicProfile?.photos || [];
+  const photosToDisplay = photos.slice(0, 3);
+  const remainingPhotosCount = photos.length - photosToDisplay.length;
+
 
     // Get today's day name in lowercase English (e.g., 'monday')
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
@@ -144,9 +166,6 @@ export default function VetProdilePage() {
                 >
                   <Heart size={20} fill={isFavorite ? "currentColor" : "none"} />
                 </Button>
-                <Button variant="outline" size="icon">
-                  <Share2 size={20} />
-                </Button>
               </div>
             </div>
 
@@ -172,25 +191,100 @@ export default function VetProdilePage() {
             </div>
           </div>
 
-          {/* Render Clinic Photos */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            {clinicProfile?.photos && clinicProfile.photos.length > 0 ? (
-              clinicProfile.photos.map((photo, index) => (
-                <div key={photo.id_foto} className={index === 0 ? "col-span-2" : ""}>
+          {/* Render Clinic Photos - Max 3 initially */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-6">
+            {photos.length > 0 ? (
+              photosToDisplay.map((photo, index) => (
+                <div
+                  key={photo.id_foto}
+                  className={`relative cursor-pointer ${index === 0 ? 'sm:col-span-2 sm:row-span-2' : ''}`} // Adjust grid span for first image
+                  onClick={() => openImageModal(index)} // Open modal showing this image
+                >
                   <img
                     src={photo.url}
                     alt={photo.titulo || `${clinicProfile?.nombre} - Imagen ${index + 1}`}
-                    className="w-full h-48 object-cover rounded-lg"
+                    className="w-full h-full object-cover rounded-lg aspect-square sm:aspect-auto" // Ensure consistent aspect ratio
                   />
+                  {/* Overlay button on the last visible image if there are more */}
+                  {index === photosToDisplay.length - 1 && remainingPhotosCount > 0 && (
+                    <div
+                      className="absolute inset-0 bg-gray-700/50 flex items-center justify-center rounded-lg"
+                      onClick={(e) => { e.stopPropagation(); openImageModal(index); }} // Prevent nested click, open modal
+                    >
+                      <span className="text-white text-lg font-semibold">+{remainingPhotosCount} más</span>
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
-              // Optional: Show a placeholder if no photos are available
-              <div className="col-span-2 text-center text-gray-500 my-40">
+              <div className="col-span-1 sm:col-span-3 text-center text-gray-500 py-10 border rounded-lg">
                 No hay fotos disponibles para esta clínica :(
               </div>
             )}
           </div>
+
+          {/* Image Modal Dialog */}
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <DialogContent className="max-w-5xl p-0">
+              {photos.length > 0 && (
+                <div className="relative">
+                  {/* Close Button */}
+                   <DialogClose asChild>
+                     <Button
+                       variant="ghost"
+                       size="icon"
+                       className="absolute top-2 right-2 z-10 bg-black bg-opacity-50 text-white hover:bg-opacity-75 hover:text-white"
+                       aria-label="Cerrar"
+                     >
+                       <X size={20} />
+                     </Button>
+                   </DialogClose>
+
+                  {/* Image Display */}
+                  <img
+                    src={photos[currentImageIndex].url}
+                    alt={photos[currentImageIndex].titulo || `${clinicProfile?.nombre} - Imagen ${currentImageIndex + 1}`}
+                    className="w-full h-auto max-h-[80vh] object-contain p-1" // Adjust styling as needed
+                  />
+
+                  {/* Navigation Buttons */}
+                  {photos.length > 1 && (
+                    <>
+                      {/* Previous Button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white hover:bg-opacity-75 hover:text-white disabled:opacity-30"
+                        onClick={() => setCurrentImageIndex((prev) => Math.max(0, prev - 1))}
+                        disabled={currentImageIndex === 0}
+                        aria-label="Anterior"
+                      >
+                        <ArrowLeft size={32} />
+                      </Button>
+
+                      {/* Next Button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white hover:bg-opacity-75 hover:text-white disabled:opacity-30"
+                        onClick={() => setCurrentImageIndex((prev) => Math.min(photos.length - 1, prev + 1))}
+                        disabled={currentImageIndex === photos.length - 1}
+                        aria-label="Siguiente"
+                      >
+                        <ArrowRight size={32} />
+                      </Button>
+                    </>
+                  )}
+
+                   {/* Image Counter */}
+                   <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
+                     {currentImageIndex + 1} / {photos.length}
+                   </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
 
           <Tabs defaultValue="about" className="mb-6">
             <TabsList className="grid w-full grid-cols-3">
@@ -336,10 +430,13 @@ export default function VetProdilePage() {
                 <Button size="lg" className="w-full" asChild>
                   <Link to={`/pet-dashboard/appointments/schedule?clinic=${clinicId}`}>Agendar cita</Link>
                 </Button>
+                {
+                /*
                 <Button variant="outline" className="w-full flex items-center justify-center gap-2">
                   <MessageSquare size={16} />
                   <span>Enviar mensaje</span>
-                </Button>
+                </Button>*/
+                }
               </div>
             </CardContent>
           </Card>
