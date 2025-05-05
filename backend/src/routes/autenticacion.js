@@ -56,12 +56,12 @@ router.post("/owner/login", async (req, res) => {
         .json({ message: "Error al obtener las mascotas del usuario" });
     }
 
-    // Configurar la cookie segura con el token
+    // Configurar la cookie httpOnly con el token (8h)
     res.cookie("auth_token", token, {
-      httpOnly: false, //cambiar luego a true
+      httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 8 * 60 * 60 * 1000, // 8 horas en milisegundos
+      maxAge: 8 * 60 * 60 * 1000,
     });
 
     console.log(mascotas);
@@ -127,12 +127,12 @@ router.post("/vet/login", async (req, res) => {
       { expiresIn: "24h" }
     );
 
-    // Configurar la cookie segura con el token
+    // Configurar la cookie httpOnly con el token (24h)
     res.cookie("auth_token", token, {
-      httpOnly: false, //cambiar luego a true
+      httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 8 * 60 * 60 * 1000, // 8 horas en milisegundos
+      maxAge: 24 * 60 * 60 * 1000,
     });
 
     //enviar respuesta con los datos de la clinica

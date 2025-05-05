@@ -92,14 +92,7 @@ export default function LoginPage() {
 
         console.log("Datos del usuario:", responseData.user);
 
-        //Guardar el token en una cookie
-        Cookies.set("auth_token", responseData.token, {
-          expires: 1, // 1 dia / 24hrs
-          secure: true,
-          sameSite: "Strict",
-        });
-
-        localStorage.setItem("token", responseData.token);
+        // La cookie httpOnly la envía el backend; no la seteamos manualmente
 
         //Actualizar el estado de global de autenticacion
         login({
@@ -166,12 +159,7 @@ export default function LoginPage() {
 
         console.log("Datos de la veterinaria:", responseData.clinica);
 
-        //Guardar el token en una cookie
-        Cookies.set("auth_token", responseData.token, {
-          expires: 1, // 1 dia / 24hrs
-          secure: true,
-          sameSite: "Strict",
-        });
+        // La cookie httpOnly la envía el backend; no la seteamos manualmente
 
         //Actualizar el estado de global de autenticacion
         login({
