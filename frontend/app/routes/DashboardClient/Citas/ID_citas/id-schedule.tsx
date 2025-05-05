@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react"
-import { Link, useNavigate, useSearchParams, useParams} from "react-router";
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams, useParams } from "react-router";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import {
   ArrowLeft,
   Calendar,
@@ -17,13 +17,19 @@ import {
   Trash2,
   PawPrint,
   CreditCard,
-} from "lucide-react"
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Badge } from "~/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { Separator } from "~/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+} from "lucide-react";
+import { Button } from "~/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
+import { Badge } from "~/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Separator } from "~/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -31,105 +37,104 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "~/components/ui/dialog"
-import { Textarea } from "~/components/ui/textarea"
-import { Label } from "~/components/ui/label"
-import { useToast } from "~/hooks/use-toast"
-import { ScrollArea } from "~/components/ui/scroll-area"
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"
+} from "~/components/ui/dialog";
+import { Textarea } from "~/components/ui/textarea";
+import { Label } from "~/components/ui/label";
+import { useToast } from "~/hooks/use-toast";
+import { ScrollArea } from "~/components/ui/scroll-area";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 
 // Tipos de datos
 interface Appointment {
-  id: string
-  petName: string
-  petType: string
-  petBreed: string
-  petAge: number
-  petWeight: string
-  petImage: string
-  clinicName: string
-  clinicAddress: string
-  clinicPhone: string
-  clinicEmail: string
-  clinicImage: string
-  vetName: string
-  vetSpecialty: string
-  vetImage: string
-  date: Date
-  time: string
-  duration: number
-  service: string
-  price: number
-  status: "confirmed" | "pending" | "completed" | "cancelled" | "rescheduled"
-  notes?: string
-  createdAt: Date
-  paymentStatus: "pending" | "paid" | "partial"
-  paymentMethod?: string
-  paymentType?: "full" | "deposit" | "none"
-  depositAmount?: number
-  remainingAmount?: number
-  paymentDate?: Date
-  paymentId?: string
+  id: string;
+  petName: string;
+  petType: string;
+  petBreed: string;
+  petAge: number;
+  petWeight: string;
+  petImage: string;
+  clinicName: string;
+  clinicAddress: string;
+  clinicPhone: string;
+  clinicEmail: string;
+  clinicImage: string;
+  vetName: string;
+  vetSpecialty: string;
+  vetImage: string;
+  date: Date;
+  time: string;
+  duration: number;
+  service: string;
+  price: number;
+  status: "confirmed" | "pending" | "completed" | "cancelled" | "rescheduled";
+  notes?: string;
+  createdAt: Date;
+  paymentStatus: "pending" | "paid" | "partial";
+  paymentMethod?: string;
+  paymentType?: "full" | "deposit" | "none";
+  depositAmount?: number;
+  remainingAmount?: number;
+  paymentDate?: Date;
+  paymentId?: string;
 }
 
 interface AppointmentLog {
-  id: number
-  timestamp: Date
-  action: string
-  user: string
-  details?: string
+  id: number;
+  timestamp: Date;
+  action: string;
+  user: string;
+  details?: string;
 }
 
 export default function AppointmentDetailPage() {
-  const router = useNavigate()
-  const { toast } = useToast()
-  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false)
-  const [cancelReason, setCancelReason] = useState("")
-  const [isAddNoteDialogOpen, setIsAddNoteDialogOpen] = useState(false)
-  const [noteText, setNoteText] = useState("")
-  const navigate = useNavigate()
-  
+  const router = useNavigate();
+  const { toast } = useToast();
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isAddNoteDialogOpen, setIsAddNoteDialogOpen] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const navigate = useNavigate();
+
   const { id } = useParams<{ id: string }>();
- 
-  
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000"
+
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   useEffect(() => {
     const fetchAppointment = async () => {
       try {
         if (!id) return;
-  
-        const token = localStorage.getItem('token');
+
+        const token = localStorage.getItem("token");
         if (!token) {
-          console.error('Token no encontrado');
+          console.error("Token no encontrado");
           return;
         }
-  
+
         const response = await fetch(`${API_URL}/appointments/${id}`, {
           headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
         });
-  
+
         if (!response.ok) {
-          throw new Error('Error al obtener detalles de la cita');
+          throw new Error("Error al obtener detalles de la cita");
         }
-  
+
         const data = await response.json();
         setAppointment(data.appointment);
       } catch (error) {
-        console.error('Error trayendo detalles de la cita:', error);
+        console.error("Error trayendo detalles de la cita:", error);
       } finally {
         setIsLoading(false);
       }
     };
-  
+
     fetchAppointment();
   }, [id]);
-  
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -137,7 +142,7 @@ export default function AppointmentDetailPage() {
       </div>
     );
   }
-  
+
   if (!appointment) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -169,74 +174,103 @@ export default function AppointmentDetailPage() {
       user: "Clínica Veterinaria PetCare",
       details: "Confirmación enviada por email y SMS",
     },
-  ]
+  ];
 
   // Función para formatear fechas
   const formatDate = (date: Date) => {
-    return format(date, "d 'de' MMMM, yyyy", { locale: es })
-  }
+    return format(date, "d 'de' MMMM, yyyy", { locale: es });
+  };
 
   // Función para formatear fechas con hora
   const formatDateTime = (date: Date) => {
-    return format(date, "d 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })
-  }
+    return format(date, "d 'de' MMMM, yyyy 'a las' HH:mm", { locale: es });
+  };
 
   // Función para obtener el badge de estado
   const getStatusBadge = (status: Appointment["status"]) => {
     switch (status) {
       case "confirmed":
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Confirmada</Badge>
+        return (
+          <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
+            Confirmada
+          </Badge>
+        );
       case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pendiente</Badge>
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
+            Pendiente
+          </Badge>
+        );
       case "completed":
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">Completada</Badge>
+        return (
+          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+            Completada
+          </Badge>
+        );
       case "cancelled":
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Cancelada</Badge>
+        return (
+          <Badge className="bg-red-100 text-red-800 hover:bg-red-200">
+            Cancelada
+          </Badge>
+        );
       case "rescheduled":
-        return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-200">Reprogramada</Badge>
+        return (
+          <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-200">
+            Reprogramada
+          </Badge>
+        );
     }
-  }
+  };
 
   // Función para obtener el icono de estado
   const getStatusIcon = (status: Appointment["status"]) => {
     switch (status) {
       case "confirmed":
-        return <CheckCircle className="h-5 w-5 text-green-600" />
+        return <CheckCircle className="h-5 w-5 text-green-600" />;
       case "pending":
-        return <Clock className="h-5 w-5 text-yellow-600" />
+        return <Clock className="h-5 w-5 text-yellow-600" />;
       case "completed":
-        return <CheckCircle className="h-5 w-5 text-blue-600" />
+        return <CheckCircle className="h-5 w-5 text-blue-600" />;
       case "cancelled":
-        return <XCircle className="h-5 w-5 text-red-600" />
+        return <XCircle className="h-5 w-5 text-red-600" />;
       case "rescheduled":
-        return <RefreshCw className="h-5 w-5 text-purple-600" />
+        return <RefreshCw className="h-5 w-5 text-purple-600" />;
     }
-  }
+  };
 
   // Función para obtener el badge de pago
   const getPaymentBadge = (status: "pending" | "paid" | "partial") => {
     switch (status) {
       case "paid":
         return (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+          <Badge
+            variant="outline"
+            className="bg-green-50 text-green-700 border-green-200"
+          >
             Pagado
           </Badge>
-        )
+        );
       case "partial":
         return (
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+          <Badge
+            variant="outline"
+            className="bg-blue-50 text-blue-700 border-blue-200"
+          >
             Pago parcial
           </Badge>
-        )
+        );
       case "pending":
       default:
         return (
-          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+          <Badge
+            variant="outline"
+            className="bg-yellow-50 text-yellow-700 border-yellow-200"
+          >
             Pendiente de pago
           </Badge>
-        )
+        );
     }
-  }
+  };
 
   // Función para manejar la cancelación de cita
   const handleCancelAppointment = () => {
@@ -246,28 +280,28 @@ export default function AppointmentDetailPage() {
         description: "Por favor, proporciona un motivo para la cancelación.",
         variant: "destructive",
         duration: 3000,
-      })
-      return
+      });
+      return;
     }
 
     // En una aplicación real, esto enviaría una solicitud al servidor
-    console.log(`Cancelando cita ${appointment.id}. Motivo: ${cancelReason}`)
+    console.log(`Cancelando cita ${appointment.id}. Motivo: ${cancelReason}`);
 
     // Mostrar notificación de éxito
     toast({
       title: "Cita cancelada",
       description: "Tu cita ha sido cancelada exitosamente.",
       duration: 3000,
-    })
+    });
 
-    setIsCancelDialogOpen(false)
-    setCancelReason("")
+    setIsCancelDialogOpen(false);
+    setCancelReason("");
 
     // Redirigir a la lista de citas
     setTimeout(() => {
-      router("/pet-dashboard/appointments")
-    }, 1500)
-  }
+      router("/dashboard-client/appointments");
+    }, 1500);
+  };
 
   // Función para agregar una nota
   const handleAddNote = () => {
@@ -277,23 +311,23 @@ export default function AppointmentDetailPage() {
         description: "Por favor, escribe una nota para agregar.",
         variant: "destructive",
         duration: 3000,
-      })
-      return
+      });
+      return;
     }
 
     // En una aplicación real, esto enviaría una solicitud al servidor
-    console.log(`Agregando nota a la cita ${appointment.id}: ${noteText}`)
+    console.log(`Agregando nota a la cita ${appointment.id}: ${noteText}`);
 
     // Mostrar notificación de éxito
     toast({
       title: "Nota agregada",
       description: "Tu nota ha sido agregada exitosamente.",
       duration: 3000,
-    })
+    });
 
-    setIsAddNoteDialogOpen(false)
-    setNoteText("")
-  }
+    setIsAddNoteDialogOpen(false);
+    setNoteText("");
+  };
 
   return (
     <div className="container mx-auto py-6 px-4 md:px-6">
@@ -305,25 +339,35 @@ export default function AppointmentDetailPage() {
               <ArrowLeft className="h-4 w-4" />
               <span className="sr-only">Volver</span>
             </Button>
-            <h1 className="text-2xl font-bold tracking-tight">Detalles de la Cita</h1>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Detalles de la Cita
+            </h1>
             {getStatusBadge(appointment.status)}
           </div>
           <div className="flex flex-wrap gap-2">
             {appointment.status === "confirmed" && (
               <>
                 <Button variant="outline" asChild>
-                  <Link to={`/pet-dashboard/appointments/schedule?reschedule=true&appointment=${appointment.id}`}>
+                  <Link
+                    to={`/pet-dashboard/appointments/schedule?reschedule=true&appointment=${appointment.id}`}
+                  >
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Reprogramar
                   </Link>
                 </Button>
-                <Button variant="destructive" onClick={() => setIsCancelDialogOpen(true)}>
+                <Button
+                  variant="destructive"
+                  onClick={() => setIsCancelDialogOpen(true)}
+                >
                   <XCircle className="mr-2 h-4 w-4" />
                   Cancelar
                 </Button>
               </>
             )}
-            <Button variant="outline" onClick={() => setIsAddNoteDialogOpen(true)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsAddNoteDialogOpen(true)}
+            >
               <Pencil className="mr-2 h-4 w-4" />
               Agregar Nota
             </Button>
@@ -332,13 +376,15 @@ export default function AppointmentDetailPage() {
 
         {/* Alerta para citas próximas */}
         {appointment.status === "confirmed" &&
-          new Date(appointment.date).getTime() - new Date().getTime() < 86400000 * 2 && (
+          new Date(appointment.date).getTime() - new Date().getTime() <
+            86400000 * 2 && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Cita próxima</AlertTitle>
               <AlertDescription>
-                Tu cita está programada para dentro de menos de 48 horas. Si necesitas cancelar o reprogramar, hazlo lo
-                antes posible para evitar cargos.
+                Tu cita está programada para dentro de menos de 48 horas. Si
+                necesitas cancelar o reprogramar, hazlo lo antes posible para
+                evitar cargos.
               </AlertDescription>
             </Alert>
           )}
@@ -357,9 +403,12 @@ export default function AppointmentDetailPage() {
                   {getStatusIcon(appointment.status)}
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold">{appointment.service}</h2>
+                  <h2 className="text-xl font-semibold">
+                    {appointment.service}
+                  </h2>
                   <p className="text-sm text-muted-foreground">
-                    {formatDate(appointment.date)} • {appointment.time} ({appointment.duration} min)
+                    {formatDate(appointment.date)} • {appointment.time} (
+                    {appointment.duration} min)
                   </p>
                   <div className="mt-1 flex items-center gap-2">
                     {getStatusBadge(appointment.status)}
@@ -375,13 +424,18 @@ export default function AppointmentDetailPage() {
                 <h3 className="mb-3 text-sm font-medium">Mascota</h3>
                 <div className="flex items-center gap-4">
                   <Avatar className="h-16 w-16">
-                    <AvatarImage src={appointment.petImage} alt={appointment.petName} />
+                    <AvatarImage
+                      src={appointment.petImage}
+                      alt={appointment.petName}
+                    />
                     <AvatarFallback>
                       <PawPrint className="h-6 w-6" />
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h4 className="text-base font-medium">{appointment.petName}</h4>
+                    <h4 className="text-base font-medium">
+                      {appointment.petName}
+                    </h4>
                     <p className="text-sm text-muted-foreground">
                       {appointment.petType} • {appointment.petBreed}
                     </p>
@@ -396,14 +450,23 @@ export default function AppointmentDetailPage() {
 
               {/* Detalles de la clínica y veterinario */}
               <div>
-                <h3 className="mb-3 text-sm font-medium">Clínica y Veterinario</h3>
+                <h3 className="mb-3 text-sm font-medium">
+                  Clínica y Veterinario
+                </h3>
                 <div className="flex items-center gap-4">
                   <Avatar className="h-16 w-16">
-                    <AvatarImage src={appointment.clinicImage} alt={appointment.clinicName} />
-                    <AvatarFallback>{appointment?.clinicName?.substring(0, 2) || "?"}</AvatarFallback>
+                    <AvatarImage
+                      src={appointment.clinicImage}
+                      alt={appointment.clinicName}
+                    />
+                    <AvatarFallback>
+                      {appointment?.clinicName?.substring(0, 2) || "?"}
+                    </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h4 className="text-base font-medium">{appointment.clinicName}</h4>
+                    <h4 className="text-base font-medium">
+                      {appointment.clinicName}
+                    </h4>
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <MapPin className="h-3.5 w-3.5" />
                       <span>{appointment.clinicAddress}</span>
@@ -416,12 +479,19 @@ export default function AppointmentDetailPage() {
                 </div>
                 <div className="mt-4 flex items-center gap-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={appointment.vetImage} alt={appointment.vetName} />
-                    <AvatarFallback>{appointment?.vetName?.substring(0, 2) || "?"}</AvatarFallback>
+                    <AvatarImage
+                      src={appointment.vetImage}
+                      alt={appointment.vetName}
+                    />
+                    <AvatarFallback>
+                      {appointment?.vetName?.substring(0, 2) || "?"}
+                    </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium">{appointment.vetName}</p>
-                    <p className="text-xs text-muted-foreground">{appointment.vetSpecialty}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {appointment.vetSpecialty}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -438,7 +508,9 @@ export default function AppointmentDetailPage() {
                   </div>
                   <div>
                     <dt className="text-muted-foreground">Duración:</dt>
-                    <dd className="font-medium">{appointment.duration} minutos</dd>
+                    <dd className="font-medium">
+                      {appointment.duration} minutos
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">Precio total:</dt>
@@ -446,7 +518,9 @@ export default function AppointmentDetailPage() {
                   </div>
                   <div>
                     <dt className="text-muted-foreground">Estado de pago:</dt>
-                    <dd className="font-medium">{getPaymentBadge(appointment.paymentStatus)}</dd>
+                    <dd className="font-medium">
+                      {getPaymentBadge(appointment.paymentStatus)}
+                    </dd>
                   </div>
                 </dl>
 
@@ -455,50 +529,78 @@ export default function AppointmentDetailPage() {
                   <div className="mt-3 p-3 bg-muted rounded-md">
                     <div className="flex items-center gap-2 mb-2">
                       <CreditCard className="h-4 w-4 text-primary" />
-                      <h4 className="text-sm font-medium">Información de pago</h4>
+                      <h4 className="text-sm font-medium">
+                        Información de pago
+                      </h4>
                     </div>
                     <dl className="grid gap-2 text-sm">
                       {appointment.paymentType === "full" ? (
                         <div className="flex justify-between">
-                          <dt className="text-muted-foreground">Pago completo:</dt>
-                          <dd className="font-medium text-green-600">${appointment.price}</dd>
+                          <dt className="text-muted-foreground">
+                            Pago completo:
+                          </dt>
+                          <dd className="font-medium text-green-600">
+                            ${appointment.price}
+                          </dd>
                         </div>
                       ) : appointment.paymentType === "deposit" ? (
                         <>
                           <div className="flex justify-between">
-                            <dt className="text-muted-foreground">Depósito pagado:</dt>
-                            <dd className="font-medium text-green-600">${appointment.depositAmount}</dd>
+                            <dt className="text-muted-foreground">
+                              Depósito pagado:
+                            </dt>
+                            <dd className="font-medium text-green-600">
+                              ${appointment.depositAmount}
+                            </dd>
                           </div>
                           <div className="flex justify-between">
-                            <dt className="text-muted-foreground">Pendiente en clínica:</dt>
-                            <dd className="font-medium">${appointment.remainingAmount}</dd>
+                            <dt className="text-muted-foreground">
+                              Pendiente en clínica:
+                            </dt>
+                            <dd className="font-medium">
+                              ${appointment.remainingAmount}
+                            </dd>
                           </div>
                         </>
                       ) : (
                         <div className="flex justify-between">
-                          <dt className="text-muted-foreground">Pago en clínica:</dt>
+                          <dt className="text-muted-foreground">
+                            Pago en clínica:
+                          </dt>
                           <dd className="font-medium">${appointment.price}</dd>
                         </div>
                       )}
 
                       {appointment.paymentMethod && (
                         <div className="flex justify-between">
-                          <dt className="text-muted-foreground">Método de pago:</dt>
-                          <dd className="font-medium">{appointment.paymentMethod}</dd>
+                          <dt className="text-muted-foreground">
+                            Método de pago:
+                          </dt>
+                          <dd className="font-medium">
+                            {appointment.paymentMethod}
+                          </dd>
                         </div>
                       )}
 
                       {appointment.paymentDate && (
                         <div className="flex justify-between">
-                          <dt className="text-muted-foreground">Fecha de pago:</dt>
-                          <dd className="font-medium">{formatDateTime(appointment.paymentDate)}</dd>
+                          <dt className="text-muted-foreground">
+                            Fecha de pago:
+                          </dt>
+                          <dd className="font-medium">
+                            {formatDateTime(appointment.paymentDate)}
+                          </dd>
                         </div>
                       )}
 
                       {appointment.paymentId && (
                         <div className="flex justify-between">
-                          <dt className="text-muted-foreground">ID de transacción:</dt>
-                          <dd className="font-medium">{appointment.paymentId}</dd>
+                          <dt className="text-muted-foreground">
+                            ID de transacción:
+                          </dt>
+                          <dd className="font-medium">
+                            {appointment.paymentId}
+                          </dd>
                         </div>
                       )}
                     </dl>
@@ -510,9 +612,12 @@ export default function AppointmentDetailPage() {
 
               {/* Notas */}
               <div>
-                <h3 className="mb-3 text-sm font-medium">Notas e Instrucciones</h3>
+                <h3 className="mb-3 text-sm font-medium">
+                  Notas e Instrucciones
+                </h3>
                 <div className="rounded-md bg-muted p-3 text-sm">
-                  {appointment.notes || "No hay notas disponibles para esta cita."}
+                  {appointment.notes ||
+                    "No hay notas disponibles para esta cita."}
                 </div>
               </div>
             </CardContent>
@@ -529,7 +634,9 @@ export default function AppointmentDetailPage() {
                     <TabsTrigger value="actions">Acciones</TabsTrigger>
                   </TabsList>
                 </div>
-                <CardDescription>Historial y acciones disponibles para tu cita</CardDescription>
+                <CardDescription>
+                  Historial y acciones disponibles para tu cita
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <TabsContent value="timeline" className="mt-0">
@@ -552,11 +659,19 @@ export default function AppointmentDetailPage() {
                           </div>
                           <div className="flex-1 space-y-1">
                             <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium">{log.action}</p>
-                              <p className="text-xs text-muted-foreground">{formatDateTime(log.timestamp)}</p>
+                              <p className="text-sm font-medium">
+                                {log.action}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatDateTime(log.timestamp)}
+                              </p>
                             </div>
-                            <p className="text-sm text-muted-foreground">Por: {log.user}</p>
-                            {log.details && <p className="text-sm">{log.details}</p>}
+                            <p className="text-sm text-muted-foreground">
+                              Por: {log.user}
+                            </p>
+                            {log.details && (
+                              <p className="text-sm">{log.details}</p>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -573,7 +688,11 @@ export default function AppointmentDetailPage() {
                       <div className="mt-4 flex flex-col gap-2">
                         {appointment.status === "confirmed" && (
                           <>
-                            <Button variant="outline" className="justify-start" asChild>
+                            <Button
+                              variant="outline"
+                              className="justify-start"
+                              asChild
+                            >
                               <Link
                                 to={`/pet-dashboard/appointments/schedule?reschedule=true&appointment=${appointment.id}`}
                               >
@@ -599,8 +718,16 @@ export default function AppointmentDetailPage() {
                           <Pencil className="mr-2 h-4 w-4" />
                           Agregar Nota
                         </Button>
-                        <Button variant="outline" className="justify-start" asChild>
-                          <Link to={`/pet-dashboard/messages?clinic=${encodeURIComponent(appointment.clinicName)}`}>
+                        <Button
+                          variant="outline"
+                          className="justify-start"
+                          asChild
+                        >
+                          <Link
+                            to={`/pet-dashboard/messages?clinic=${encodeURIComponent(
+                              appointment.clinicName
+                            )}`}
+                          >
                             <MessageSquare className="mr-2 h-4 w-4" />
                             Contactar a la Clínica
                           </Link>
@@ -609,12 +736,19 @@ export default function AppointmentDetailPage() {
                     </div>
 
                     <div className="rounded-md border p-4">
-                      <h3 className="text-sm font-medium">Preparación para la Cita</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">Recomendaciones para antes de tu visita</p>
+                      <h3 className="text-sm font-medium">
+                        Preparación para la Cita
+                      </h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Recomendaciones para antes de tu visita
+                      </p>
                       <ul className="mt-2 space-y-2 text-sm">
                         <li className="flex items-start gap-2">
                           <CheckCircle className="mt-0.5 h-4 w-4 text-green-600 shrink-0" />
-                          <span>Lleva la cartilla de vacunación de {appointment.petName}</span>
+                          <span>
+                            Lleva la cartilla de vacunación de{" "}
+                            {appointment.petName}
+                          </span>
                         </li>
                         <li className="flex items-start gap-2">
                           <CheckCircle className="mt-0.5 h-4 w-4 text-green-600 shrink-0" />
@@ -622,25 +756,40 @@ export default function AppointmentDetailPage() {
                         </li>
                         <li className="flex items-start gap-2">
                           <CheckCircle className="mt-0.5 h-4 w-4 text-green-600 shrink-0" />
-                          <span>Trae a tu mascota con correa o transportadora</span>
+                          <span>
+                            Trae a tu mascota con correa o transportadora
+                          </span>
                         </li>
                         <li className="flex items-start gap-2">
                           <CheckCircle className="mt-0.5 h-4 w-4 text-green-600 shrink-0" />
-                          <span>Anota cualquier síntoma o cambio reciente en tu mascota</span>
+                          <span>
+                            Anota cualquier síntoma o cambio reciente en tu
+                            mascota
+                          </span>
                         </li>
                       </ul>
                     </div>
 
                     <div className="rounded-md border p-4">
                       <h3 className="text-sm font-medium">Ubicación</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">{appointment.clinicAddress}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {appointment.clinicAddress}
+                      </p>
                       <div className="mt-2 aspect-video w-full rounded-md bg-muted flex items-center justify-center">
                         <MapPin className="h-8 w-8 text-muted-foreground" />
-                        <span className="ml-2 text-sm text-muted-foreground">Mapa no disponible</span>
+                        <span className="ml-2 text-sm text-muted-foreground">
+                          Mapa no disponible
+                        </span>
                       </div>
-                      <Button variant="outline" className="mt-2 w-full justify-center" asChild>
+                      <Button
+                        variant="outline"
+                        className="mt-2 w-full justify-center"
+                        asChild
+                      >
                         <a
-                          href={`https://maps.google.com/?q=${encodeURIComponent(appointment.clinicAddress)}`}
+                          href={`https://maps.google.com/?q=${encodeURIComponent(
+                            appointment.clinicAddress
+                          )}`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -663,7 +812,8 @@ export default function AppointmentDetailPage() {
           <DialogHeader>
             <DialogTitle>Cancelar Cita</DialogTitle>
             <DialogDescription>
-              ¿Estás seguro de que deseas cancelar esta cita? Esta acción no se puede deshacer.
+              ¿Estás seguro de que deseas cancelar esta cita? Esta acción no se
+              puede deshacer.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -683,14 +833,18 @@ export default function AppointmentDetailPage() {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Importante</AlertTitle>
               <AlertDescription>
-                Las cancelaciones con menos de 24 horas de anticipación pueden estar sujetas a cargos según la política
-                de la clínica.
-                {appointment.paymentType !== "none" && " Los depósitos realizados podrían no ser reembolsables."}
+                Las cancelaciones con menos de 24 horas de anticipación pueden
+                estar sujetas a cargos según la política de la clínica.
+                {appointment.paymentType !== "none" &&
+                  " Los depósitos realizados podrían no ser reembolsables."}
               </AlertDescription>
             </Alert>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsCancelDialogOpen(false)}
+            >
               Volver
             </Button>
             <Button variant="destructive" onClick={handleCancelAppointment}>
@@ -705,7 +859,9 @@ export default function AppointmentDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Agregar Nota</DialogTitle>
-            <DialogDescription>Agrega una nota o instrucción especial para esta cita.</DialogDescription>
+            <DialogDescription>
+              Agrega una nota o instrucción especial para esta cita.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -723,7 +879,10 @@ export default function AppointmentDetailPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddNoteDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsAddNoteDialogOpen(false)}
+            >
               Cancelar
             </Button>
             <Button onClick={handleAddNote}>Guardar Nota</Button>
@@ -731,5 +890,5 @@ export default function AppointmentDetailPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

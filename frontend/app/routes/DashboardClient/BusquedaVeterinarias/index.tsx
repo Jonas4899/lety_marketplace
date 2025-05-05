@@ -26,6 +26,7 @@ import ClinicImageCarousel from "./ClinicImageCarousel";
 import ClinicDefaultImage from "./ClinicDefaultImage";
 import MapView from "./MapView";
 import config from "~/config";
+import { useAuthStore } from "~/stores/useAuthStore";
 
 interface ClinicPhoto {
   id_foto: number;
@@ -66,6 +67,7 @@ interface Clinic {
 }
 
 export default function ClinicsPage() {
+  const { token } = useAuthStore();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -207,7 +209,8 @@ export default function ClinicsPage() {
     for (const clinic of updatedClinics) {
       try {
         const response = await axios.get(
-          `${config.API_BASE_URL}/veterinary/photos/${clinic.id_clinica}`
+          `${config.API_BASE_URL}/veterinary/photos/${clinic.id_clinica}`,
+          { headers: { Authorization: `Bearer ${token}` } }
         );
 
         if (response.data && response.data.fotos) {
@@ -619,7 +622,7 @@ export default function ClinicsPage() {
                               </Button>
                               <Button className="w-full sm:w-auto" asChild>
                                 <Link
-                                  to={`/pet-dashboard/appointments/schedule?clinic=${clinic.id_clinica}`}
+                                  to={`/dashboard-client/appointments/schedule?clinic=${clinic.id_clinica}`}
                                 >
                                   Agendar cita
                                 </Link>

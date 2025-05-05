@@ -15,7 +15,7 @@ if (!fs.existsSync("uploads/")) {
 const app = express();
 app.use(
   cors({
-    origin: "http://localhost:5173", // URL de tu frontend
+    origin: ["http://localhost:5173", "http://127.0.0.1:5173"], // URL de tu frontend - both localhost and IP
     credentials: true, // Permitir cookies
   })
 );

@@ -101,7 +101,7 @@ export default function PetDashboardLayout({
     },
     {
       title: "Historial Médico",
-      href: "/pet-dashboard/medical-records",
+      href: "/dashboard-client/medical-records",
       icon: <Clipboard className="h-4 w-4" />,
     },
     {
@@ -111,17 +111,17 @@ export default function PetDashboardLayout({
     },
     {
       title: "Recursos",
-      href: "/pet-dashboard/resources",
+      href: "/dashboard-client/resources",
       icon: <BookOpen className="h-4 w-4" />,
     },
     {
       title: "Favoritos",
-      href: "/pet-dashboard/favorites",
+      href: "/dashboard-client/favorites",
       icon: <Heart className="h-4 w-4" />,
     },
     {
       title: "Configuración",
-      href: "/pet-dashboard/settings",
+      href: "/dashboard-client/settings",
       icon: <Settings className="h-4 w-4" />,
     },
   ];
@@ -140,9 +140,12 @@ export default function PetDashboardLayout({
           <SheetContent side="left" className="w-72">
             <div className="flex h-full flex-col">
               <div className="flex h-14 items-center border-b px-2">
-                <Link to="/" className="flex items-center gap-2 font-semibold">
+                <Link
+                  to="/dashboard-client"
+                  className="flex items-center gap-2 font-semibold"
+                >
                   <PawPrint className="h-6 w-6" />
-                  <span>PETVET MARKETPLACE</span>
+                  <span>LETY MARKETPLACE</span>
                 </Link>
                 <Button
                   variant="ghost"
@@ -172,18 +175,18 @@ export default function PetDashboardLayout({
           </SheetContent>
         </Sheet>
         <Link
-          to="/"
+          to="/dashboard-client"
           className="flex items-center gap-2 font-semibold md:hidden"
         >
           <PawPrint className="h-6 w-6" />
           <span>PETVET</span>
         </Link>
         <Link
-          to="/"
+          to="/dashboard-client"
           className="hidden items-center gap-2 font-semibold md:flex"
         >
           <PawPrint className="h-6 w-6" />
-          <span>PETVET MARKETPLACE</span>
+          <span>LETY MARKETPLACE</span>
         </Link>
         <div className="ml-auto flex items-center gap-4">
           <Button variant="ghost" size="icon">

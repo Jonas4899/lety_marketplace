@@ -73,7 +73,8 @@ router.get("/api/analytics/appointments/:id_clinica", async (req, res) => {
 
     estadosCitas.forEach((cita) => {
       const estado = cita.estado.toLowerCase();
-      if (estado === "completada") estadosCount.completed++;
+      if (estado === "completada" || estado === "finalizada")
+        estadosCount.completed++;
       else if (estado === "programada") estadosCount.scheduled++;
       else if (estado === "cancelada") estadosCount.cancelled++;
     });
@@ -110,7 +111,8 @@ router.get("/api/analytics/appointments/:id_clinica", async (req, res) => {
       citasPorFecha[fecha].total++;
 
       const estado = cita.estado.toLowerCase();
-      if (estado === "completada") citasPorFecha[fecha].completed++;
+      if (estado === "completada" || estado === "finalizada")
+        citasPorFecha[fecha].completed++;
       else if (estado === "programada") citasPorFecha[fecha].scheduled++;
       else if (estado === "cancelada") citasPorFecha[fecha].cancelled++;
     });
@@ -593,7 +595,7 @@ router.get("/api/analytics/summary/:id_clinica", async (req, res) => {
       `
         )
         .eq("id_clinica", id_clinica)
-        .eq("estado", "completada")
+        .in("estado", ["completada", "finalizada"])
         .gte("fecha_inicio", fromDate.toISOString())
         .lte("fecha_inicio", toDate.toISOString());
 

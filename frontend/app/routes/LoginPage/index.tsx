@@ -20,7 +20,7 @@ import VetLogin from "~/components/VetLogin";
 import { StatusDialog } from "~/components/StatusDialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:3001";
 
 export default function LoginPage() {
   const [userType, setUserType] = useState<"pet-owner" | "vet-clinic">(
@@ -72,52 +72,64 @@ export default function LoginPage() {
     setError(null);
     setIsLoading(true);
 
+    // Función para realizar el intento de conexión
+    const attemptConnection = async (retryCount = 0) => {
+      try {
+        const response = await fetch(`${API_URL}/owner/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+          credentials: "include",
+        });
+
+        const responseData = await response.json();
+
+        if (!response.ok) {
+          throw new Error(responseData.message || "Error de inicio de sesión");
+        }
+
+        console.log("Datos del usuario:", responseData.user);
+
+        // La cookie httpOnly la envía el backend; no la seteamos manualmente
+
+        //Actualizar el estado de global de autenticacion
+        login({
+          token: responseData.token,
+          userType: "owner",
+          user: responseData.user,
+          pets: responseData.pets,
+        });
+
+        // Redirigir al usuario a la página de inicio
+        navigate("/dashboard-client");
+      } catch (error) {
+        console.error("Error en loginOwner:", error);
+        // Si es un error de conexión y no hemos superado los reintentos
+        if (
+          error instanceof TypeError &&
+          error.message.includes("fetch") &&
+          retryCount < 1
+        ) {
+          console.log("Reintentando conexión...");
+          // Esperar un breve momento y reintentar
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          return attemptConnection(retryCount + 1);
+        }
+
+        if (error instanceof Error) {
+          setErrorMessage(error.message);
+          setShowErrorDialog(true);
+        } else {
+          setErrorMessage("Ocurrió un error desconocido al iniciar sesión");
+          setShowErrorDialog(true);
+        }
+      }
+    };
+
     try {
-      const response = await fetch(`${API_URL}/owner/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.message || "Error de inicio de sesión");
-      }
-
-      console.log("Datos del usuario:", responseData.user);
-
-      //Guardar el token en una cookie
-      Cookies.set("auth_token", responseData.token, {
-        expires: 1, // 1 dia / 24hrs
-        secure: true,
-        sameSite: "Strict",
-      });
-      
-      localStorage.setItem("token", responseData.token);
-      
-      //Actualizar el estado de global de autenticacion
-      login({
-        token: responseData.token,
-        userType: "owner",
-        user: responseData.user,
-        pets: responseData.pets,
-      });
-
-      // Redirigir al usuario a la página de inicio
-      navigate("/dashboard-client");
-    } catch (error) {
-      console.error("Error en loginOwner:", error);
-      if (error instanceof Error) {
-        setErrorMessage(error.message);
-        setShowErrorDialog(true);
-      } else {
-        setErrorMessage("Ocurrió un error desconocido al iniciar sesión");
-        setShowErrorDialog(true);
-      }
+      await attemptConnection();
     } finally {
       setIsLoading(false);
     }
@@ -127,50 +139,64 @@ export default function LoginPage() {
     setError(null);
     setIsLoading(true);
 
+    // Función para realizar el intento de conexión
+    const attemptConnection = async (retryCount = 0) => {
+      try {
+        const response = await fetch(`${API_URL}/vet/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+          credentials: "include",
+        });
+
+        const responseData = await response.json();
+
+        if (!response.ok) {
+          throw new Error(responseData.message || "Error de inicio de sesión");
+        }
+
+        console.log("Datos de la veterinaria:", responseData.clinica);
+
+        // La cookie httpOnly la envía el backend; no la seteamos manualmente
+
+        //Actualizar el estado de global de autenticacion
+        login({
+          token: responseData.token,
+          userType: "vet",
+          user: responseData.clinica,
+          pets: null,
+        });
+
+        // Redirigir al usuario a la página de inicio
+        navigate("/dashboard-vet");
+      } catch (error) {
+        console.error("Error en loginVet:", error);
+        // Si es un error de conexión y no hemos superado los reintentos
+        if (
+          error instanceof TypeError &&
+          error.message.includes("fetch") &&
+          retryCount < 1
+        ) {
+          console.log("Reintentando conexión...");
+          // Esperar un breve momento y reintentar
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          return attemptConnection(retryCount + 1);
+        }
+
+        if (error instanceof Error) {
+          setErrorMessage(error.message);
+          setShowErrorDialog(true);
+        } else {
+          setErrorMessage("Ocurrió un error desconocido al iniciar sesión");
+          setShowErrorDialog(true);
+        }
+      }
+    };
+
     try {
-      const response = await fetch(`${API_URL}/vet/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.message || "Error de inicio de sesión");
-      }
-
-      console.log("Datos de la veterinaria:", responseData.clinica);
-
-      //Guardar el token en una cookie
-      Cookies.set("auth_token", responseData.token, {
-        expires: 1, // 1 dia / 24hrs
-        secure: true,
-        sameSite: "Strict",
-      });
-
-      //Actualizar el estado de global de autenticacion
-      login({
-        token: responseData.token,
-        userType: "vet",
-        user: responseData.clinica,
-        pets: null,
-      });
-
-      // Redirigir al usuario a la página de inicio
-      navigate("/dashboard-vet");
-    } catch (error) {
-      console.error("Error en loginVet:", error);
-      if (error instanceof Error) {
-        setErrorMessage(error.message);
-        setShowErrorDialog(true);
-      } else {
-        setErrorMessage("Ocurrió un error desconocido al iniciar sesión");
-        setShowErrorDialog(true);
-      }
+      await attemptConnection();
     } finally {
       setIsLoading(false);
     }

@@ -314,3 +314,146 @@ test.describe.serial("Veterinary API Tests", () => {
     expect(responseBody.message).toContain("día de la semana");
   });
 });
+
+test.describe.serial("Citas - ciclo completo", () => {
+  let ownerToken, vetToken, citaId, clinicaId, mascotaId, servicioId;
+
+  test.beforeAll(async ({ request }) => {
+    // 1. Crear usuario dueño
+    const ownerRes = await request.post(`${API_BASE_URL}/register/user`, {
+      data: {
+        nombre: "Dueño Test",
+        correo: `dueno-${Date.now()}@mail.com`,
+        contrasena: "Test1234!",
+        telefono: "1234567890",
+      },
+    });
+    expect(ownerRes.status()).toBe(201);
+    const ownerData = await ownerRes.json();
+    ownerToken = ownerData.token;
+    // 2. Crear clínica y obtener vetToken (mock: login clínica)
+    const vetRes = await request.post(`${API_BASE_URL}/login/veterinary`, {
+      data: {
+        correo: testVeterinary.correo,
+        contrasena: testVeterinary.contrasena,
+      },
+    });
+    expect(vetRes.status()).toBe(200);
+    const vetData = await vetRes.json();
+    vetToken = vetData.token;
+    clinicaId = vetData.clinica.id_clinica;
+    // 3. Crear mascota
+    const petRes = await request.post(`${API_BASE_URL}/register/pet`, {
+      data: {
+        id_usuario: ownerData.usuario.id_usuario,
+        nombre: "Firulais",
+        especie: "Perro",
+        edad: 3,
+        raza: "Labrador",
+        genero: "Macho",
+        peso: 20,
+      },
+      headers: { Authorization: `Bearer ${ownerToken}` },
+    });
+    expect(petRes.status()).toBe(201);
+    const petData = await petRes.json();
+    mascotaId = petData.mascota.id_mascota;
+    // 4. Crear servicio
+    const serviceRes = await request.post(`${API_BASE_URL}/register/service`, {
+      data: {
+        id_clinica: clinicaId,
+        nombre: "Consulta General",
+        precio: 100,
+        categoria: "consulta",
+      },
+      headers: { Authorization: `Bearer ${vetToken}` },
+    });
+    expect(serviceRes.status()).toBe(201);
+    const serviceData = await serviceRes.json();
+    servicioId = serviceData.servicio.id_servicio;
+    // 5. Crear cita
+    const citaRes = await request.post(
+      `${API_BASE_URL}/appointments/schedule`,
+      {
+        data: {
+          petId: mascotaId,
+          serviceId: servicioId,
+          date: new Date(Date.now() + 86400000).toISOString(),
+          timeSlot: "10:00-11:00",
+          reason: "Chequeo anual",
+          notes: "Sin observaciones",
+          reminderPreference: "email",
+          acceptedTerms: true,
+          clinicId: clinicaId,
+        },
+        headers: { Authorization: `Bearer ${ownerToken}` },
+      }
+    );
+    expect(citaRes.status()).toBe(201);
+    const citaData = await citaRes.json();
+    citaId = citaData.cita.id_cita;
+  });
+
+  test("Editar cita (dueño)", async ({ request }) => {
+    const editRes = await request.put(
+      `${API_BASE_URL}/appointments/${citaId}/edit`,
+      {
+        data: {
+          reason: "Cambio de motivo",
+          notes: "Notas editadas",
+          timeSlot: "11:00-12:00",
+        },
+        headers: { Authorization: `Bearer ${ownerToken}` },
+      }
+    );
+    expect(editRes.status()).toBe(200);
+    const citaDetalle = await request.get(
+      `${API_BASE_URL}/appointments/${citaId}`,
+      {
+        headers: { Authorization: `Bearer ${ownerToken}` },
+      }
+    );
+    const citaJson = await citaDetalle.json();
+    expect(citaJson.appointment.reason).toBe("Cambio de motivo");
+    expect(citaJson.appointment.time).toBe("11:00-12:00");
+  });
+
+  test("Finalizar cita (vet)", async ({ request }) => {
+    const finalizeRes = await request.put(
+      `${API_BASE_URL}/appointments/${citaId}/finalize`,
+      {
+        data: {
+          diagnostico: "Otitis",
+          tratamiento: "Limpieza de oídos",
+          medicamentos: [
+            {
+              nombre: "Gotas óticas",
+              dosis: "2 gotas",
+              via: "auricular",
+              observaciones: "7 días",
+            },
+          ],
+          recomendaciones: "Evitar agua en los oídos",
+          instrucciones_seguimiento: "Revisión en 10 días",
+          notas_internas: "Paciente tranquilo",
+          servicios_adicionales: [{ nombre: "Limpieza profunda", precio: 50 }],
+          productos_vendidos: [
+            { nombre: "Gotas óticas", cantidad: 1, precio: 30 },
+          ],
+        },
+        headers: { Authorization: `Bearer ${vetToken}` },
+      }
+    );
+    expect(finalizeRes.status()).toBe(200);
+    // Verifica que el estado sea finalizada y los campos estén guardados
+    const citaDetalle = await request.get(
+      `${API_BASE_URL}/appointments/${citaId}`,
+      {
+        headers: { Authorization: `Bearer ${ownerToken}` },
+      }
+    );
+    const citaJson = await citaDetalle.json();
+    expect(citaJson.appointment.status).toBe("finalizada");
+    // No se expone todo, pero podrías agregar un endpoint para ver trazabilidad y campos internos si lo necesitas
+  });
+});
