@@ -103,24 +103,9 @@ export default function DashboardLayout() {
       icon: <Calendar className="h-4 w-4" />,
     },
     {
-      title: "Mensajes",
-      href: "/dashboard-vet/messages",
-      icon: <MessageSquare className="h-4 w-4" />,
-    },
-    {
-      title: "Clientes",
-      href: "/dashboard-vet/clients",
-      icon: <Users className="h-4 w-4" />,
-    },
-    {
       title: "Estadísticas",
       href: "/dashboard-vet/analytics",
       icon: <BarChart2 className="h-4 w-4" />,
-    },
-    {
-      title: "Configuración",
-      href: "/dashboard-vet/settings",
-      icon: <Settings className="h-4 w-4" />,
     },
   ];
 
@@ -137,9 +122,12 @@ export default function DashboardLayout() {
           <SheetContent side="left" className="w-72">
             <div className="flex h-full flex-col">
               <div className="flex h-14 items-center border-b px-2">
-                <Link to="/" className="flex items-center gap-2 font-semibold">
+                <Link
+                  to="/dashboard-vet"
+                  className="flex items-center gap-2 font-semibold"
+                >
                   <Building2 className="h-6 w-6" />
-                  <span>PETVET MARKETPLACE</span>
+                  <span>LETY MARKETPLACE</span>
                 </Link>
                 <Button
                   variant="ghost"
@@ -169,12 +157,16 @@ export default function DashboardLayout() {
           </SheetContent>
         </Sheet>
         <Link
-          to="/"
+          to="/dashboard-vet"
           className="hidden items-center gap-2 font-semibold md:flex"
         >
           <Building2 className="h-6 w-6" />
-          <span>PETVET MARKETPLACE</span>
+          <span>LETY MARKETPLACE</span>
         </Link>
+        <div className="ml-auto flex items-center gap-2">
+          <Building2 className="h-5 w-5 text-muted-foreground" />
+          <p className="text-sm font-medium">{user?.nombre}</p>
+        </div>
       </header>
 
       <div className="flex flex-1">

@@ -145,9 +145,12 @@ export default function PetDashboardLayout({
           <SheetContent side="left" className="w-72">
             <div className="flex h-full flex-col">
               <div className="flex h-14 items-center border-b px-2">
-                <Link to="/" className="flex items-center gap-2 font-semibold">
+                <Link
+                  to="/dashboard-client"
+                  className="flex items-center gap-2 font-semibold"
+                >
                   <PawPrint className="h-6 w-6" />
-                  <span>PETVET MARKETPLACE</span>
+                  <span>LETY MARKETPLACE</span>
                 </Link>
                 <Button
                   variant="ghost"
@@ -177,18 +180,18 @@ export default function PetDashboardLayout({
           </SheetContent>
         </Sheet>
         <Link
-          to="/"
+          to="/dashboard-client"
           className="flex items-center gap-2 font-semibold md:hidden"
         >
           <PawPrint className="h-6 w-6" />
           <span>PETVET</span>
         </Link>
         <Link
-          to="/"
+          to="/dashboard-client"
           className="hidden items-center gap-2 font-semibold md:flex"
         >
           <PawPrint className="h-6 w-6" />
-          <span>PETVET MARKETPLACE</span>
+          <span>LETY MARKETPLACE</span>
         </Link>
         <div className="ml-auto flex items-center gap-4">
           <Button variant="ghost" size="icon">
