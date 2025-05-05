@@ -82,6 +82,7 @@ interface ClinicProfileData {
   photos: ClinicPhoto[];
   services: ClinicService[];
   openingHours: any[]; // Define a proper type if available
+  reviews: any[];
 }
 
 
@@ -152,6 +153,8 @@ export default function VetProdilePage() {
   console.log(clinicProfile.photos)
   console.log('horarios')
   console.log(clinicProfile.openingHours);
+  console.log('reseñas')
+  console.log(clinicProfile.reviews);
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -292,31 +295,26 @@ export default function VetProdilePage() {
               </div>
 
               <div className="space-y-4">
-                {clinic.reviews.map((review) => (
+                {clinicProfile.reviews.map((review) => (
                   <Card key={review.id}>
-                    <CardContent className="p-4">
+                    <CardContent className="py-4 px-6">
                       <div className="flex items-start">
-                        <img
-                          src={review.userImage || "/placeholder.svg"}
-                          alt={review.user}
-                          className="w-10 h-10 rounded-full mr-3"
-                        />
                         <div className="flex-1">
                           <div className="flex justify-between items-center mb-1">
-                            <h4 className="font-semibold">{review.user}</h4>
-                            <span className="text-sm text-gray-500">{review.date}</span>
+                            <h4 className="font-semibold">{review.usuarios.nombre}</h4>
+                            <span className="text-sm text-gray-500">{review.fecha.split(" ")[0]}</span>
                           </div>
                           <div className="flex items-center mb-2">
                             {[...Array(5)].map((_, i) => (
                               <Star
                                 key={i}
                                 size={16}
-                                className={i < review.rating ? "text-yellow-400" : "text-gray-300"}
-                                fill={i < review.rating ? "currentColor" : "none"}
+                                className={i < review.calificacion ? "text-yellow-400" : "text-gray-300"}
+                                fill={i < review.calificacion ? "currentColor" : "none"}
                               />
                             ))}
                           </div>
-                          <p className="text-gray-700">{review.comment}</p>
+                          <p className="text-gray-700">{review.comentario}</p>
                         </div>
                       </div>
                     </CardContent>
