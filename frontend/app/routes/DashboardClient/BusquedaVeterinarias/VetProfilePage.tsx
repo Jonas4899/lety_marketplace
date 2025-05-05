@@ -4,52 +4,7 @@ import { Button } from "~/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent } from "~/components/ui/card"
-import { Separator } from "~/components/ui/separator"
 import { Link, useNavigate, useParams } from "react-router";
-
-// Datos de ejemplo para la clínica
-const clinicData = {
-  hours: [
-    { day: "Lunes - Viernes", hours: "8:00 AM - 8:00 PM" },
-    { day: "Sábado", hours: "9:00 AM - 6:00 PM" },
-    { day: "Domingo", hours: "Cerrado" },
-  ],
-  rating: 4.8,
-  reviewCount: 124,
-  images: [
-    "/placeholder.svg?height=300&width=500",
-    "/placeholder.svg?height=300&width=500",
-    "/placeholder.svg?height=300&width=500",
-    "/placeholder.svg?height=300&width=500",
-  ],
-  reviews: [
-    {
-      id: 1,
-      user: "Juan Pérez",
-      date: "15 de marzo, 2023",
-      rating: 5,
-      comment: "Excelente atención para mi perro Max. El Dr. Sánchez fue muy profesional y amable.",
-      userImage: "/placeholder.svg?height=50&width=50",
-    },
-    {
-      id: 2,
-      user: "Laura Gómez",
-      date: "2 de febrero, 2023",
-      rating: 4,
-      comment: "Buena clínica, aunque tuve que esperar un poco más de lo esperado. El tratamiento fue efectivo.",
-      userImage: "/placeholder.svg?height=50&width=50",
-    },
-    {
-      id: 3,
-      user: "Miguel Torres",
-      date: "10 de enero, 2023",
-      rating: 5,
-      comment:
-        "Muy satisfecho con el servicio. La Dra. Rodríguez explicó todo detalladamente y mi gato se recuperó rápidamente.",
-      userImage: "/placeholder.svg?height=50&width=50",
-    },
-  ],
-}
 
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -81,7 +36,7 @@ interface ClinicProfileData {
   longitud: number | null;
   photos: ClinicPhoto[];
   services: ClinicService[];
-  openingHours: any[]; // Define a proper type if available
+  openingHours: { [key: string]: { is24Hours?: boolean; closed?: boolean; open?: string; close?: string } }; // Define a proper type
   reviews: any[];
 }
 
@@ -133,28 +88,41 @@ export default function VetProdilePage() {
 
   }, [clinicId]);
 
-  // Remove this line once API data is fully integrated
-  const clinic = clinicData;
-
   if (isLoading) {
-    return <div className="container mx-auto px-4 py-12 text-center">Loading profile...</div>;
+    return <div className="container mx-auto px-4 py-30 text-center text-lg">Cargando veterinaria...</div>;
+  }
+
+    if (!clinicProfile) {
+    return <div className="container mx-auto px-4 py-30 text-center text-lg text-red-600">Lo lamentamos la clinica que estas buscando no ha sido encontrada :( </div>;
   }
 
   if (error && !clinicProfile) {
-    return <div className="container mx-auto px-4 py-12 text-center text-red-600">Error loading profile: {error}</div>;
-  }
-
-  if (!clinicProfile) {
-    return <div className="container mx-auto px-4 py-12 text-center">Clinic profile not found.</div>;
+    return <div className="container mx-auto px-4 py-30 text-center text-red-600">Error cargando el pergil de la clinica {error}</div>;
   }
 
 
-  console.log('fotos')
-  console.log(clinicProfile.photos)
-  console.log('horarios')
-  console.log(clinicProfile.openingHours);
-  console.log('reseñas')
+
+    // Get today's day name in lowercase English (e.g., 'monday')
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+  // Find today's schedule in the openingHours object
+  const todaysSchedule = clinicProfile.openingHours[today] || null;
+
+  // Format today's schedule for display
+  let todayDisplayHours = 'Cerrado'; // Default to 'Cerrado'
+  if (todaysSchedule) {
+    if (todaysSchedule.is24Hours) {
+      todayDisplayHours = 'Abierto 24 Horas';
+    } else if (!todaysSchedule.closed && todaysSchedule.open && todaysSchedule.close) {
+      todayDisplayHours = `${todaysSchedule.open} - ${todaysSchedule.close}`;
+    }
+  }
+
   console.log(clinicProfile.reviews);
+
+  const reviewsCount = Object.keys(clinicProfile.reviews).length;
+  const totalRating = clinicProfile.reviews.reduce((sum, review) => sum + review.calificacion, 0);
+  const averageRating = reviewsCount > 0 ? (totalRating / reviewsCount).toFixed(1) : 'No hay reseñas ';
+
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -184,8 +152,8 @@ export default function VetProdilePage() {
 
             <div className="flex items-center mb-2">
               <Star className="text-yellow-400 mr-1" size={16} />
-              <span className="font-medium mr-1">{clinic.rating}</span>
-              <span className="text-gray-500">({clinic.reviewCount} reseñas)</span>
+              <span className="font-medium mr-1">{averageRating}</span>
+              <span className="text-gray-500">({reviewsCount} reseñas)</span>
             </div>
 
             <div className="flex items-center text-gray-600 mb-2">
@@ -200,7 +168,7 @@ export default function VetProdilePage() {
 
             <div className="flex items-center text-gray-600">
               <Clock size={16} className="mr-2" />
-              <span>{clinic.hours[0].hours} (Hoy) - Placeholder</span>
+              <span>{todayDisplayHours} (Hoy)</span>
             </div>
           </div>
 
@@ -218,8 +186,8 @@ export default function VetProdilePage() {
               ))
             ) : (
               // Optional: Show a placeholder if no photos are available
-              <div className="col-span-2 text-center text-gray-500">
-                No hay fotos disponibles para esta clínica.
+              <div className="col-span-2 text-center text-gray-500 my-40">
+                No hay fotos disponibles para esta clínica :(
               </div>
             )}
           </div>
@@ -237,13 +205,35 @@ export default function VetProdilePage() {
 
               <h4 className="font-semibold mb-2">Horario de atención</h4>
               <div className="space-y-2 mb-4">
-                {/* TODO: Replace with actual opening hours data */}
-                {clinic.hours.map((schedule, index) => (
-                  <div key={index} className="flex justify-between">
-                    <span className="text-gray-600">{schedule.day}</span>
-                    <span>{schedule.hours}</span>
-                  </div>
-                ))}
+                {/* Map over the openingHours object from clinicProfile */}
+                {Object.entries(clinicProfile.openingHours).map(([day, schedule]) => {
+                  // Helper function to capitalize day names (e.g., 'monday' -> 'Lunes')
+                  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+                  // Map English day names to Spanish
+                  const dayTranslations: { [key: string]: string } = {
+                    monday: 'Lunes',
+                    tuesday: 'Martes',
+                    wednesday: 'Miércoles',
+                    thursday: 'Jueves',
+                    friday: 'Viernes',
+                    saturday: 'Sábado',
+                    sunday: 'Domingo',
+                  };
+
+                  let displayHours = 'Cerrado'; // Default to 'Cerrado'
+                  if (schedule.is24Hours) {
+                    displayHours = 'Abierto 24 Horas';
+                  } else if (!schedule.closed && schedule.open && schedule.close) {
+                    displayHours = `${schedule.open} - ${schedule.close}`;
+                  }
+
+                  return (
+                    <div key={day} className="flex justify-between">
+                      <span className="text-gray-600">{dayTranslations[day] || capitalize(day)}</span>
+                      <span>{displayHours}</span>
+                    </div>
+                  );
+                })}
               </div>
 
               <h4 className="font-semibold mb-2">Información de contacto</h4>
@@ -289,13 +279,17 @@ export default function VetProdilePage() {
             </TabsContent>
 
             <TabsContent value="reviews" className="mt-4">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-12">
                 <h3 className="text-lg font-semibold">Reseñas de clientes</h3>
                 <Button variant="outline">Escribir reseña</Button>
               </div>
 
               <div className="space-y-4">
-                {clinicProfile.reviews.map((review) => (
+                {
+                
+                reviewsCount > 0 ? (
+              
+                clinicProfile.reviews.map((review) => (
                   <Card key={review.id}>
                     <CardContent className="py-4 px-6">
                       <div className="flex items-start">
@@ -319,7 +313,16 @@ export default function VetProdilePage() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                ))) :
+                
+                (
+                  <div className="container  text-center">
+                    <p>No hay reseñas registradas para esta clinica :(</p>
+                  </div>
+                )
+              
+              
+              }
               </div>
             </TabsContent>
           </Tabs>
