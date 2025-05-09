@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent } from "~/components/ui/card"
 import { Link, useNavigate, useParams } from "react-router";
-import { MapPin, Phone, Clock, Star, MessageSquare, Heart, Share2, ChevronLeft, Check, ArrowLeft, ArrowRight, X } from "lucide-react" // Added ArrowLeft, ArrowRight, X
+import { MapPin, Phone, Clock, Star, MessageSquare, Heart, Share2, ChevronLeft, Check, ArrowLeft, ArrowRight, X, AlertCircle } from "lucide-react" // Added AlertCircle
 import {
   Dialog,
   DialogContent,
@@ -12,9 +12,15 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogClose,
+  DialogFooter,
 } from "~/components/ui/dialog" // Added Dialog components
-
-
+import { Textarea } from "~/components/ui/textarea"
+import { useToast } from "~/components/ui/use-toast"
+import { Input } from "~/components/ui/input"
+import { Label } from "~/components/ui/label"
+import { useAuthStore } from "~/stores/useAuthStore";
+import type { Owner, Pet as PetType} from "~/types/usersTypes"; 
+import Cookies from "js-cookie";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -49,17 +55,28 @@ interface ClinicProfileData {
   reviews: any[];
 }
 
-
 export default function VetProdilePage() {
   const params = useParams();
   const clinicId = params.id;
   const [clinicProfile, setClinicProfile] = useState<ClinicProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-    const [isFavorite, setIsFavorite] = useState(false);
-
+  const [isFavorite, setIsFavorite] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false); // State for modal visibility
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+  const [rating, setRating] = useState<number>(0);
+  const [comment, setComment] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const { toast } = useToast();
+
+    //Data del usuario
+  const user = useAuthStore((state) => state.user);
+  const userType = useAuthStore((state) => state.userType);
+  const id_usuario = userType === 'owner' && user ? (user as Owner).id_usuario : undefined;
+  const token = useAuthStore((state) => state.token);
 
   const navigate = useNavigate();
 
@@ -113,7 +130,6 @@ export default function VetProdilePage() {
     return <div className="container mx-auto px-4 py-30 text-center text-red-600">Error cargando el pergil de la clinica {error}</div>;
   }
 
-
   const openImageModal = (index: number) => {
     setCurrentImageIndex(index);
     setIsModalOpen(true);
@@ -123,8 +139,7 @@ export default function VetProdilePage() {
   const photosToDisplay = photos.slice(0, 3);
   const remainingPhotosCount = photos.length - photosToDisplay.length;
 
-
-    // Get today's day name in lowercase English (e.g., 'monday')
+  // Get today's day name in lowercase English (e.g., 'monday')
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
   // Find today's schedule in the openingHours object
   const todaysSchedule = clinicProfile.openingHours[today] || null;
@@ -141,13 +156,145 @@ export default function VetProdilePage() {
 
   console.log(clinicProfile.reviews);
 
-  const reviewsCount = Object.keys(clinicProfile.reviews).length;
-  const totalRating = clinicProfile.reviews.reduce((sum, review) => sum + review.calificacion, 0);
-  const averageRating = reviewsCount > 0 ? (totalRating / reviewsCount).toFixed(1) : 'No hay reseñas ';
+  const reviewsCount = clinicProfile.reviews ? clinicProfile.reviews.length : 0;
+  const totalRating = clinicProfile.reviews ? clinicProfile.reviews.reduce((sum, review) => sum + review.calificacion, 0) : 0;
+  const averageRating = reviewsCount > 0 ? (totalRating / reviewsCount).toFixed(1) : 'No hay reseñas';
 
+  // Add a log directly in the component to check when it renders
+  console.log("VetProfilePage rendered, isReviewDialogOpen:", isReviewDialogOpen);
+
+  const handleReviewSubmit = async () => {
+    
+    // Log the current state of variables
+    console.log("Current state:", {
+      id_usuario ,
+      clinicId,
+      rating,
+      comment,
+      isSubmittingReview
+    });
+
+    if (!id_usuario ) {
+      console.log("Error: No user ID found");
+      toast({
+        title: "Error",
+        description: "Debes iniciar sesión para dejar una reseña",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (rating < 1 || rating > 5) {
+      console.log("Error: Invalid rating", rating);
+      toast({
+        title: "Error",
+        description: "La calificación debe ser entre 1 y 5 estrellas",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    console.log("Enviando reseña...", {
+      id_usuario: id_usuario ,
+      id_clinica: clinicId,
+      calificacion: rating,
+      comentario: comment.trim() || null,
+    });
+
+    try {
+      
+      const response = await fetch(`${API_URL}/usuarios/review`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id_usuario: id_usuario,
+          id_clinica: clinicId,
+          calificacion: rating,
+          comentario: comment.trim() || null,
+        }),
+      });
+
+      console.log("API Response status:", response.status);
+      console.log("API Response ok:", response.ok);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Error detallado:", errorData);
+        
+        // Set error message based on the error type
+        let spanishErrorMessage = "Ocurrió un error al enviar tu reseña";
+        
+        if (errorData.error && errorData.error.includes("duplicate key")) {
+          spanishErrorMessage = "Ya has enviado una reseña para esta veterinaria";
+        } else if (errorData.message) {
+          // Use server message if available
+          spanishErrorMessage = errorData.message;
+        }
+        
+        setErrorMessage(spanishErrorMessage);
+        setIsErrorDialogOpen(true);
+        throw new Error(errorData.message || "Error al enviar la reseña");
+      }
+
+      // Ya consumimos la respuesta, no podemos volver a hacer response.json()
+      console.log("Review submitted successfully");
+      toast({
+        title: "¡Reseña enviada!",
+        description: "Tu reseña ha sido publicada exitosamente",
+      });
+
+      // Refresh clinic data to show the new review
+      console.log("Refreshing clinic data");
+      const updatedResponse = await fetch(`${API_URL}/veterinary/profile/${clinicId}`);
+      const updatedData = await updatedResponse.json();
+      setClinicProfile(updatedData);
+
+      // Reset form and close dialog
+      console.log("Resetting form and closing dialog");
+      setRating(0);
+      setComment("");
+      setIsReviewDialogOpen(false);
+    } catch (err) {
+      console.error("Error completo al enviar review:", err);
+      
+      // Only show toast if error dialog is not shown
+      if (!isErrorDialogOpen) {
+        toast({
+          title: "Error",
+          description: err instanceof Error ? err.message : "Ocurrió un error al enviar tu reseña",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      console.log("End of submission process, setting isSubmittingReview to false");
+      setIsSubmittingReview(false);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-12">
+      {/* Error Dialog */}
+      <Dialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-red-600">
+              <AlertCircle className="mr-2 h-5 w-5" />
+              Error al enviar reseña
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p>{errorMessage}</p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsErrorDialogOpen(false)}>Entendido</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="mb-4">
         <ChevronLeft className="mr-2 h-4 w-4" /> Volver
       </Button>
@@ -285,7 +432,6 @@ export default function VetProdilePage() {
             </DialogContent>
           </Dialog>
 
-
           <Tabs defaultValue="about" className="mb-6">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="about">Acerca de</TabsTrigger>
@@ -375,48 +521,98 @@ export default function VetProdilePage() {
             <TabsContent value="reviews" className="mt-4">
               <div className="flex justify-between items-center mb-12">
                 <h3 className="text-lg font-semibold">Reseñas de clientes</h3>
-                <Button variant="outline">Escribir reseña</Button>
+                <Dialog open={isReviewDialogOpen} onOpenChange={(open) => {
+                  console.log("Dialog open state changed:", open);
+                  setIsReviewDialogOpen(open);
+                }}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => console.log("Escribir reseña button clicked")}
+                    >
+                      Escribir reseña
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Deja tu opinión sobre {clinicProfile?.nombre}</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="flex flex-col space-y-2">
+                        <Label htmlFor="rating">Calificación</Label>
+                        <div className="flex items-center space-x-1">
+                          {[1, 2, 3, 4, 5].map((value) => (
+                            <Star
+                              key={value}
+                              size={24}
+                              className={`cursor-pointer ${
+                                value <= rating ? "text-yellow-400" : "text-gray-300"
+                              }`}
+                              fill={value <= rating ? "currentColor" : "none"}
+                              onClick={() => setRating(value)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-col space-y-2">
+                        <Label htmlFor="comment">Comentario (opcional)</Label>
+                        <Textarea
+                          id="comment"
+                          placeholder="Cuéntanos tu experiencia con esta veterinaria..."
+                          value={comment}
+                          onChange={(e) => setComment(e.target.value)}
+                          className="min-h-[100px]"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button 
+                        type="submit" 
+                        onClick={() => {
+                          console.log("Submit button clicked");
+                          handleReviewSubmit();
+                        }} 
+                        disabled={rating === 0 || isSubmittingReview}
+                      >
+                        {isSubmittingReview ? "Enviando..." : "Enviar reseña"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
 
               <div className="space-y-4">
-                {
-                
-                reviewsCount > 0 ? (
-              
-                clinicProfile.reviews.map((review) => (
-                  <Card key={review.id}>
-                    <CardContent className="py-4 px-6">
-                      <div className="flex items-start">
-                        <div className="flex-1">
-                          <div className="flex justify-between items-center mb-1">
-                            <h4 className="font-semibold">{review.usuarios.nombre}</h4>
-                            <span className="text-sm text-gray-500">{review.fecha.split(" ")[0]}</span>
+                {reviewsCount > 0 ? (
+                  clinicProfile.reviews.map((review) => (
+                    <Card key={review.id}>
+                      <CardContent className="py-4 px-6">
+                        <div className="flex items-start">
+                          <div className="flex-1">
+                            <div className="flex justify-between items-center mb-1">
+                              <h4 className="font-semibold">{review.usuarios.nombre}</h4>
+                              <span className="text-sm text-gray-500">{review.fecha.split(" ")[0]}</span>
+                            </div>
+                            <div className="flex items-center mb-2">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  size={16}
+                                  className={i < review.calificacion ? "text-yellow-400" : "text-gray-300"}
+                                  fill={i < review.calificacion ? "currentColor" : "none"}
+                                />
+                              ))}
+                            </div>
+                            <p className="text-gray-700">{review.comentario}</p>
                           </div>
-                          <div className="flex items-center mb-2">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                size={16}
-                                className={i < review.calificacion ? "text-yellow-400" : "text-gray-300"}
-                                fill={i < review.calificacion ? "currentColor" : "none"}
-                              />
-                            ))}
-                          </div>
-                          <p className="text-gray-700">{review.comentario}</p>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))) :
-                
-                (
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
                   <div className="container  text-center">
                     <p>No hay reseñas registradas para esta clinica :(</p>
                   </div>
-                )
-              
-              
-              }
+                )}
               </div>
             </TabsContent>
           </Tabs>
