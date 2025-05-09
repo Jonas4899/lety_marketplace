@@ -491,7 +491,7 @@ export function VetClinicSignup({
                 {/* Health Certificate */}
                 <div className="grid gap-2">
                   <Label htmlFor="healthCertificate">
-                    Certificado vigente (Sec. Distrital de Salud)
+                    Certificado Camara de Comercio
                   </Label>
                   <Input
                     id="healthCertificate"
