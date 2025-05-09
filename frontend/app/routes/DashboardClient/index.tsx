@@ -256,7 +256,7 @@ export default function PetDashboardPage() {
           </Card>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
 
           <Card>
             <CardHeader>
@@ -311,53 +311,6 @@ export default function PetDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Recursos Educativos</CardTitle>
-              <CardDescription>Artículos y guías sobre cuidado de mascotas</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  {
-                    id: 1,
-                    title: "Guía de alimentación para perros",
-                    category: "Nutrición",
-                    readTime: "5 min",
-                  },
-                  {
-                    id: 2,
-                    title: "Cuidados básicos para gatos",
-                    category: "Cuidado General",
-                    readTime: "7 min",
-                  },
-                  {
-                    id: 3,
-                    title: "Señales de alerta en la salud de tu mascota",
-                    category: "Salud",
-                    readTime: "8 min",
-                  },
-                ].map((resource) => (
-                  <div key={resource.id} className="flex items-start gap-4">
-                    <div className="mt-1 rounded-full p-1 bg-muted text-muted-foreground">
-                      <BookOpen className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium leading-none">{resource.title}</p>
-                        <p className="text-xs text-muted-foreground">{resource.readTime}</p>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{resource.category}</p>
-                    </div>
-                  </div>
-                ))}
-
-                <Button variant="outline" className="w-full" asChild>
-                  <Link to="/pet-dashboard/resources">Ver todos los recursos</Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </ProtectedRoutes>

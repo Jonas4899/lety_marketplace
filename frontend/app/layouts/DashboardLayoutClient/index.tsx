@@ -99,26 +99,32 @@ export default function PetDashboardLayout({
       href: "/dashboard-client/appointments",
       icon: <Calendar className="h-4 w-4" />,
     },
+    /*
     {
       title: "Historial Médico",
       href: "/dashboard-client/medical-records",
       icon: <Clipboard className="h-4 w-4" />,
     },
+    */
     {
       title: "Veterinarias",
       href: "/dashboard-client/vet-search",
       icon: <Search className="h-4 w-4" />,
     },
+    /*
     {
       title: "Recursos",
       href: "/dashboard-client/resources",
       icon: <BookOpen className="h-4 w-4" />,
     },
+    */
+   /*
     {
       title: "Favoritos",
       href: "/dashboard-client/favorites",
       icon: <Heart className="h-4 w-4" />,
     },
+    */
     {
       title: "Configuración",
       href: "/dashboard-client/settings",
