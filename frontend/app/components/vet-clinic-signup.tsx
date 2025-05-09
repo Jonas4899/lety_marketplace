@@ -184,6 +184,17 @@ export function VetClinicSignup({
         return;
       }
 
+      // Duplicados por nombre (case-insensitive, trim)
+      const names = services
+        .map((s) => s.name.trim().toLowerCase())
+        .filter((n) => n !== "");
+      const hasDuplicateNames = new Set(names).size !== names.length;
+
+      if (hasDuplicateNames) {
+        setRegistrationError("No se permiten servicios con el mismo nombre.");
+        return;
+      }
+
       setRegistrationError(null);
       clearErrors(); // Clear all form validation errors before showing step 3
       setStep(3);
