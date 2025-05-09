@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '~/components/ui/select';
-import { PawPrint as Paw } from 'lucide-react';
+import { PawPrint as Paw, AlertCircle } from 'lucide-react';
 import type { Pet as PetType, Owner } from '~/types/usersTypes'; // Import Owner type
 import { useAuthStore } from '~/stores/useAuthStore';
 
@@ -72,6 +72,10 @@ export function PetEditDialog({
     historial: null as File | null, // Changed to match backend field name
     foto: null as File | null,      // Changed to match backend field name
   });
+  
+  // Estado para el diálogo de error
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const {
     register,
@@ -89,6 +93,8 @@ export function PetEditDialog({
   const petSpeciesValue = watch('petSpecies');
   const petBreedValue = watch('petBreed');
   const petGenderValue = watch('petGender');
+
+  const token = useAuthStore((state) => state.token);
 
   // Populate form when petToEdit changes or dialog opens
   useEffect(() => {
@@ -124,17 +130,50 @@ export function PetEditDialog({
     setPetFiles(prev => ({ ...prev, [name]: file }));
   };
 
+  // Función para traducir mensajes de error comunes
+  const translateErrorMessage = (error: any): string => {
+    let message = error instanceof Error ? error.message : "Ha ocurrido un error inesperado";
+    
+    // Traducciones específicas según palabras clave
+    if (message.includes("unauthorized") || message.includes("Unauthorized")) {
+      return "No tienes autorización para realizar esta acción. Por favor, inicia sesión nuevamente.";
+    }
+    
+    if (message.includes("not found") || message.includes("No se encontró")) {
+      return "No se pudo encontrar la mascota solicitada. Es posible que haya sido eliminada.";
+    }
+    
+    if (message.includes("failed") || message.includes("upload")) {
+      return "Error al subir los archivos. Verifica el formato y tamaño de los archivos e intenta nuevamente.";
+    }
+    
+    if (message.includes("validation") || message.includes("invalid")) {
+      return "Los datos proporcionados no son válidos. Por favor, verifica la información ingresada.";
+    }
+    
+    if (message.includes("network") || message.includes("connection")) {
+      return "Error de conexión. Verifica tu conexión a internet e intenta nuevamente.";
+    }
+    
+    if (message.includes("server")) {
+      return "Error en el servidor. Por favor, intenta más tarde.";
+    }
+    
+    return message; // Devolver mensaje original si no hay traducción específica
+  };
+
   const onSubmit = async (data: PetEditFormData) => {
     if (!petToEdit || !id_usuario) {
-        toast.error("Error", { description: "No se puede identificar la mascota o el usuario." });
+        setErrorMessage("No se puede identificar la mascota o el usuario.");
+        setIsErrorDialogOpen(true);
         return;
     }
 
     setIsLoading(true);
-    const token = Cookies.get('auth_token');
 
     if (!token) {
-        toast.error("Error de autenticación", { description: "Por favor, inicia sesión de nuevo." });
+        setErrorMessage("Error de autenticación. Por favor, inicia sesión de nuevo.");
+        setIsErrorDialogOpen(true);
         setIsLoading(false);
         return;
     }
@@ -164,8 +203,6 @@ export function PetEditDialog({
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,
-                // DO NOT set 'Content-Type': 'multipart/form-data',
-                // Fetch API sets it automatically with the correct boundary when body is FormData
             },
             body: formData,
         });
@@ -192,9 +229,9 @@ export function PetEditDialog({
 
     } catch (error) {
         console.error("Error updating pet:", error);
-        toast.error("Error al actualizar", {
-            description: error instanceof Error ? error.message : "No se pudo actualizar la información de la mascota."
-        });
+        // Mostrar diálogo de error en lugar de toast
+        setErrorMessage(translateErrorMessage(error));
+        setIsErrorDialogOpen(true);
     } finally {
         setIsLoading(false);
     }
@@ -208,233 +245,253 @@ export function PetEditDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px] md:max-w-[525px]">
-        <DialogHeader>
-           <div className="flex flex-col items-center justify-center w-full">
-              <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                <Paw className="h-6 w-6 text-primary" />
-              </div>
-               <DialogTitle>Editar Información de {petToEdit?.nombre || 'Mascota'}</DialogTitle>
-               <DialogDescription>
-                Actualiza los detalles de tu mascota.
-               </DialogDescription>
-            </div>
-        </DialogHeader>
-
-        {petToEdit && (
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
-              <div className="grid gap-2">
-                <Label htmlFor="editPetName">Nombre</Label>
-                <div className="relative">
-                  <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="editPetName"
-                    className="pl-9"
-                    {...register('petName')}
-                  />
+    <>
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="sm:max-w-[425px] md:max-w-[525px]">
+          <DialogHeader>
+             <div className="flex flex-col items-center justify-center w-full">
+                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                  <Paw className="h-6 w-6 text-primary" />
                 </div>
-                {errors.petName && (<p className="text-sm text-red-500">{errors.petName.message}</p>)}
-              </div>
+                 <DialogTitle>Editar Información de {petToEdit?.nombre || 'Mascota'}</DialogTitle>
+                 <DialogDescription>
+                  Actualiza los detalles de tu mascota.
+                 </DialogDescription>
+             </div>
+          </DialogHeader>
 
-              <div className="grid gap-2">
-                <Label htmlFor="editPetAge">Edad</Label>
-                <div className="relative">
-                  <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="editPetAge"
-                    className="pl-9"
-                    type="number"
-                    min={0}
-                    max={50}
-                    {...register('petAge', { valueAsNumber: true })}
-                  />
+          {petToEdit && (
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="editPetName">Nombre</Label>
+                  <div className="relative">
+                    <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="editPetName"
+                      className="pl-9"
+                      {...register('petName')}
+                    />
+                  </div>
+                  {errors.petName && (<p className="text-sm text-red-500">{errors.petName.message}</p>)}
                 </div>
-                {errors.petAge && (<p className="text-sm text-red-500">{errors.petAge.message}</p>)}
-              </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="editPetSpecies">Especie</Label>
-                <Select
-                    name="petSpecies"
-                    value={petSpeciesValue}
-                    onValueChange={(value) => setValue('petSpecies', value, { shouldValidate: true, shouldDirty: true })}
-                >
-                    <SelectTrigger id="editPetSpecies">
-                    <SelectValue placeholder="Selecciona especie" />
-                    </SelectTrigger>
-                    <SelectContent>
-                    <SelectItem value="canino">Canino</SelectItem>
-                    <SelectItem value="felino">Felino</SelectItem>
-                    </SelectContent>
-                </Select>
-                {errors.petSpecies && (<p className="text-sm text-red-500 mt-1.5">{errors.petSpecies.message}</p>)}
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="editPetBreed">Raza</Label>
-                <Select
-                    name="petBreed"
-                    value={petBreedValue}
-                    onValueChange={(value) => setValue('petBreed', value, { shouldValidate: true, shouldDirty: true })}
-                    disabled={!petSpeciesValue}
-                 >
-                    <SelectTrigger id="editPetBreed">
-                    <SelectValue placeholder="Selecciona raza" />
-                    </SelectTrigger>
-                    <SelectContent>
-                    {petSpeciesValue === "canino" && dogBreeds.map((breed) => (
-                        <SelectItem key={breed} value={breed}>{breed}</SelectItem>
-                    ))}
-                    {petSpeciesValue === "felino" && catBreeds.map((breed) => (
-                        <SelectItem key={breed} value={breed}>{breed}</SelectItem>
-                    ))}
-                     {!petSpeciesValue && <SelectItem value="" disabled>Selecciona una especie primero</SelectItem>}
-                    </SelectContent>
-                </Select>
-                {errors.petBreed && (<p className="text-sm text-red-500 mt-1.5">{errors.petBreed.message}</p>)}
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="editPetGender">Género</Label>
-                <Select
-                    name="petGender"
-                    value={petGenderValue}
-                    onValueChange={(value) => setValue('petGender', value, { shouldValidate: true, shouldDirty: true })}
-                >
-                    <SelectTrigger id="editPetGender">
-                    <SelectValue placeholder="Selecciona género" />
-                    </SelectTrigger>
-                    <SelectContent>
-                    <SelectItem value="Macho">Macho</SelectItem>
-                    <SelectItem value="Hembra">Hembra</SelectItem>
-                    </SelectContent>
-                </Select>
-                {errors.petGender && (<p className="text-sm text-red-500 mt-1.5">{errors.petGender.message}</p>)}
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="editPetWeight">Peso (kg)</Label>
-                <div className="relative">
-                  <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="editPetWeight"
-                    className="pl-9"
-                    type="number"
-                    min={0.1}
-                    max={150}
-                    step={0.1}
-                    {...register('petWeight', { valueAsNumber: true })}
-                  />
+                <div className="grid gap-2">
+                  <Label htmlFor="editPetAge">Edad</Label>
+                  <div className="relative">
+                    <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="editPetAge"
+                      className="pl-9"
+                      type="number"
+                      min={0}
+                      max={50}
+                      {...register('petAge', { valueAsNumber: true })}
+                    />
+                  </div>
+                  {errors.petAge && (<p className="text-sm text-red-500">{errors.petAge.message}</p>)}
                 </div>
-                {errors.petWeight && (<p className="text-sm text-red-500">{errors.petWeight.message}</p>)}
-              </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="editPetHistory">Historial médico (opcional)</Label>
-                <p className="text-sm text-gray-600">Adjunta un nuevo historial médico si deseas reemplazar el actual (PDF).</p>
-                <div className="relative">
-                    {petFiles.historial ? (
-                      <div className="flex items-center justify-between px-3 py-2 border rounded-md">
-                        <div className="flex items-center">
-                          <Paw className="h-4 w-4 text-primary mr-2" />
-                          <span className="text-sm font-medium text-blue-500">{petFiles.historial.name}</span>
+                <div className="grid gap-2">
+                  <Label htmlFor="editPetSpecies">Especie</Label>
+                  <Select
+                      name="petSpecies"
+                      value={petSpeciesValue}
+                      onValueChange={(value) => setValue('petSpecies', value, { shouldValidate: true, shouldDirty: true })}
+                  >
+                      <SelectTrigger id="editPetSpecies">
+                      <SelectValue placeholder="Selecciona especie" />
+                      </SelectTrigger>
+                      <SelectContent>
+                      <SelectItem value="canino">Canino</SelectItem>
+                      <SelectItem value="felino">Felino</SelectItem>
+                      </SelectContent>
+                  </Select>
+                  {errors.petSpecies && (<p className="text-sm text-red-500 mt-1.5">{errors.petSpecies.message}</p>)}
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="editPetBreed">Raza</Label>
+                  <Select
+                      name="petBreed"
+                      value={petBreedValue}
+                      onValueChange={(value) => setValue('petBreed', value, { shouldValidate: true, shouldDirty: true })}
+                      disabled={!petSpeciesValue}
+                   >
+                      <SelectTrigger id="editPetBreed">
+                      <SelectValue placeholder="Selecciona raza" />
+                      </SelectTrigger>
+                      <SelectContent>
+                      {petSpeciesValue === "canino" && dogBreeds.map((breed) => (
+                          <SelectItem key={breed} value={breed}>{breed}</SelectItem>
+                      ))}
+                      {petSpeciesValue === "felino" && catBreeds.map((breed) => (
+                          <SelectItem key={breed} value={breed}>{breed}</SelectItem>
+                      ))}
+                       {!petSpeciesValue && <SelectItem value="" disabled>Selecciona una especie primero</SelectItem>}
+                      </SelectContent>
+                  </Select>
+                  {errors.petBreed && (<p className="text-sm text-red-500 mt-1.5">{errors.petBreed.message}</p>)}
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="editPetGender">Género</Label>
+                  <Select
+                      name="petGender"
+                      value={petGenderValue}
+                      onValueChange={(value) => setValue('petGender', value, { shouldValidate: true, shouldDirty: true })}
+                  >
+                      <SelectTrigger id="editPetGender">
+                      <SelectValue placeholder="Selecciona género" />
+                      </SelectTrigger>
+                      <SelectContent>
+                      <SelectItem value="Macho">Macho</SelectItem>
+                      <SelectItem value="Hembra">Hembra</SelectItem>
+                      </SelectContent>
+                  </Select>
+                  {errors.petGender && (<p className="text-sm text-red-500 mt-1.5">{errors.petGender.message}</p>)}
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="editPetWeight">Peso (kg)</Label>
+                  <div className="relative">
+                    <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="editPetWeight"
+                      className="pl-9"
+                      type="number"
+                      min={0.1}
+                      max={150}
+                      step={0.1}
+                      {...register('petWeight', { valueAsNumber: true })}
+                    />
+                  </div>
+                  {errors.petWeight && (<p className="text-sm text-red-500">{errors.petWeight.message}</p>)}
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="editPetHistory">Historial médico (opcional)</Label>
+                  <p className="text-sm text-gray-600">Adjunta un nuevo historial médico si deseas reemplazar el actual (PDF).</p>
+                  <div className="relative">
+                      {petFiles.historial ? (
+                        <div className="flex items-center justify-between px-3 py-2 border rounded-md">
+                          <div className="flex items-center">
+                            <Paw className="h-4 w-4 text-primary mr-2" />
+                            <span className="text-sm font-medium text-blue-500">{petFiles.historial.name}</span>
+                          </div>
+                          <Button
+                            type="button" variant="ghost" size="sm"
+                            onClick={() => {
+                                setPetFiles({...petFiles, historial: null});
+                                const input = document.getElementById('editPetHistory') as HTMLInputElement | null;
+                                if (input) input.value = '';
+                            }}
+                            disabled={isLoading}
+                          >
+                            <span className="text-red-600">Quitar</span>
+                          </Button>
                         </div>
-                        <Button
-                          type="button" variant="ghost" size="sm"
-                          onClick={() => {
-                              setPetFiles({...petFiles, historial: null});
-                              const input = document.getElementById('editPetHistory') as HTMLInputElement | null;
-                              if (input) input.value = '';
-                          }}
-                          disabled={isLoading}
-                        >
-                          <span className="text-red-600">Quitar</span>
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="editPetHistory"
-                          name="editPetHistory"
-                          className="pl-9"
-                          type="file"
-                          onChange={handleFileChange}
-                          accept=".pdf"
-                          disabled={isLoading}
-                        />
-                      </>
-                    )}
-                 </div>
-                 {petToEdit.historial_medico && !petFiles.historial && (
-                    <p className="text-xs text-gray-500 mt-1">Archivo actual: {petToEdit.historial_medico.split('/').pop() || 'Archivo existente'}</p>
-                 )}
-              </div>
+                      ) : (
+                        <>
+                          <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="editPetHistory"
+                            name="editPetHistory"
+                            className="pl-9"
+                            type="file"
+                            onChange={handleFileChange}
+                            accept=".pdf"
+                            disabled={isLoading}
+                          />
+                        </>
+                      )}
+                   </div>
+                   {petToEdit.historial_medico && !petFiles.historial && (
+                      <p className="text-xs text-gray-500 mt-1">Archivo actual: {petToEdit.historial_medico.split('/').pop() || 'Archivo existente'}</p>
+                   )}
+                </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="editPetPhoto">Foto (Opcional)</Label>
-                 <p className="text-sm text-gray-600">Sube una nueva foto si deseas reemplazar la actual (imagen).</p>
-                <div className="relative">
-                    {petFiles.foto ? (
-                      <div className="flex items-center justify-between px-3 py-2 border rounded-md">
-                         <div className="flex items-center">
-                           <Paw className="h-4 w-4 text-primary mr-2" />
-                           <span className="text-sm font-medium text-blue-500">{petFiles.foto.name}</span>
-                           <div className="ml-2 h-8 w-8 overflow-hidden rounded-md">
-                               <img src={URL.createObjectURL(petFiles.foto)} alt="Previa" className="h-full w-full object-cover"/>
+                <div className="grid gap-2">
+                  <Label htmlFor="editPetPhoto">Foto (Opcional)</Label>
+                   <p className="text-sm text-gray-600">Sube una nueva foto si deseas reemplazar la actual (imagen).</p>
+                  <div className="relative">
+                      {petFiles.foto ? (
+                        <div className="flex items-center justify-between px-3 py-2 border rounded-md">
+                           <div className="flex items-center">
+                             <Paw className="h-4 w-4 text-primary mr-2" />
+                             <span className="text-sm font-medium text-blue-500">{petFiles.foto.name}</span>
+                             <div className="ml-2 h-8 w-8 overflow-hidden rounded-md">
+                                 <img src={URL.createObjectURL(petFiles.foto)} alt="Previa" className="h-full w-full object-cover"/>
+                             </div>
                            </div>
-                         </div>
-                         <Button
-                           type="button" variant="ghost" size="sm"
-                           onClick={() => {
-                               const objectUrl = URL.createObjectURL(petFiles.foto!);
-                               setPetFiles({...petFiles, foto: null});
-                               const input = document.getElementById('editPetPhoto') as HTMLInputElement | null;
-                               if (input) input.value = '';
-                               URL.revokeObjectURL(objectUrl);
-                           }}
-                           disabled={isLoading}
-                         >
-                           <span className="text-red-600">Quitar</span>
-                         </Button>
-                      </div>
-                     ) : (
-                       <>
-                         <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                         <Input
-                           id="editPetPhoto"
-                           name="editPetPhoto"
-                           className="pl-9"
-                           type="file"
-                           onChange={handleFileChange}
-                           accept="image/*"
-                           disabled={isLoading}
-                         />
-                       </>
-                     )}
-                 </div>
-                  {petToEdit.foto_url && !petFiles.foto && (
-                     <div className="mt-2">
-                         <p className="text-xs text-gray-500 mb-1">Foto actual:</p>
-                         <img src={petToEdit.foto_url} alt="Foto actual" className="h-16 w-16 object-cover rounded-md"/>
-                     </div>
-                 )}
+                           <Button
+                             type="button" variant="ghost" size="sm"
+                             onClick={() => {
+                                 const objectUrl = URL.createObjectURL(petFiles.foto!);
+                                 setPetFiles({...petFiles, foto: null});
+                                 const input = document.getElementById('editPetPhoto') as HTMLInputElement | null;
+                                 if (input) input.value = '';
+                                 URL.revokeObjectURL(objectUrl);
+                             }}
+                             disabled={isLoading}
+                           >
+                             <span className="text-red-600">Quitar</span>
+                           </Button>
+                        </div>
+                       ) : (
+                         <>
+                           <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                           <Input
+                             id="editPetPhoto"
+                             name="editPetPhoto"
+                             className="pl-9"
+                             type="file"
+                             onChange={handleFileChange}
+                             accept="image/*"
+                             disabled={isLoading}
+                           />
+                         </>
+                       )}
+                   </div>
+                    {petToEdit.foto_url && !petFiles.foto && (
+                       <div className="mt-2">
+                           <p className="text-xs text-gray-500 mb-1">Foto actual:</p>
+                           <img src={petToEdit.foto_url} alt="Foto actual" className="h-16 w-16 object-cover rounded-md"/>
+                       </div>
+                   )}
+                </div>
               </div>
-            </div>
 
-            <DialogFooter className="mt-4 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Guardando..." : "Guardar Cambios"}
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
-      </DialogContent>
-    </Dialog>
+              <DialogFooter className="mt-4 pt-4 border-t">
+                <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? "Guardando..." : "Guardar Cambios"}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Diálogo de Error */}
+      <Dialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-red-600">
+              <AlertCircle className="mr-2 h-5 w-5" />
+              Error al editar mascota
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p>{errorMessage}</p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsErrorDialogOpen(false)}>Entendido</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

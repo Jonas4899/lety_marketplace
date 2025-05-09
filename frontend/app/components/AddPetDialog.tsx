@@ -298,6 +298,9 @@ export function AddPetDialog({
   const id_usuario =
     userType === "owner" && user ? (user as Owner).id_usuario : undefined;
 
+  // Obtener token de autenticación e ID de usuario
+  const token = useAuthStore((state) => state.token);
+
   const [isLoading, setIsLoading] = useState(false);
   const [statusDialog, setStatusDialog] = useState({
     open: false,
@@ -371,9 +374,6 @@ export function AddPetDialog({
         formData.append("foto", petFiles.petPhoto);
       }
 
-      // Obtener token de autenticación e ID de usuario
-      const token = Cookies.get("auth_token");
-      console.log("token:" + token);
 
       // Enviar solicitud al backend
       const response = await fetch(

@@ -280,4 +280,76 @@ router.get('/user/pets', autenticacionToken, async (req, res) => {
   }
 });
 
+router.post('/usuarios/review', autenticacionToken, async (req, res) => {
+  const { id_usuario, id_clinica, calificacion, comentario } = req.body;
+
+  // Validar que los campos necesarios estén presentes
+  if (!id_usuario || !id_clinica || !calificacion) {
+    return res.status(400).json({
+      message:
+        'Los campos id_usuario, id_clinica y calificacion son obligatorios.',
+    });
+  }
+
+  // Validar que la calificación sea un número entre 1 y 5
+  const calificacionNum = parseInt(calificacion, 10);
+  if (isNaN(calificacionNum) || calificacionNum < 1 || calificacionNum > 5) {
+    return res.status(400).json({
+      message: 'La calificación debe ser un número entre 1 y 5.',
+    });
+  }
+
+  try {
+    console.log('Intentando insertar reseña:', {
+      id_usuario,
+      id_clinica,
+      calificacion: calificacionNum,
+      comentario,
+    });
+
+    // No proporcionamos el id_resena, PostgreSQL lo generará automáticamente
+    const { data, error } = await supabaseClient
+      .from('reseñas')
+      .insert([
+        {
+          id_usuario,
+          id_clinica,
+          calificacion: calificacionNum,
+          comentario,
+          fecha: new Date(),
+        },
+      ])
+      .select();
+
+    if (error) {
+      console.error('Error al agregar la reseña:', error);
+      // Manejar errores específicos de la base de datos si es necesario
+      if (error.code === '23503') {
+        // Foreign key violation
+        if (error.details && error.details.includes('id_usuario')) {
+          return res
+            .status(404)
+            .json({ message: 'El usuario especificado no existe.' });
+        }
+        if (error.details && error.details.includes('id_clinica')) {
+          return res
+            .status(404)
+            .json({ message: 'La clínica especificada no existe.' });
+        }
+      }
+      return res
+        .status(500)
+        .json({ message: 'Error al agregar la reseña', error: error.message });
+    }
+
+    console.log('Reseña creada exitosamente:', data[0]);
+    return res
+      .status(201)
+      .json({ message: 'Reseña agregada exitosamente', reseña: data[0] });
+  } catch (error) {
+    console.error('Error en el servidor:', error);
+    return res.status(500).json({ message: 'Error interno en el servidor' });
+  }
+});
+
 export default router;

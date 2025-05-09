@@ -156,7 +156,7 @@ router.delete('/pets/delete', autenticacionToken, async (req, res) => {
     //Verificar que la mascota pertenezca al usuario
     const { data: mascotaCheck, error: errorCheck } = await supabaseClient
       .from('mascotas')
-      .select('id_mascota')
+      .select('id_mascota, foto_url, historial_medico')
       .eq('id_mascota', id_mascota)
       .eq('id_usuario', id_usuario)
       .single();
