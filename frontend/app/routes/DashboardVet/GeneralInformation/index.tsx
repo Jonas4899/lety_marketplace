@@ -144,6 +144,9 @@ export default function ProfilePage() {
 
   const [nitError, setNitError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string>(
+    "Cambios guardados correctamente"
+  );
 
   // Cargar los datos de la clínica al montar el componente
   useEffect(() => {
@@ -338,6 +341,9 @@ export default function ProfilePage() {
     setSaving(true);
     setSaveSuccess(false);
 
+    console.log("Attempting to save all form data, active tab:", activeTab);
+    console.log("Form data state:", formData);
+
     try {
       const token = useAuthStore.getState().token;
       if (!token) {
@@ -370,31 +376,100 @@ export default function ProfilePage() {
         return;
       }
 
-      // Prepare data for the API
-      const basicData = {
-        nombre: formData.clinicName,
-        direccion: formData.address,
-        telefono: formData.phone,
-        correo: formData.email,
-        descripcion: formData.description,
-        NIT: formData.nit,
-        sitio_web: formData.website,
-        codigo_postal: formData.zipCode,
-        ciudad: formData.city,
-      };
+      // Realizamos las tres peticiones secuencialmente
+      try {
+        // 1. Actualizar información básica
+        const basicData = {
+          nombre: formData.clinicName,
+          direccion: formData.address,
+          telefono: formData.phone,
+          correo: formData.email,
+          descripcion: formData.description,
+          NIT: formData.nit,
+          sitio_web: formData.website,
+          codigo_postal: formData.zipCode,
+          ciudad: formData.city,
+        };
 
-      const response = await axios.put(
-        `${API_BASE_URL}/update/veterinary/info/${clinicId}`,
-        basicData,
-        config
+        console.log("Sending basic data to API:", basicData);
+        const basicResponse = await axios.put(
+          `${API_BASE_URL}/update/veterinary/info/${clinicId}`,
+          basicData,
+          config
+        );
+        console.log("Basic info API response:", basicResponse.data);
+      } catch (basicError: any) {
+        console.error("Error actualizando información básica:", basicError);
+        setError(
+          `Error en información básica: ${
+            basicError.response?.data?.message || basicError.message
+          }`
+        );
+        setSaving(false);
+        return;
+      }
+
+      try {
+        // 2. Actualizar horarios
+        console.log("Sending hours data to API:", {
+          openingHours: formData.openingHours,
+        });
+        const hoursResponse = await axios.put(
+          `${API_BASE_URL}/update/veterinary/hours/${clinicId}`,
+          { openingHours: formData.openingHours },
+          config
+        );
+        console.log("Hours API response:", hoursResponse.data);
+      } catch (hoursError: any) {
+        console.error("Error actualizando horarios:", hoursError);
+        setError(
+          `Error en horarios: ${
+            hoursError.response?.data?.message || hoursError.message
+          }`
+        );
+        setSaving(false);
+        return;
+      }
+
+      try {
+        // 3. Actualizar detalles (especialidades y métodos de pago)
+        const detailsData = {
+          specialties: formData.specialties,
+          paymentMethods: formData.paymentMethods,
+          facilities: formData.facilities,
+        };
+
+        console.log("Sending details data to API:", detailsData);
+        const detailsResponse = await axios.put(
+          `${API_BASE_URL}/update/veterinary/details/${clinicId}`,
+          detailsData,
+          config
+        );
+        console.log("Details API response:", detailsResponse.data);
+      } catch (detailsError: any) {
+        console.error("Error actualizando detalles:", detailsError);
+        setError(
+          `Error en detalles: ${
+            detailsError.response?.data?.message || detailsError.message
+          }`
+        );
+        setSaving(false);
+        return;
+      }
+
+      // Si todo salió bien, mostramos el mensaje de éxito
+      setSaveMessage(
+        "Se actualizó correctamente la información básica, horarios y detalles de la clínica"
       );
-
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      setTimeout(() => setSaveSuccess(false), 4000);
     } catch (error: any) {
       console.error("Error al actualizar información:", error);
+      console.log("Error details:", error.response?.data);
+
       setError(
-        error.response?.data?.message || "Error al actualizar la información"
+        error.response?.data?.message ||
+          `Error al actualizar la información: ${error.message}`
       );
     } finally {
       setSaving(false);
@@ -461,7 +536,7 @@ export default function ProfilePage() {
       {saveSuccess && (
         <Alert className="bg-green-100 text-green-800 border-green-300">
           <AlertCircle className="h-4 w-4" />
-          <span>Cambios guardados correctamente</span>
+          <span>{saveMessage}</span>
         </Alert>
       )}
 
