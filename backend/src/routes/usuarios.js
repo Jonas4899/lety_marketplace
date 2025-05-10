@@ -104,8 +104,9 @@ router.post(
         if (errorUsuario) {
           // Manejar errores de duplicados
           if (
-            errorUsuario.code === '23505' &&
-            errorUsuario.details.includes('correo')
+            (errorUsuario.code === '23505' &&
+              errorUsuario.details.includes('correo')) ||
+            errorUsuario.details.includes('email')
           ) {
             throw {
               status: 409,
@@ -113,8 +114,9 @@ router.post(
                 'Ya existe un usuario registrado con este correo electrónico',
             };
           } else if (
-            errorUsuario.code === '23505' &&
-            errorUsuario.details.includes('telefono')
+            (errorUsuario.code === '23505' &&
+              errorUsuario.details.includes('telefono')) ||
+            errorUsuario.details.includes('phone')
           ) {
             throw {
               status: 409,

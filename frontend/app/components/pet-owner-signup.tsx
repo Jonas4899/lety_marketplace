@@ -1,6 +1,6 @@
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { PawPrintIcon as Paw, Mail, Lock, User, ArrowLeft } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -325,6 +325,15 @@ export function PetOwnerSignup({
 
   const formValues = watch();
 
+  const breedOptions = useMemo(() => {
+    const breeds = formValues.petSpecies === "canino" ? dogBreeds : catBreeds;
+    return breeds.map((breed) => (
+      <SelectItem key={breed} value={breed}>
+        {breed}
+      </SelectItem>
+    ));
+  }, [formValues.petSpecies]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.name) return;
     const file = e.target.files[0];
@@ -397,7 +406,8 @@ export function PetOwnerSignup({
             const errorData = await response.json();
             throw new Error(errorData.message || "Datos inválidos");
           } else if (response.status === 409) {
-            throw new Error("El correo electrónico ya está registrado");
+            const errorData = await response.json();
+            throw new Error( errorData.message || "El usuario ya se encuentra registrado");
           } else {
             throw new Error("Error en el servidor");
           }
@@ -629,13 +639,7 @@ export function PetOwnerSignup({
                         <SelectValue placeholder="Raza" />
                       </SelectTrigger>
                       <SelectContent>
-                        {
-                          formValues.petSpecies === "canino" ? dogBreeds.map((breed) => (
-                              <SelectItem value={breed}>{breed}</SelectItem>
-                          )) : ( catBreeds.map((breed) => (
-                            <SelectItem value={breed}>{breed}</SelectItem>
-                          )))
-                        }
+                        {breedOptions}
                       </SelectContent>
                     </Select>
                   </div>
