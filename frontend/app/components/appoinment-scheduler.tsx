@@ -54,14 +54,12 @@ export function AppointmentScheduler({ clinicId }: AppointmentSchedulerProps) {
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
   const token = useAuthStore((state) => state.token);
-  console.log(token);
 
   const [mascotas, setMascotas] = useState<Mascota[]>([]);
 
   useEffect(() => {
     const fetchMascotas = async () => {
       try {
-        //const token = localStorage.getItem("token");
         const user = useAuthStore.getState().user;
         const userType = useAuthStore.getState().userType;
 
@@ -168,8 +166,6 @@ export function AppointmentScheduler({ clinicId }: AppointmentSchedulerProps) {
       window.scrollTo(0, 0);
     } else {
       try {
-        const token = localStorage.getItem("token"); // Recuperar el token
-
         if (!token) {
           alert("No estás autenticado");
           return;
