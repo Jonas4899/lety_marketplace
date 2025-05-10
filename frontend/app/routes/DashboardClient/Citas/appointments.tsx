@@ -34,7 +34,6 @@ export default function AppointmentsPage() {
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
   const token = useAuthStore((state) => state.token);
-  console.log(token)
 
   useEffect(() => {
     const fetchAppointments = async () => {

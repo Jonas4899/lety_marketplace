@@ -127,7 +127,7 @@ export default function PetDashboardLayout({
     */
     {
       title: "Configuración",
-      href: "/dashboard-client/settings",
+      href: "/dashboard-client/profile",
       icon: <Settings className="h-4 w-4" />,
     },
   ];

@@ -535,9 +535,9 @@ export default function PetsPage() {
           <TabsContent value="dogs" className="relative min-h-[200px]">
                {isProcessingAction && ( <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/70 backdrop-blur-sm"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> )}
                <div className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-14 lg:auto-rows-[640px] ${isProcessingAction ? 'opacity-50 pointer-events-none' : ''}`}>
-                  {!loading && filteredPets.filter((pet) => pet.especie === "Canino").length > 0 ? (
+                  {!loading && filteredPets.filter((pet) => pet.especie === "canino").length > 0 ? (
                      <>
-                          {filteredPets.filter((pet) => pet.especie === "Canino").map((pet) => renderPetCard(pet))}
+                          {filteredPets.filter((pet) => pet.especie === "canino").map((pet) => renderPetCard(pet))}
                           <Card className="flex aspect-square flex-col items-center justify-center cursor-pointer h-full w-full hover:border-primary transition-colors" onClick={() => setIsAddPetDialogOpen(true)}>
                              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10"><Plus className="h-10 w-10 text-primary" /></div>
                              <h3 className="mt-4 text-xl font-medium">Agregar Perro</h3>
