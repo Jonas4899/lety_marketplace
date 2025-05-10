@@ -43,6 +43,7 @@ import { Label } from "~/components/ui/label";
 import { useToast } from "~/hooks/use-toast";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { useAuthStore } from "~/stores/useAuthStore";
 
 // Tipos de datos
 interface Appointment {
@@ -101,12 +102,13 @@ export default function AppointmentDetailPage() {
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const token = useAuthStore((state) => state.token);
+
   useEffect(() => {
     const fetchAppointment = async () => {
       try {
         if (!id) return;
 
-        const token = localStorage.getItem("token");
         if (!token) {
           console.error("Token no encontrado");
           return;

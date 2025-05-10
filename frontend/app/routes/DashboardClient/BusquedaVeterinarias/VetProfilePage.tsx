@@ -77,6 +77,7 @@ export default function VetProdilePage() {
   const userType = useAuthStore((state) => state.userType);
   const id_usuario = userType === 'owner' && user ? (user as Owner).id_usuario : undefined;
   const token = useAuthStore((state) => state.token);
+  console.log("token: " +  token)
 
   const navigate = useNavigate();
 
@@ -142,7 +143,7 @@ export default function VetProdilePage() {
   // Get today's day name in lowercase English (e.g., 'monday')
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
   // Find today's schedule in the openingHours object
-  const todaysSchedule = clinicProfile.openingHours[today] || null;
+  const todaysSchedule = clinicProfile.openingHours ? clinicProfile.openingHours[today] || null : null;
 
   // Format today's schedule for display
   let todayDisplayHours = 'Cerrado'; // Default to 'Cerrado'
@@ -444,37 +445,40 @@ export default function VetProdilePage() {
               <p className="text-gray-700 mb-4">{clinicProfile?.descripcion || "No hay descripción disponible."}</p>
 
               <h4 className="font-semibold mb-2">Horario de atención</h4>
-              <div className="space-y-2 mb-4">
-                {/* Map over the openingHours object from clinicProfile */}
-                {Object.entries(clinicProfile.openingHours).map(([day, schedule]) => {
-                  // Helper function to capitalize day names (e.g., 'monday' -> 'Lunes')
-                  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-                  // Map English day names to Spanish
-                  const dayTranslations: { [key: string]: string } = {
-                    monday: 'Lunes',
-                    tuesday: 'Martes',
-                    wednesday: 'Miércoles',
-                    thursday: 'Jueves',
-                    friday: 'Viernes',
-                    saturday: 'Sábado',
-                    sunday: 'Domingo',
-                  };
+              {clinicProfile.openingHours && Object.keys(clinicProfile.openingHours).length > 0 ? (
+                <div className="space-y-2 mb-4">
+                  {Object.entries(clinicProfile.openingHours).map(([day, schedule]) => {
+                    const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+                    const dayTranslations: { [key: string]: string } = {
+                      monday: 'Lunes',
+                      tuesday: 'Martes',
+                      wednesday: 'Miércoles',
+                      thursday: 'Jueves',
+                      friday: 'Viernes',
+                      saturday: 'Sábado',
+                      sunday: 'Domingo',
+                    };
 
-                  let displayHours = 'Cerrado'; // Default to 'Cerrado'
-                  if (schedule.is24Hours) {
-                    displayHours = 'Abierto 24 Horas';
-                  } else if (!schedule.closed && schedule.open && schedule.close) {
-                    displayHours = `${schedule.open} - ${schedule.close}`;
-                  }
+                    let displayHours = 'Cerrado';
+                    if (schedule.is24Hours) {
+                      displayHours = 'Abierto 24 Horas';
+                    } else if (!schedule.closed && schedule.open && schedule.close) {
+                      displayHours = `${schedule.open} - ${schedule.close}`;
+                    }
 
-                  return (
-                    <div key={day} className="flex justify-between">
-                      <span className="text-gray-600">{dayTranslations[day] || capitalize(day)}</span>
-                      <span>{displayHours}</span>
-                    </div>
-                  );
-                })}
-              </div>
+                    return (
+                      <div key={day} className="flex justify-between">
+                        <span className="text-gray-600">{dayTranslations[day] || capitalize(day)}</span>
+                        <span>{displayHours}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="col-span-1 sm:col-span-3 text-center text-gray-500 py-4 border rounded-lg mb-4">
+                  No hay horarios de atención disponibles para esta clínica :(
+                </div>
+              )}
 
               <h4 className="font-semibold mb-2">Información de contacto</h4>
               <div className="space-y-2">
@@ -624,7 +628,7 @@ export default function VetProdilePage() {
               <h3 className="text-lg font-semibold mb-4">Acciones rápidas</h3>
               <div className="space-y-3">
                 <Button size="lg" className="w-full" asChild>
-                  <Link to={`/pet-dashboard/appointments/schedule?clinic=${clinicId}`}>Agendar cita</Link>
+                  <Link to={`/dashboard-client/appointments/schedule?clinic=${clinicId}`}>Agendar cita</Link>
                 </Button>
                 {
                 /*

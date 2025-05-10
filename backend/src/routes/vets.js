@@ -652,16 +652,29 @@ router.get('/veterinary/profile/:id_clinica', async (req, res) => {
     }
 
     // Obtener horarios de la clínica
-    const { data: horarios, error: errorHorarios } = await supabaseClient
-      .from('horarios_atencion')
-      .select('*')
-      .eq('id_clinica', id_clinica);
+    let horarios = [];
+    let errorHorarios = null;
+    try {
+      const { data: fetchedHorarios, error: fetchError } = await supabaseClient
+        .from('horarios_atencion')
+        .select('*')
+        .eq('id_clinica', id_clinica);
 
-    if (errorHorarios) {
-      return res.status(400).json({
-        message: 'Error al obtener horarios',
-        error: errorHorarios.message,
-      });
+      if (fetchError) {
+        console.error(
+          `Error obteniendo los horarios de la clinica ${id_clinica}:`,
+          fetchError.message
+        );
+        errorHorarios = fetchError; // Store the error
+      } else {
+        horarios = fetchedHorarios || [];
+      }
+    } catch (e) {
+      console.error(
+        `Excepción inesperada obteniendo los horarios de la clinica ${id_clinica}:`,
+        e.message
+      );
+      errorHorarios = e; // Store the exception as an error
     }
 
     //Obtener imagenes de la clinica
@@ -718,52 +731,79 @@ router.get('/veterinary/profile/:id_clinica', async (req, res) => {
     }
 
     // Formatear los horarios para el frontend
-    const openingHours = {
-      monday: { open: '09:00', close: '18:00', closed: true, is24Hours: false },
-      tuesday: {
-        open: '09:00',
-        close: '18:00',
-        closed: true,
-        is24Hours: false,
-      },
-      wednesday: {
-        open: '09:00',
-        close: '18:00',
-        closed: true,
-        is24Hours: false,
-      },
-      thursday: {
-        open: '09:00',
-        close: '18:00',
-        closed: true,
-        is24Hours: false,
-      },
-      friday: { open: '09:00', close: '18:00', closed: true, is24Hours: false },
-      saturday: {
-        open: '09:00',
-        close: '18:00',
-        closed: true,
-        is24Hours: false,
-      },
-      sunday: { open: '09:00', close: '18:00', closed: true, is24Hours: false },
-    };
+    let formattedOpeningHours = null; // Default to null
 
-    // Actualizar con los horarios reales
-    horarios.forEach((horario) => {
-      const dia = horario.dia_semana;
-      if (openingHours[dia]) {
-        openingHours[dia] = {
-          open: horario.hora_apertura
-            ? horario.hora_apertura.substring(0, 5)
-            : '09:00',
-          close: horario.hora_cierre
-            ? horario.hora_cierre.substring(0, 5)
-            : '18:00',
-          closed: horario.esta_cerrado,
-          is24Hours: horario.es_24h,
-        };
-      }
-    });
+    if (!errorHorarios && horarios.length > 0) {
+      formattedOpeningHours = {
+        monday: {
+          open: '09:00',
+          close: '18:00',
+          closed: true,
+          is24Hours: false,
+        },
+        tuesday: {
+          open: '09:00',
+          close: '18:00',
+          closed: true,
+          is24Hours: false,
+        },
+        wednesday: {
+          open: '09:00',
+          close: '18:00',
+          closed: true,
+          is24Hours: false,
+        },
+        thursday: {
+          open: '09:00',
+          close: '18:00',
+          closed: true,
+          is24Hours: false,
+        },
+        friday: {
+          open: '09:00',
+          close: '18:00',
+          closed: true,
+          is24Hours: false,
+        },
+        saturday: {
+          open: '09:00',
+          close: '18:00',
+          closed: true,
+          is24Hours: false,
+        },
+        sunday: {
+          open: '09:00',
+          close: '18:00',
+          closed: true,
+          is24Hours: false,
+        },
+      };
+
+      // Actualizar con los horarios reales
+      horarios.forEach((horario) => {
+        const dia = horario.dia_semana;
+        if (formattedOpeningHours[dia]) {
+          formattedOpeningHours[dia] = {
+            open: horario.hora_apertura
+              ? horario.hora_apertura.substring(0, 5)
+              : '09:00',
+            close: horario.hora_cierre
+              ? horario.hora_cierre.substring(0, 5)
+              : '18:00',
+            closed: horario.esta_cerrado,
+            is24Hours: horario.es_24h,
+          };
+        }
+      });
+    } else if (errorHorarios) {
+      // Log error, formattedOpeningHours remains null
+      console.log(
+        `Horarios no disponibles para clinica ${id_clinica} debido a error: ${errorHorarios.message}`
+      );
+    } else {
+      // No error, but no horarios found in DB, formattedOpeningHours remains null
+      console.log(`No hay horarios registrados para clinica ${id_clinica}`);
+    }
 
     // Extraer y formatear los detalles
     const specialties = clinica.detalles?.especialidades || [];
@@ -776,7 +816,7 @@ router.get('/veterinary/profile/:id_clinica', async (req, res) => {
     // Construir la respuesta completa
     const perfilCompleto = {
       ...clinicaInfo,
-      openingHours,
+      openingHours: formattedOpeningHours,
       specialties,
       facilities,
       paymentMethods,

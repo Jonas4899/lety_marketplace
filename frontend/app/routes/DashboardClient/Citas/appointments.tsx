@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 import { Badge } from "~/components/ui/badge";
+import { useAuthStore } from "~/stores/useAuthStore";
 
 interface Appointment {
   id: number;
@@ -32,10 +33,11 @@ export default function AppointmentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
+  const token = useAuthStore((state) => state.token);
+
   useEffect(() => {
     const fetchAppointments = async () => {
       try {
-        const token = localStorage.getItem("token");
 
         if (!token) {
           console.error("Token no encontrado");
