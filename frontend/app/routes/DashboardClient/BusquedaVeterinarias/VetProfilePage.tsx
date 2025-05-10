@@ -77,6 +77,7 @@ export default function VetProdilePage() {
   const userType = useAuthStore((state) => state.userType);
   const id_usuario = userType === 'owner' && user ? (user as Owner).id_usuario : undefined;
   const token = useAuthStore((state) => state.token);
+  console.log("token: " +  token)
 
   const navigate = useNavigate();
 
