@@ -103,9 +103,11 @@ export default function DashboardPage() {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList>
+          {/*
+            <TabsList>
             <TabsTrigger value="overview">Resumen</TabsTrigger>
           </TabsList>
+             */}
 
           <TabsContent value="overview" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
