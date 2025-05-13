@@ -148,7 +148,9 @@ router.get("/appointments/user", async (req, res) => {
         estado,
         notas_adicionales,
         mascotas(nombre, foto_url),
-        clinicas(nombre, direccion)
+        clinicas(nombre, direccion),
+        motivo_reprogramacion,
+        motivo_cancelacion
       `
       )
       .eq("id_usuario", userId)
@@ -177,8 +179,14 @@ router.get("/appointments/user", async (req, res) => {
           ? "pending"
           : cita.estado === "confirmada"
           ? "confirmed"
-          : cita.estado,
+          : cita.estado === "cancelada"
+          ? "cancelled"
+          : cita.estado === "finalizada"
+          ? "completed"
+          : "unknown",
       notes: cita.notas_adicionales || "",
+      motivo_reprogramacion: cita.motivo_reprogramacion || "",
+      motivo_cancelacion: cita.motivo_cancelacion || "",
     }));
 
     res.status(200).json({ citas: citasFormateadas });
@@ -666,5 +674,125 @@ router.put("/appointments/:appointmentId/reschedule", async (req, res) => {
     res.status(500).json({ message: "Error en el servidor" });
   }
 });
+
+// Reprogramar cita (solo dueño)
+router.patch("/appointment/:id/reschedule", async (req, res) => {
+  const { userId } = req.user;
+  const appointmentId = req.params.id;
+  const { date, time, reason } = req.body;
+
+  if (!date || !time) {
+    return res.status(400).json({ message: "Fecha y hora son requeridas." });
+  }
+
+  try {
+    // Validar que la cita exista y pertenezca al usuario
+    const { data: existing, error: fetchError } = await supabase
+      .from("citas")
+      .select("id_usuario, estado")
+      .eq("id_cita", appointmentId)
+      .single();
+
+    if (fetchError || !existing) {
+      return res.status(404).json({ message: "Cita no encontrada." });
+    }
+
+    if (existing.id_usuario !== userId) {
+      return res.status(403).json({ message: "No tienes permiso para modificar esta cita." });
+    }
+
+    if (existing.estado === "cancelada" || existing.estado === "completada") {
+      return res.status(400).json({ message: "No se puede reprogramar una cita cancelada o completada." });
+    }
+
+    const { error: updateError } = await supabase
+      .from("citas")
+      .update({
+        fecha_inicio: date,
+        horario: time,
+        motivo_reprogramacion: reason || null,
+        estado: "pendi",
+        created_at: new Date().toISOString(),
+      })
+      .eq("id_cita", appointmentId);
+
+    if (updateError) {
+      console.error("Error actualizando cita:", updateError);
+      return res.status(500).json({ message: "Error al reprogramar la cita." });
+    }
+
+    return res.status(200).json({ message: "Cita reprogramada exitosamente." });
+  } catch (err) {
+    console.error("Error interno:", err);
+    res.status(500).json({ message: "Error en el servidor." });
+  }
+});
+
+// Cancelar una cita (solo dueño)
+router.patch("/appointment/:id/cancel", async (req, res) => {
+  const { userId } = req.user;
+  const appointmentId = req.params.id;
+  const { reason } = req.body;
+
+  if (!reason || reason.trim() === "") {
+    return res.status(400).json({ message: "El motivo de cancelación es obligatorio." });
+  }
+
+  try {
+    // Validar que la cita existe y pertenece al usuario
+    const { data: existing, error: fetchError } = await supabase
+      .from("citas")
+      .select("id_usuario, estado, trazabilidad")
+      .eq("id_cita", appointmentId)
+      .single();
+
+    if (fetchError || !existing) {
+      return res.status(404).json({ message: "Cita no encontrada." });
+    }
+
+    if (existing.id_usuario !== userId) {
+      return res.status(403).json({ message: "No tienes permiso para cancelar esta cita." });
+    }
+
+    if (["cancelada", "completada"].includes(existing.estado)) {
+      return res.status(400).json({ message: "La cita ya está cancelada o completada." });
+    }
+
+    // Preparar trazabilidad
+    const nuevaTrazabilidad = Array.isArray(existing.trazabilidad)
+      ? [...existing.trazabilidad]
+      : [];
+
+    nuevaTrazabilidad.push({
+      accion: "cancelacion",
+      usuario: userId,
+      fecha: new Date().toISOString(),
+      detalles: {
+        motivo: reason,
+      },
+    });
+
+    // Actualizar cita
+    const { error: updateError } = await supabase
+      .from("citas")
+      .update({
+        estado: "cancelada",
+        trazabilidad: nuevaTrazabilidad,
+        motivo_cancelacion: reason,
+      })
+      .eq("id_cita", appointmentId);
+
+    if (updateError) {
+      console.error("Error al cancelar cita:", updateError);
+      return res.status(500).json({ message: "Error al cancelar la cita." });
+    }
+
+    res.status(200).json({ message: "Cita cancelada exitosamente." });
+  } catch (err) {
+    console.error("Error interno:", err);
+    res.status(500).json({ message: "Error en el servidor." });
+  }
+});
+
 
 export default router;

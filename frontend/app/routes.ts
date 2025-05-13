@@ -42,6 +42,10 @@ export default [
       "dashboard-client/appointments/:id",
       "routes/DashboardClient/Citas/ID_citas/id-schedule.tsx"
     ),
+    route(
+      "dashboard-client/appointment/:id/reschedule",
+      "routes/DashboardClient/Citas/Reprogramar/client-reschedule.tsx"
+    ),
     route("dashboard-client/pets", "routes/DashboardClient/pets.tsx"),
     route("dashboard-client/pets/:id", "components/ui/pet-details.tsx"),
     route("dashboard-client/vet-search/:id", "routes/DashboardClient/BusquedaVeterinarias/VetProfilePage.tsx"),

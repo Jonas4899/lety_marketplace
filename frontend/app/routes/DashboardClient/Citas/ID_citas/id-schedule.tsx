@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useSearchParams, useParams } from "react-router";
+import { Link, useNavigate, useParams, useLocation } from "react-router";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -40,10 +40,11 @@ import {
 } from "~/components/ui/dialog";
 import { Textarea } from "~/components/ui/textarea";
 import { Label } from "~/components/ui/label";
-import { useToast } from "~/hooks/use-toast";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { useAuthStore } from "~/stores/useAuthStore";
+import { toast} from "sonner"
+
 
 // Tipos de datos
 interface Appointment {
@@ -67,7 +68,7 @@ interface Appointment {
   duration: number;
   service: string;
   price: number;
-  status: "confirmed" | "pending" | "completed" | "cancelled" | "rescheduled";
+  status: "confirmada" | "pending" | "completed" | "cancelled" | "rescheduled";
   notes?: string;
   createdAt: Date;
   paymentStatus: "pending" | "paid" | "partial";
@@ -89,7 +90,6 @@ interface AppointmentLog {
 
 export default function AppointmentDetailPage() {
   const router = useNavigate();
-  const { toast } = useToast();
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [isAddNoteDialogOpen, setIsAddNoteDialogOpen] = useState(false);
@@ -103,6 +103,14 @@ export default function AppointmentDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const token = useAuthStore((state) => state.token);
+  const location = useLocation()
+
+  useEffect(() => {
+    if (location.state?.toast === "success") {
+    toast.success("Tu cita ha sido reprogramada con éxito")
+  }
+}, [])
+  
 
   useEffect(() => {
     const fetchAppointment = async () => {
@@ -191,7 +199,7 @@ export default function AppointmentDetailPage() {
   // Función para obtener el badge de estado
   const getStatusBadge = (status: Appointment["status"]) => {
     switch (status) {
-      case "confirmed":
+      case "confirmada":
         return (
           <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
             Confirmada
@@ -227,7 +235,7 @@ export default function AppointmentDetailPage() {
   // Función para obtener el icono de estado
   const getStatusIcon = (status: Appointment["status"]) => {
     switch (status) {
-      case "confirmed":
+      case "confirmada":
         return <CheckCircle className="h-5 w-5 text-green-600" />;
       case "pending":
         return <Clock className="h-5 w-5 text-yellow-600" />;
@@ -277,12 +285,7 @@ export default function AppointmentDetailPage() {
   // Función para manejar la cancelación de cita
   const handleCancelAppointment = () => {
     if (!cancelReason.trim()) {
-      toast({
-        title: "Error",
-        description: "Por favor, proporciona un motivo para la cancelación.",
-        variant: "destructive",
-        duration: 3000,
-      });
+      toast.error("Por favor, proporciona un motivo para la cancelación.");
       return;
     }
 
@@ -290,11 +293,7 @@ export default function AppointmentDetailPage() {
     console.log(`Cancelando cita ${appointment.id}. Motivo: ${cancelReason}`);
 
     // Mostrar notificación de éxito
-    toast({
-      title: "Cita cancelada",
-      description: "Tu cita ha sido cancelada exitosamente.",
-      duration: 3000,
-    });
+    toast.success("Cita cancelada");
 
     setIsCancelDialogOpen(false);
     setCancelReason("");
@@ -308,12 +307,7 @@ export default function AppointmentDetailPage() {
   // Función para agregar una nota
   const handleAddNote = () => {
     if (!noteText.trim()) {
-      toast({
-        title: "Error",
-        description: "Por favor, escribe una nota para agregar.",
-        variant: "destructive",
-        duration: 3000,
-      });
+      toast.error("Por favor, escribe una nota para agregar.");
       return;
     }
 
@@ -321,11 +315,7 @@ export default function AppointmentDetailPage() {
     console.log(`Agregando nota a la cita ${appointment.id}: ${noteText}`);
 
     // Mostrar notificación de éxito
-    toast({
-      title: "Nota agregada",
-      description: "Tu nota ha sido agregada exitosamente.",
-      duration: 3000,
-    });
+    toast.success("Nota agregada");
 
     setIsAddNoteDialogOpen(false);
     setNoteText("");
@@ -337,7 +327,7 @@ export default function AppointmentDetailPage() {
         {/* Encabezado */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
+            <Button variant="outline" size="icon" onClick={() => router(`/dashboard-client/appointments`)}>
               <ArrowLeft className="h-4 w-4" />
               <span className="sr-only">Volver</span>
             </Button>
@@ -347,23 +337,24 @@ export default function AppointmentDetailPage() {
             {getStatusBadge(appointment.status)}
           </div>
           <div className="flex flex-wrap gap-2">
-            {appointment.status === "confirmed" && (
+          {["confirmada", "cancelada"].includes(appointment.status) && (
               <>
-                <Button variant="outline" asChild>
-                  <Link
-                    to={`/pet-dashboard/appointments/schedule?reschedule=true&appointment=${appointment.id}`}
-                  >
+                <Button variant="outline"  className="justify-start" asChild>
+                  <Link to={`/dashboard-client/appointment/${appointment.id}/reschedule`}>
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Reprogramar
                   </Link>
                 </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => setIsCancelDialogOpen(true)}
-                >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Cancelar
-                </Button>
+
+                {appointment.status === "confirmada" && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => setIsCancelDialogOpen(true)}
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Cancelar
+                  </Button>
+                )}
               </>
             )}
             <Button
@@ -377,7 +368,7 @@ export default function AppointmentDetailPage() {
         </div>
 
         {/* Alerta para citas próximas */}
-        {appointment.status === "confirmed" &&
+        {appointment.status === "confirmada" &&
           new Date(appointment.date).getTime() - new Date().getTime() <
             86400000 * 2 && (
             <Alert>
@@ -688,7 +679,7 @@ export default function AppointmentDetailPage() {
                         Opciones disponibles para gestionar tu cita actual
                       </p>
                       <div className="mt-4 flex flex-col gap-2">
-                        {appointment.status === "confirmed" && (
+                        {appointment.status === "confirmada" && (
                           <>
                             <Button
                               variant="outline"
@@ -893,4 +884,5 @@ export default function AppointmentDetailPage() {
       </Dialog>
     </div>
   );
+  
 }

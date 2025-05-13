@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "~/components/ui/card";
+import { toast } from "sonner";
+import { useNavigate } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Input } from "~/components/ui/input";
@@ -10,10 +12,23 @@ import {
   XCircle,
   Plus,
   Calendar,
+  AlertCircle,
 } from "lucide-react";
 import { Link } from "react-router";
 import { Badge } from "~/components/ui/badge";
 import { useAuthStore } from "~/stores/useAuthStore";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
+
 
 interface Appointment {
   id: number;
@@ -26,12 +41,19 @@ interface Appointment {
   reason: string;
   status: "confirmed" | "pending" | "completed" | "cancelled";
   notes?: string;
+  motivo_reprogramacion?: string;
+  motivo_cancelacion?: string;
 }
 
 export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const router = useNavigate();
+  const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
 
   const token = useAuthStore((state) => state.token);
 
@@ -114,6 +136,48 @@ export default function AppointmentsPage() {
       case "cancelled":
         return <XCircle className="h-5 w-5 text-red-600" />;
     }
+  };
+
+  const handleCancelAppointment = async () => {
+    if (!cancelReason.trim()) {
+      toast.error("Por favor, proporciona un motivo para la cancelación.");
+      return;
+    }
+
+    if (!selectedAppointmentId) {
+      toast.error("No se pudo identificar la cita.");
+      return;
+    }
+    
+    try {
+    const response = await fetch(`${API_URL}/appointment/${selectedAppointmentId}/cancel`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ reason: cancelReason }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Error al cancelar la cita.");
+    }
+
+    toast.success("Cita cancelada exitosamente.");
+    setIsCancelDialogOpen(false);
+    setCancelReason("");
+    setSelectedAppointmentId(null);
+    setAppointments((prevAppointments) =>
+      prevAppointments.map((appt) =>
+        appt.id === selectedAppointmentId
+          ? { ...appt, status: "cancelled" }
+          : appt
+      )
+    );
+  } catch (error: any) {
+    toast.error(error.message);
+  }
   };
 
   return (
@@ -220,6 +284,19 @@ export default function AppointmentsPage() {
                                 <span className="font-medium">Motivo:</span>{" "}
                                 {appointment.reason}
                               </p>
+                              {appointment.status === "cancelled" && appointment.motivo_cancelacion && (
+                                <p className="text-sm">
+                                 <span className="font-medium">Motivo de cancelación:</span>{" "}
+                                  {appointment.motivo_cancelacion}
+                                </p>
+                              )}
+
+                              {appointment.status !== "cancelled" && appointment.motivo_reprogramacion && (
+                                <p className="text-sm">
+                                  <span className="font-medium">Motivo de reprogramación:</span>{" "}
+                                  {appointment.motivo_reprogramacion}
+                                </p>
+                              )}
                               {appointment.notes && (
                                 <p className="mt-1 text-sm text-muted-foreground">
                                   {appointment.notes}
@@ -234,7 +311,7 @@ export default function AppointmentsPage() {
                             appointment.status === "pending") && (
                             <Button variant="outline" size="sm" asChild>
                               <Link
-                                to={`/dashboard-client/appointments/schedule?reschedule=true&appointment=${appointment.id}`}
+                                to={`/dashboard-client/appointment/${appointment.id}/reschedule`}
                               >
                                 Reprogramar
                               </Link>
@@ -246,6 +323,10 @@ export default function AppointmentsPage() {
                               variant="outline"
                               size="sm"
                               className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                              onClick={() => {
+                                setSelectedAppointmentId(appointment.id);
+                                setIsCancelDialogOpen(true);
+                              }}
                             >
                               Cancelar
                             </Button>
@@ -317,6 +398,12 @@ export default function AppointmentsPage() {
                                 <span className="font-medium">Motivo:</span>{" "}
                                 {appointment.reason}
                               </p>
+                              {appointment.motivo_reprogramacion && (
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  <span className="font-medium">Motivo de reprogramación:</span>{" "}
+                                  {appointment.motivo_reprogramacion}
+                                </p>
+                              )}
                               {appointment.notes && (
                                 <p className="mt-1 text-sm text-muted-foreground">
                                   {appointment.notes}
@@ -482,7 +569,7 @@ export default function AppointmentsPage() {
 
                         <div className="mt-4 flex justify-end gap-2">
                           <Button size="sm" asChild>
-                            <Link to="/pet-dashboard/appointments/schedule">
+                            <Link to={`/dashboard-client/appointment/${appointment.id}/reschedule`}>
                               Reagendar
                             </Link>
                           </Button>
@@ -495,6 +582,52 @@ export default function AppointmentsPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Diálogo de cancelación */}
+      <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar Cita</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas cancelar esta cita? Esta acción no se
+              puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="cancel-reason" className="required">
+                Motivo de cancelación
+              </Label>
+              <Textarea
+                id="cancel-reason"
+                placeholder="Indica el motivo de la cancelación..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                required
+              />
+            </div>
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Importante</AlertTitle>
+              <AlertDescription>
+                Las cancelaciones con menos de 24 horas de anticipación pueden
+                estar sujetas a cargos según la política de la clínica.
+              </AlertDescription>
+            </Alert>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCancelDialogOpen(false)}
+            >
+              Volver
+            </Button>
+            <Button variant="destructive" onClick={handleCancelAppointment}>
+              Cancelar Cita
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
