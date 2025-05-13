@@ -1,5 +1,4 @@
 import { useAuthStore } from "~/stores/useAuthStore";
-import Cookies from "js-cookie";
 import type { Owner, Pet as PetType} from "~/types/usersTypes"; 
 
 import { useEffect, useState, useCallback } from "react"

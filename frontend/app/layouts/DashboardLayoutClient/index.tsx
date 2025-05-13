@@ -185,7 +185,7 @@ export default function PetDashboardLayout({
           className="flex items-center gap-2 font-semibold md:hidden"
         >
           <PawPrint className="h-6 w-6" />
-          <span>PETVET</span>
+          <span>LETY</span>
         </Link>
         <Link
           to="/dashboard-client"
