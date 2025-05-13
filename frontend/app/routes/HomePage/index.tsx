@@ -2,7 +2,7 @@ import { Button } from "~/components/ui/button"
 import {
   Search,
   Calendar,
-  MessageSquare,
+  User,
   Star,
   CheckCircle,
   ArrowRight,
@@ -12,37 +12,67 @@ import {
   MapPin,
 } from "lucide-react"
 import { Link } from "react-router";
+import { useState } from "react";
+import { UserTypeModal } from "~/components/user-type-modal";
+import { PetOwnerSignup } from "~/components/pet-owner-signup";
+import { VetClinicSignup } from "~/components/vet-clinic-signup";
+
 export default function LandingPage() {
+
+  const [isUserTypeModalOpen, setIsUserTypeModalOpen] = useState(false);
+  const [isPetOwnerSignupOpen, setIsPetOwnerSignupOpen] = useState(false);
+  const [isVetClinicSignupOpen, setIsVetClinicSignupOpen] = useState(false);
+
+  const handleUserTypeSelect = (
+    userType: "pet-owner" | "vet-clinic" | null
+  ) => {
+    setIsUserTypeModalOpen(false);
+
+    if (userType === "pet-owner") {
+      setIsPetOwnerSignupOpen(true);
+    } else if (userType === "vet-clinic") {
+      setIsVetClinicSignupOpen(true);
+    }
+  };
+
+  const handleBackToUserType = () => {
+    setIsPetOwnerSignupOpen(false);
+    setIsVetClinicSignupOpen(false);
+    setIsUserTypeModalOpen(true);
+  };
+
   return (
     <div className="flex min-h-screen flex-col w-full justify-center items-center">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <PawPrint className="h-6 w-6 text-emerald-600" />
-            <span className="text-xl font-bold">VetConnect</span>
+            <span className="text-xl font-bold">LETY MARKETPLACE</span>
           </div>
           <nav className="hidden md:flex gap-6">
             <Link to="#features" className="text-sm font-medium hover:text-emerald-600 transition-colors">
-              Features
+              Caracteristicas
             </Link>
             <Link to="#how-it-works" className="text-sm font-medium hover:text-emerald-600 transition-colors">
-              How It Works
+              ¿Como funciona?
             </Link>
-            <Link to="#testimonials" className="text-sm font-medium hover:text-emerald-600 transition-colors">
-              Testimonials
-            </Link>
-            <Link to="#pricing" className="text-sm font-medium hover:text-emerald-600 transition-colors">
-              Pricing
+            <Link to="#vets" className="text-sm font-medium hover:text-emerald-600 transition-colors">
+              Veterinarias
             </Link>
           </nav>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
             <Link
-              to="#"
+              to="/login"
               className="hidden sm:inline-flex text-sm font-medium hover:text-emerald-600 transition-colors"
             >
-              Sign In
+              Iniciar sesion
             </Link>
-            <Button className="bg-emerald-600 hover:bg-emerald-700">Get Started</Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => setIsUserTypeModalOpen(true)}
+            >
+              Registrarse
+            </Button>
           </div>
         </div>
       </header>
@@ -54,21 +84,22 @@ export default function LandingPage() {
             <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 items-center">
               <div className="flex flex-col justify-center space-y-4">
                 <div className="inline-block rounded-lg bg-emerald-100 px-3 py-1 text-sm text-emerald-700">
-                  Connecting Pet Owners & Veterinarians
+                  Conectando dueños de mascotas con servicios de calidad
                 </div>
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
-                  Find the Perfect Vet for Your Pet
+                  Encuentra la Veterinaria Ideal para tu Mascota
                 </h1>
-                <p className="max-w-[600px] text-gray-500 md:text-xl">
-                  VetConnect makes it easy to discover, book, and connect with trusted veterinarians in your area.
-                  Quality care for your furry family members is just a click away.
+                <p className="max-w-[700px] text-gray-500 md:text-xl">
+                  En Lety Marketplace te ayudamos a descubrir y contactar con veterinarios verificados en tu zona. Reserva fácilmente y asegúrate de que tu mascota reciba la atención que merece.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700">
-                    Find a Vet
+                    <Link to="/login">
+                      Buscar Veterinarias
+                    </Link>
                   </Button>
-                  <Button size="lg" variant="outline">
-                    Join as a Veterinarian
+                  <Button size="lg" variant="outline" onClick={() => setIsUserTypeModalOpen(true)}>
+                    Soy Veterinario, Quiero Unirme
                   </Button>
                 </div>
               </div>
@@ -82,41 +113,40 @@ export default function LandingPage() {
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
                 <div className="inline-block rounded-lg bg-emerald-100 px-3 py-1 text-sm text-emerald-700">
-                  Features
+                  Caracteristicas
                 </div>
-                <h2 className="text-3xl font-bold tracking-tighter md:text-4xl">Everything You Need in One Place</h2>
+                <h2 className="text-3xl font-bold tracking-tighter md:text-4xl">Todo lo que necesitas en un solo lugar</h2>
                 <p className="max-w-[900px] text-gray-500 md:text-xl">
-                  Our platform offers comprehensive tools for both pet owners and veterinarians to connect and provide
-                  the best care possible.
+                  Centralizamos la información de distintas veterinarias para que encuentres fácilmente la opción ideal para tu mascota.
                 </p>
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 lg:grid-cols-3">
-              <div className="flex flex-col items-center space-y-4 rounded-lg border p-6 shadow-sm">
+            <div className="mx-auto grid max-w-5xl items-start gap-6 py-12 lg:grid-cols-3">
+              <div className="flex h-full flex-col items-center space-y-4 rounded-lg border p-6 shadow-sm">
                 <div className="rounded-full bg-emerald-100 p-3">
                   <Search className="h-6 w-6 text-emerald-600" />
                 </div>
-                <h3 className="text-xl font-bold">Easy Search</h3>
+                <h3 className="text-xl font-bold">Búsqueda Fácil</h3>
                 <p className="text-center text-gray-500">
-                  Find veterinarians by location, specialty, ratings, and availability with our powerful search tools.
+                  Encuentra veterinarios por ubicación, especialidad, valoraciones y disponibilidad, con nuestros filtros de búsqueda.
                 </p>
               </div>
-              <div className="flex flex-col items-center space-y-4 rounded-lg border p-6 shadow-sm">
+              <div className="flex h-full flex-col items-center space-y-4 rounded-lg border p-6 shadow-sm">
                 <div className="rounded-full bg-emerald-100 p-3">
                   <Calendar className="h-6 w-6 text-emerald-600" />
                 </div>
-                <h3 className="text-xl font-bold">Online Booking</h3>
+                <h3 className="text-xl font-bold">Reservas en Línea</h3>
                 <p className="text-center text-gray-500">
-                  Schedule appointments instantly with real-time availability and automated reminders.
+                  Agenda citas al instante con disponibilidad en tiempo real y recordatorios automáticos.
                 </p>
               </div>
-              <div className="flex flex-col items-center space-y-4 rounded-lg border p-6 shadow-sm">
+              <div className="flex h-full flex-col items-center space-y-4 rounded-lg border p-6 shadow-sm">
                 <div className="rounded-full bg-emerald-100 p-3">
-                  <MessageSquare className="h-6 w-6 text-emerald-600" />
+                  <User className="h-6 w-6 text-emerald-600" />
                 </div>
-                <h3 className="text-xl font-bold">Secure Messaging</h3>
+                <h3 className="text-xl font-bold">Perfiles personalizados</h3>
                 <p className="text-center text-gray-500">
-                  Communicate directly with veterinarians through our secure messaging platform.
+                  Crea perfiles detallados para tus mascotas con su historial médico, preferencias y necesidades especiales. Todo en un solo lugar.
                 </p>
               </div>
             </div>
@@ -324,7 +354,7 @@ export default function LandingPage() {
         </section>
 
         {/* Featured Vets Section */}
-        <section className="w-full py-12 md:py-24 lg:py-32">
+        <section className="w-full py-12 md:py-24 lg:py-32" id="vets">
           <div className="container mx-auto px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
@@ -376,112 +406,6 @@ export default function LandingPage() {
               <Button variant="outline" className="mt-4">
                 View All Veterinarians <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-            </div>
-          </div>
-        </section>
-
-        {/* Pricing Section */}
-        <section id="pricing" className="w-full py-12 md:py-24 lg:py-32 bg-emerald-50">
-          <div className="container mx-auto px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-emerald-100 px-3 py-1 text-sm text-emerald-700">Pricing</div>
-                <h2 className="text-3xl font-bold tracking-tighter md:text-4xl">Simple, Transparent Pricing</h2>
-                <p className="max-w-[900px] text-gray-500 md:text-xl">
-                  Choose the plan that works best for you or your practice.
-                </p>
-              </div>
-            </div>
-            <div className="mx-auto grid max-w-5xl gap-6 py-12 md:grid-cols-2 lg:grid-cols-3">
-              <div className="flex flex-col space-y-4 rounded-xl border bg-white p-6 shadow-sm">
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">Basic</h3>
-                  <p className="text-gray-500">For pet owners looking for occasional care</p>
-                  <div className="flex items-baseline">
-                    <span className="text-3xl font-bold">Free</span>
-                  </div>
-                </div>
-                <ul className="space-y-2 flex-1">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
-                    <span>Search for veterinarians</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
-                    <span>Read reviews</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
-                    <span>Book appointments</span>
-                  </li>
-                </ul>
-                <Button variant="outline" className="w-full">
-                  Get Started
-                </Button>
-              </div>
-              <div className="flex flex-col space-y-4 rounded-xl border bg-white p-6 shadow-sm relative">
-                <div className="absolute -top-4 left-0 right-0 mx-auto w-fit rounded-full bg-emerald-600 px-3 py-1 text-xs font-medium text-white">
-                  Most Popular
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">Premium</h3>
-                  <p className="text-gray-500">For pet owners with multiple pets</p>
-                  <div className="flex items-baseline">
-                    <span className="text-3xl font-bold">$9.99</span>
-                    <span className="text-gray-500 ml-1">/month</span>
-                  </div>
-                </div>
-                <ul className="space-y-2 flex-1">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
-                    <span>All Basic features</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
-                    <span>Priority booking</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
-                    <span>Digital health records</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
-                    <span>24/7 chat support</span>
-                  </li>
-                </ul>
-                <Button className="w-full bg-emerald-600 hover:bg-emerald-700">Get Started</Button>
-              </div>
-              <div className="flex flex-col space-y-4 rounded-xl border bg-white p-6 shadow-sm">
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">Veterinarian</h3>
-                  <p className="text-gray-500">For veterinary practices</p>
-                  <div className="flex items-baseline">
-                    <span className="text-3xl font-bold">$49.99</span>
-                    <span className="text-gray-500 ml-1">/month</span>
-                  </div>
-                </div>
-                <ul className="space-y-2 flex-1">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
-                    <span>Featured profile listing</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
-                    <span>Appointment management</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
-                    <span>Patient records system</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5" />
-                    <span>Marketing tools</span>
-                  </li>
-                </ul>
-                <Button variant="outline" className="w-full">
-                  Get Started
-                </Button>
-              </div>
             </div>
           </div>
         </section>
@@ -650,6 +574,26 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Modals */}
+      <UserTypeModal
+        open={isUserTypeModalOpen}
+        onOpenChange={setIsUserTypeModalOpen}
+        onSelectUserType={handleUserTypeSelect}
+      />
+
+      <PetOwnerSignup
+        open={isPetOwnerSignupOpen}
+        onOpenChange={setIsPetOwnerSignupOpen}
+        onBack={handleBackToUserType}
+      />
+
+      <VetClinicSignup
+        open={isVetClinicSignupOpen}
+        onOpenChange={setIsVetClinicSignupOpen}
+        onBack={handleBackToUserType}
+      />
     </div>
   )
 }
+
