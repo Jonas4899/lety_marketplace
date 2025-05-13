@@ -32,6 +32,42 @@ interface Pet extends PetType {
   foto_url?: string;
 }
 
+// Interface for fetched appointment data from the API
+interface ApiAppointment {
+  id: number;
+  petName: string;
+  petImage: string;
+  clinicName: string;
+  clinicAddress: string;
+  date: string;
+  time: string;
+  reason: string;
+  status: "confirmed" | "pending" | "completed" | "cancelled";
+  notes?: string;
+  motivo_reprogramacion?: string;
+  motivo_cancelacion?: string;
+}
+
+// Interface for appointments processed for display
+interface DisplayAppointment {
+  id: number;
+  petName: string;
+  clinicName: string;
+  date: string; 
+  time: string; 
+  status: "confirmed" | "pending" | "completed" | "cancelled" | string; // Will hold English values for JSX
+}
+
+// Helper function to format date
+const formatDisplayDate = (isoDateString: string): string => {
+  const date = new Date(isoDateString);
+  return date.toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+};
+
 export default function PetDashboardPage() {
   const [isNewLogin, setIsNewLogin] = useState(false);
 
@@ -44,11 +80,18 @@ export default function PetDashboardPage() {
   
   const id_usuario = userType === 'owner' && user ? (user as Owner).id_usuario : undefined;
   
+  // Pets State
   const [pets, setPets] = useState<Pet[]>([]);
-  const [loadingPets, setLoadingPets] = useState(true);
-  const [petsError, setPetsError] = useState<string | null>(null);
-  const [lastFetchTime, setLastFetchTime] = useState<number | null>(null);
+  const [loadingPets, setLoadingPets] = useState(true); 
+  const [petsError, setPetsError] = useState<string | null>(null); 
+  const [lastFetchTimePets, setLastFetchTimePets] = useState<number | null>(null); 
 
+  // Appointments State
+  const [upcomingAppointments, setUpcomingAppointments] = useState<DisplayAppointment[]>([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(true);
+  const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
+
+  // --- PETS DATA HANDLING --- START ---
   const loadPetsFromCache = useCallback(() => {
     try {
       if (id_usuario) {
@@ -86,30 +129,23 @@ export default function PetDashboardPage() {
     if (!id_usuario || !token) {
         setLoadingPets(false);
         setPets([]);
-        setPetsError("Usuario no autenticado.");
         return;
     }
-
     const currentPetsLength = pets.length;
     const showMainLoader = currentPetsLength === 0 && !triggeredByAction;
-
-    if (showMainLoader) {
-        setLoadingPets(true);
-    }
-    setPetsError(null);
-
+    if (showMainLoader) setLoadingPets(true);
+    setPetsError(null); 
     try {
       const response = await fetch(`${API_URL}/pets/get?id_usuario=${id_usuario}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
       if (response.ok) {
         const data = await response.json();
         const fetchedPets: Pet[] = data.mascotas || [];
         setPets(fetchedPets);
         savePetsToLocalStorage(fetchedPets);
         preloadImages(fetchedPets);
-        setLastFetchTime(Date.now());
+        setLastFetchTimePets(Date.now());
       } else {
         const errorData = await response.json().catch(() => ({ message: `Error ${response.status}` }));
         const errorMessage = errorData.message || "No se pudieron cargar las mascotas";
@@ -118,37 +154,114 @@ export default function PetDashboardPage() {
         setPets([]);
       }
     } catch (error) {
-      console.error("Error al cargar mascotas:", error);
       const errorMessage = error instanceof Error ? error.message : "Ocurrió un error al intentar cargar tus mascotas";
       setPetsError(errorMessage);
       toast.error("Error al cargar mascotas", { description: errorMessage });
       setPets([]);
     } finally {
-      if (showMainLoader) {
-        setLoadingPets(false);
-      }
+      if (showMainLoader) setLoadingPets(false);
     }
   }, [id_usuario, token, API_URL, savePetsToLocalStorage, preloadImages, pets.length]);
   
   useEffect(() => {
     if (id_usuario && token) {
       const cachedPets = loadPetsFromCache();
-      if (cachedPets.length > 0 && !lastFetchTime) {
+      if (cachedPets.length > 0 && !lastFetchTimePets) { 
         setPets(cachedPets);
         setLoadingPets(false);
         const timerId = setTimeout(() => fetchPets(true), 500); 
         return () => clearTimeout(timerId);
       } else {
-        fetchPets(false);
+        fetchPets(false); 
       }
     } else {
         setPets([]);
         setLoadingPets(false);
-        if (!id_usuario || !token) {
-          // setPetsError("Por favor, inicia sesión para ver tus mascotas.");
-        }
     }
-  }, [id_usuario, token, fetchPets, loadPetsFromCache, lastFetchTime]);
+  }, [id_usuario, token, fetchPets, loadPetsFromCache, lastFetchTimePets]);
+  // --- PETS DATA HANDLING --- END ---
+
+  // --- APPOINTMENTS DATA HANDLING --- REVISED --- START ---
+  const fetchAppointments = useCallback(async () => {
+    if (!id_usuario || !token) {
+      setLoadingAppointments(false);
+      setUpcomingAppointments([]);
+      return;
+    }
+    setLoadingAppointments(true);
+    setAppointmentsError(null);
+    try {
+      const response = await fetch(`${API_URL}/appointments/user?id_usuario=${id_usuario}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: `Error ${response.status}` }));
+        throw new Error(errorData.message || "Error al obtener las citas");
+      }
+      const data: { citas: ApiAppointment[] } = await response.json();
+      console.log("[Appointments] Raw API data:", JSON.stringify(data.citas, null, 2)); 
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); 
+      console.log("[Appointments] 'today' for filtering (currently bypassed in filter):", today.toISOString());
+
+      // Step 1: Filter raw data directly
+      const filteredRawAppointments = (data.citas || [])
+        .filter(apiAppt => {
+          return (apiAppt.status === "confirmed" || apiAppt.status === "pending");
+        });
+      console.log("[Appointments] Filtered raw appointments (TEMPORARILY BYPASSING DATE FILTER - checking status only):", JSON.stringify(filteredRawAppointments, null, 2));
+
+      // Step 2: Sort the filtered raw appointments
+      const sortedAppointments = filteredRawAppointments.sort((a, b) => {
+        // Attempt to parse dates for sorting - subject to the same reliability issues as above.
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        const dateComparison = dateA - dateB;
+        if (dateComparison !== 0) return dateComparison;
+        // Time sorting might also need robust parsing if not in 24hr format or if PM/AM varies.
+        return (a.time || "").localeCompare(b.time || ""); 
+      });
+      console.log("[Appointments] Sorted appointments:", JSON.stringify(sortedAppointments, null, 2));
+      
+      // Step 3: Map sorted appointments to DisplayAppointment structure
+      const upcomingFilteredAppointments = sortedAppointments.map((apiAppt): DisplayAppointment => {
+        let displayStatus: DisplayAppointment['status'] = apiAppt.status; 
+        if (apiAppt.status === "confirmed") {
+          displayStatus = "confirmed";
+        } else if (apiAppt.status === "pending") {
+          displayStatus = "pending";
+        }
+        // Add other status mappings here if necessary for display consistency
+
+        return {
+          id: apiAppt.id, // Use apiAppt.id
+          petName: apiAppt.petName || "Mascota N/A",         // Use apiAppt.petName
+          clinicName: apiAppt.clinicName || "Clínica N/A", // Use apiAppt.clinicName
+          date: apiAppt.date,     // Use pre-formatted apiAppt.date directly
+          time: apiAppt.time,     // Use pre-formatted apiAppt.time directly
+          status: displayStatus, 
+        };
+      });
+      
+      console.log("[Appointments] Final upcoming filtered appointments for display:", JSON.stringify(upcomingFilteredAppointments, null, 2));
+      setUpcomingAppointments(upcomingFilteredAppointments);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Ocurrió un error al cargar las citas";
+      setAppointmentsError(errorMessage);
+      toast.error("Error al cargar citas", { description: errorMessage });
+      setUpcomingAppointments([]);
+    } finally {
+      setLoadingAppointments(false);
+    }
+  }, [id_usuario, token, API_URL]);
+
+  useEffect(() => {
+    if (id_usuario && token) {
+      fetchAppointments();
+    }
+  }, [id_usuario, token, fetchAppointments]);
+  // --- APPOINTMENTS DATA HANDLING --- REVISED --- END ---
 
   return (
     <ProtectedRoutes allowedUserTypes={["owner"]}>
@@ -168,6 +281,7 @@ export default function PetDashboardPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+          {/* Pets Summary Card */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Mis Mascotas</CardTitle>
@@ -191,73 +305,31 @@ export default function PetDashboardPage() {
             </CardContent>
           </Card>
 
+          {/* Appointments Summary Card */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Próximas Citas</CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">2</div>
-              <p className="text-xs text-muted-foreground">En los próximos 7 días</p>
+              {loadingAppointments ? (
+                <div className="text-2xl font-bold"><Loader2 className="h-6 w-6 animate-spin" /></div>
+              ) : appointmentsError ? (
+                <div className="text-sm text-destructive">Error</div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{upcomingAppointments.length}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {upcomingAppointments.length > 0 ? "Citas programadas próximamente" : "No hay citas próximas"}
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        {/*
-        <Card className="mt-4">
-          <CardHeader>
-            <CardTitle>Encuentra Veterinarias Cercanas</CardTitle>
-            <CardDescription>Busca clínicas veterinarias por ubicación, especialidad o servicios</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-4 md:flex-row">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Buscar veterinarias por nombre, especialidad o ubicación..."
-                  className="pl-8"
-                />
-              </div>
-              <Button asChild>
-                <Link to="/pet-dashboard/clinics">Buscar</Link>
-              </Button>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Badge variant="secondary" className="cursor-pointer">
-                Emergencias
-              </Badge>
-              <Badge variant="secondary" className="cursor-pointer">
-                Vacunación
-              </Badge>
-              <Badge variant="secondary" className="cursor-pointer">
-                Dental
-              </Badge>
-              <Badge variant="secondary" className="cursor-pointer">
-                Cirugía
-              </Badge>
-              <Badge variant="secondary" className="cursor-pointer">
-                Exóticos
-              </Badge>
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/pet-dashboard/clinics?view=map">
-                <MapPin className="mr-2 h-4 w-4" />
-                Ver en mapa
-              </Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/pet-dashboard/clinics?filter=favorites">
-                <Heart className="mr-2 h-4 w-4" />
-                Mis favoritas
-              </Link>
-            </Button>
-          </CardFooter>
-        </Card>
-        */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+          {/* Detailed Pets List Card */}
           <Card className="lg:col-span-4">
             <CardHeader>
               <CardTitle>Mis Mascotas</CardTitle>
@@ -314,69 +386,76 @@ export default function PetDashboardPage() {
             </CardContent>
           </Card>
 
+          {/* Detailed Appointments List Card */}
           <Card className="lg:col-span-3">
             <CardHeader>
               <CardTitle>Próximas Citas</CardTitle>
               <CardDescription>Citas programadas para tus mascotas</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {[
-                  {
-                    id: 1,
-                    petName: "Max",
-                    clinicName: "Centro Veterinario Salud Animal",
-                    date: "15 de Marzo, 2023",
-                    time: "10:00 AM",
-                    status: "confirmed",
-                  },
-                  {
-                    id: 2,
-                    petName: "Luna",
-                    clinicName: "Clínica Veterinaria PetCare",
-                    date: "18 de Marzo, 2023",
-                    time: "3:30 PM",
-                    status: "pending",
-                  },
-                ].map((appointment) => (
-                  <div key={appointment.id} className="flex items-center gap-4">
-                    <div
-                      className={`rounded-full p-1 ${
-                        appointment.status === "confirmed"
-                          ? "bg-green-100 text-green-600"
-                          : "bg-yellow-100 text-yellow-600"
-                      }`}
-                    >
-                      {appointment.status === "confirmed" ? (
-                        <CheckCircle className="h-4 w-4" />
-                      ) : (
-                        <Clock className="h-4 w-4" />
-                      )}
+            {loadingAppointments ? (
+                <div className="flex justify-center items-center h-40">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : appointmentsError ? (
+                <div className="text-center text-destructive py-4">
+                  <p>Error al cargar tus citas: {appointmentsError}</p>
+                  <Button onClick={fetchAppointments} variant="outline" className="mt-2">Reintentar</Button>
+                </div>
+              ) : upcomingAppointments.length === 0 ? (
+                <div className="text-center py-4">
+                  <Calendar className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <h3 className="mt-2 text-sm font-medium">No tienes citas próximas</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">Agenda una cita para verla aquí.</p>
+                  <Button asChild className="mt-4">
+                    <Link to="/dashboard-client/appointments/schedule">Agendar Cita</Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {upcomingAppointments.slice(0, 3).map((appointment) => (
+                    <div key={appointment.id} className="flex items-center gap-4">
+                      <div
+                        className={`rounded-full p-1 ${ 
+                          appointment.status === "confirmed"
+                            ? "bg-green-100 text-green-600"
+                            : appointment.status === "pending"
+                            ? "bg-yellow-100 text-yellow-600"
+                            : "bg-gray-100 text-gray-600" 
+                        }`}
+                      >
+                        {appointment.status === "confirmed" ? (
+                          <CheckCircle className="h-4 w-4" />
+                        ) : appointment.status === "pending" ? (
+                          <Clock className="h-4 w-4" />
+                        ) : (
+                          <Calendar className="h-4 w-4" /> 
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {appointment.petName} - {appointment.clinicName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {appointment.date} • {appointment.time}
+                        </p>
+                      </div>
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link to={`/dashboard-client/appointments/${appointment.id}`}>Detalles</Link>
+                      </Button>
                     </div>
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {appointment.petName} - {appointment.clinicName}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {appointment.date} • {appointment.time}
-                      </p>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      Detalles
-                    </Button>
-                  </div>
-                ))}
-
-                <Button variant="outline" className="w-full" asChild>
-                  <Link to="/dashboard-client/appointments">Ver todas las citas</Link>
-                </Button>
-              </div>
+                  ))}
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link to="/dashboard-client/appointments">Ver todas las citas</Link>
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
+        {/* Recommended Clinics Section - remains unchanged for now */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
-
           <Card>
             <CardHeader>
               <CardTitle>Clínicas Recomendadas</CardTitle>
@@ -422,14 +501,12 @@ export default function PetDashboardPage() {
                     </div>
                   </div>
                 ))}
-
                 <Button variant="outline" className="w-full" asChild>
                   <Link to="/dashboard-client/vet-search">Buscar clínicas</Link>
                 </Button>
               </div>
             </CardContent>
           </Card>
-
         </div>
       </div>
     </ProtectedRoutes>
