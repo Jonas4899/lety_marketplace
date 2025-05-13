@@ -458,49 +458,11 @@ export default function PetDashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
           <Card>
             <CardHeader>
-              <CardTitle>Clínicas Recomendadas</CardTitle>
-              <CardDescription>Basado en tu ubicación y necesidades</CardDescription>
+              <CardTitle>Busqueda de Clínicas</CardTitle>
+              <CardDescription>Puedes buscar clinicas que se ajusten a tu ubicación y necesidades</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {[
-                  {
-                    id: 1,
-                    name: "Centro Veterinario Salud Animal",
-                    distance: "1.2 km",
-                    rating: 4.8,
-                    specialty: "Medicina General, Cirugía",
-                  },
-                  {
-                    id: 2,
-                    name: "Clínica Veterinaria PetCare",
-                    distance: "2.5 km",
-                    rating: 4.6,
-                    specialty: "Dermatología, Odontología",
-                  },
-                  {
-                    id: 3,
-                    name: "Hospital Veterinario Central",
-                    distance: "3.8 km",
-                    rating: 4.9,
-                    specialty: "Emergencias 24/7, Especialidades",
-                  },
-                ].map((clinic) => (
-                  <div key={clinic.id} className="flex items-start gap-4">
-                    <div className="mt-1 rounded-full p-1 bg-muted text-muted-foreground">
-                      <Search className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium leading-none">{clinic.name}</p>
-                        <p className="text-xs font-medium">★ {clinic.rating}</p>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {clinic.distance} • {clinic.specialty}
-                      </p>
-                    </div>
-                  </div>
-                ))}
                 <Button variant="outline" className="w-full" asChild>
                   <Link to="/dashboard-client/vet-search">Buscar clínicas</Link>
                 </Button>
