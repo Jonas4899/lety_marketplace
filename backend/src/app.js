@@ -16,10 +16,10 @@ const app = express();
 app.use(
   cors({
     origin: [
-      'https://lety-marketplace.vercel.app/',
-      'https://lety-marketplace-juan-romeros-projects-f4ebe484.vercel.app/',
-      'https://lety-marketplace-git-main-juan-romeros-projects-f4ebe484.vercel.app/',
-      'https://lety-marketplace-p5hthhw13-juan-romeros-projects-f4ebe484.vercel.app/',
+      'https://lety-marketplace.vercel.app',
+      'https://lety-marketplace-juan-romeros-projects-f4ebe484.vercel.app',
+      'https://lety-marketplace-git-main-juan-romeros-projects-f4ebe484.vercel.app',
+      'https://lety-marketplace-p5hthhw13-juan-romeros-projects-f4ebe484.vercel.app',
       'http://localhost:5173',
       'http://127.0.0.1:5173',
     ], // URL de tu frontend - both localhost and IP
