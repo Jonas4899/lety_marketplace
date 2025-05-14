@@ -84,6 +84,8 @@ export default function ClinicsPage() {
     lng: number;
   } | null>(null);
 
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
   // Initialize the map with a delay to ensure DOM is fully rendered
   useEffect(() => {
     if (!initialRenderDone.current) {
@@ -104,7 +106,7 @@ export default function ClinicsPage() {
     const fetchClinics = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${config.API_BASE_URL}/clinics`);
+        const response = await axios.get(`${API_URL}/clinics`);
 
         if (response.data && response.data.clinicas) {
           // Función para calcular la distancia entre dos puntos usando la fórmula de Haversine
