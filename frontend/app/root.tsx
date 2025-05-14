@@ -14,6 +14,8 @@ import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
 import "./app.css";
 
+import { Toaster } from "sonner";
+
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
@@ -33,11 +35,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="public/lm_logo.svg" type="image/x-icon" />
         <Meta />
         <Links />
       </head>
       <body>
         {children}
+        <Toaster position="top-right" richColors />
         <ScrollRestoration />
         <Scripts />
       </body>
