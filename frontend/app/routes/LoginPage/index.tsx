@@ -20,7 +20,7 @@ import VetLogin from "~/components/VetLogin";
 import { StatusDialog } from "~/components/StatusDialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:3001";
+const API_URL = import.meta.env.VITE_API_URL ;
 
 export default function LoginPage() {
   const [userType, setUserType] = useState<"pet-owner" | "vet-clinic">(
