@@ -354,4 +354,36 @@ router.post("/usuarios/review", autenticacionToken, async (req, res) => {
   }
 });
 
+// Obtener perfil del usuario autenticado
+router.get("/profile", autenticacionToken, async (req, res) => {
+    const userId = req.user?.userId;
+
+  if (!userId) {
+    return res.status(400).json({ message: "ID de usuario no proporcionado en el token." });
+  }
+
+  try {
+    const { data: usuario, error } = await supabaseClient
+      .from("usuarios")
+      .select("nombre, correo, telefono")
+      .eq("id_usuario", userId)
+      .single();
+
+    if (error) {
+      console.error("Error al obtener usuario:", error);
+      return res.status(400).json({ message: "Error al obtener el perfil del usuario" });
+    }
+
+    return res.status(200).json({
+      name: usuario.nombre,
+      email: usuario.correo,
+      phone: usuario.telefono,
+      avatar: usuario.avatar_url || "/placeholder.svg?height=100&width=100",
+    });
+  } catch (err) {
+    console.error("Error del servidor:", err);
+    return res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
 export default router;
