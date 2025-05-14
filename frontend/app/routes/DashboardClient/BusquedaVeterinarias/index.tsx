@@ -211,7 +211,7 @@ export default function ClinicsPage() {
     for (const clinic of updatedClinics) {
       try {
         const response = await axios.get(
-          `${config.API_BASE_URL}/veterinary/photos/${clinic.id_clinica}`,
+          `${API_URL}/veterinary/photos/${clinic.id_clinica}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
