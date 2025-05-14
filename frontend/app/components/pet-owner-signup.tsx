@@ -282,6 +282,7 @@ export function PetOwnerSignup({
   onOpenChange,
   onBack,
 }: PetOwnerSignupProps) {
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusDialog, setStatusDialog] = useState({
@@ -315,7 +316,7 @@ export function PetOwnerSignup({
       petBreed: "",
       petGender: "",
       petWeight: 0,
-    }
+    },
   });
 
   const [petFiles, setPetFiles] = useState({
@@ -374,16 +375,16 @@ export function PetOwnerSignup({
         const formData = new FormData();
 
         // Agregar todos los campos de texto al FormData
-        formData.append('userName', data.userName);
-        formData.append('email', data.email);
-        formData.append('phone', data.phone);
-        formData.append('password', data.password);
-        formData.append('petName', data.petName);
-        formData.append('petAge', data.petAge.toString());
-        formData.append('petSpecies', data.petSpecies);
-        formData.append('petBreed', data.petBreed);
-        formData.append('petGender', data.petGender);
-        formData.append('petWeight', data.petWeight.toString());
+        formData.append("userName", data.userName);
+        formData.append("email", data.email);
+        formData.append("phone", data.phone);
+        formData.append("password", data.password);
+        formData.append("petName", data.petName);
+        formData.append("petAge", data.petAge.toString());
+        formData.append("petSpecies", data.petSpecies);
+        formData.append("petBreed", data.petBreed);
+        formData.append("petGender", data.petGender);
+        formData.append("petWeight", data.petWeight.toString());
 
         // Añadir los archivos si existen
         if (petFiles.petHistory) {
@@ -396,7 +397,7 @@ export function PetOwnerSignup({
         setIsLoading(true);
 
         // Enviar solicitud al backend
-        const response = await fetch("http://localhost:3001/register/user", {
+        const response = await fetch(`${API_URL}/register/user`, {
           method: "POST",
           body: formData,
         });
@@ -407,7 +408,9 @@ export function PetOwnerSignup({
             throw new Error(errorData.message || "Datos inválidos");
           } else if (response.status === 409) {
             const errorData = await response.json();
-            throw new Error( errorData.message || "El usuario ya se encuentra registrado");
+            throw new Error(
+              errorData.message || "El usuario ya se encuentra registrado"
+            );
           } else {
             throw new Error("Error en el servidor");
           }
@@ -582,103 +585,134 @@ export function PetOwnerSignup({
               )}
             </div>
           ) : (
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="petName">Nombre de tu mascota</Label>
-                  <div className="relative">
-                    <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="petName"
-                      placeholder="Nombre de tu mascota"
-                      className="pl-9"
-                      type="text"
-                      {...register('petName')}
-                    />
-                  </div>
-                  {errors.petName && touchedFields.petName && (<p className="text-sm text-red-500 mt-1.5">{errors.petName.message}</p>)}
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="petName">Nombre de tu mascota</Label>
+                <div className="relative">
+                  <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="petName"
+                    placeholder="Nombre de tu mascota"
+                    className="pl-9"
+                    type="text"
+                    {...register("petName")}
+                  />
                 </div>
+                {errors.petName && touchedFields.petName && (
+                  <p className="text-sm text-red-500 mt-1.5">
+                    {errors.petName.message}
+                  </p>
+                )}
+              </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="petAge">Edad</Label>
-                  <div className="relative">
-                    <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="petAge"
-                      placeholder="Edad de tu mascota"
-                      className="pl-9"
-                      type="number"
-                      min={0}
-                      max={50}
-                      {...register('petAge', { valueAsNumber: true })}
-                    />
-                  </div>
-                  {errors.petAge && touchedFields.petAge && (<p className="text-sm text-red-500 mt-1.5">{errors.petAge.message}</p>)}
+              <div className="grid gap-2">
+                <Label htmlFor="petAge">Edad</Label>
+                <div className="relative">
+                  <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="petAge"
+                    placeholder="Edad de tu mascota"
+                    className="pl-9"
+                    type="number"
+                    min={0}
+                    max={50}
+                    {...register("petAge", { valueAsNumber: true })}
+                  />
                 </div>
+                {errors.petAge && touchedFields.petAge && (
+                  <p className="text-sm text-red-500 mt-1.5">
+                    {errors.petAge.message}
+                  </p>
+                )}
+              </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="petSpecies">Especie</Label>
-                  <div className="relative">
-                    <Select name="petSpecies" onValueChange={(value) => setValue('petSpecies', value)}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Especie" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem  value="canino">Canino</SelectItem>
-                        <SelectItem value="felino">Felino</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {errors.petSpecies && touchedFields.petSpecies && (<p className="text-sm text-red-500 mt-1.5">{errors.petSpecies.message}</p>)}
+              <div className="grid gap-2">
+                <Label htmlFor="petSpecies">Especie</Label>
+                <div className="relative">
+                  <Select
+                    name="petSpecies"
+                    onValueChange={(value) => setValue("petSpecies", value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Especie" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="canino">Canino</SelectItem>
+                      <SelectItem value="felino">Felino</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+                {errors.petSpecies && touchedFields.petSpecies && (
+                  <p className="text-sm text-red-500 mt-1.5">
+                    {errors.petSpecies.message}
+                  </p>
+                )}
+              </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="petBreed">Raza</Label>
-                  <div className="relative">
-                    <Select name="petBreed" onValueChange={(value) => setValue('petBreed', value)}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Raza" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {breedOptions}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {errors.petBreed && touchedFields.petBreed && (<p className="text-sm text-red-500 mt-1.5">{errors.petBreed.message}</p>)}
+              <div className="grid gap-2">
+                <Label htmlFor="petBreed">Raza</Label>
+                <div className="relative">
+                  <Select
+                    name="petBreed"
+                    onValueChange={(value) => setValue("petBreed", value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Raza" />
+                    </SelectTrigger>
+                    <SelectContent>{breedOptions}</SelectContent>
+                  </Select>
                 </div>
+                {errors.petBreed && touchedFields.petBreed && (
+                  <p className="text-sm text-red-500 mt-1.5">
+                    {errors.petBreed.message}
+                  </p>
+                )}
+              </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="petGender">Género</Label>
-                  <div className="relative">
-                    <Select name="petGender" onValueChange={(value) => setValue('petGender', value)}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Género" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Macho">Macho</SelectItem>
-                        <SelectItem value="Hembra">Hembra</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {errors.petGender && touchedFields.petGender && (<p className="text-sm text-red-500 mt-1.5">{errors.petGender.message}</p>)}
+              <div className="grid gap-2">
+                <Label htmlFor="petGender">Género</Label>
+                <div className="relative">
+                  <Select
+                    name="petGender"
+                    onValueChange={(value) => setValue("petGender", value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Género" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Macho">Macho</SelectItem>
+                      <SelectItem value="Hembra">Hembra</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+                {errors.petGender && touchedFields.petGender && (
+                  <p className="text-sm text-red-500 mt-1.5">
+                    {errors.petGender.message}
+                  </p>
+                )}
+              </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="petWeight">Peso (kg)</Label>
-                  <div className="relative">
-                    <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="petWeight"
-                      placeholder="Peso en kilogramos"
-                      className="pl-9"
-                      type="number"
-                      min={0.1}
-                      max={150}
-                      step={0.1}
-                      {...register('petWeight', { valueAsNumber: true })}
-                    />
-                  </div>
-                  {errors.petWeight && touchedFields.petWeight && (<p className="text-sm text-red-500 mt-1.5">{errors.petWeight.message}</p>)}
+              <div className="grid gap-2">
+                <Label htmlFor="petWeight">Peso (kg)</Label>
+                <div className="relative">
+                  <Paw className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="petWeight"
+                    placeholder="Peso en kilogramos"
+                    className="pl-9"
+                    type="number"
+                    min={0.1}
+                    max={150}
+                    step={0.1}
+                    {...register("petWeight", { valueAsNumber: true })}
+                  />
                 </div>
+                {errors.petWeight && touchedFields.petWeight && (
+                  <p className="text-sm text-red-500 mt-1.5">
+                    {errors.petWeight.message}
+                  </p>
+                )}
+              </div>
 
               <div className="grid gap-2">
                 <Label htmlFor="petHistory">Historial médico (opcional)</Label>

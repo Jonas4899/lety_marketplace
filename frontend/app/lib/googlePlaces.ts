@@ -5,6 +5,8 @@
 
 // API_KEY is no longer needed in frontend as it's managed securely on the backend
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
 /**
  * Fetch address predictions from Google Places Autocomplete API via backend proxy
  * @param input - Partial address input
@@ -17,7 +19,7 @@ export async function fetchPlacePredictions(
 
   try {
     console.log(`[Places API] Fetching predictions for input: ${input}`);
-    const url = `http://localhost:3001/api/places/autocomplete?input=${encodeURIComponent(
+    const url = `${API_URL}/api/places/autocomplete?input=${encodeURIComponent(
       input
     )}`;
     console.log(`[Places API] Request URL: ${url}`);
@@ -67,7 +69,7 @@ export async function fetchPlaceDetails(
 
   try {
     console.log(`[Places API] Fetching details for place_id: ${place_id}`);
-    const url = `http://localhost:3001/api/places/details?place_id=${encodeURIComponent(
+    const url = `${API_URL}/api/places/details?place_id=${encodeURIComponent(
       place_id
     )}`;
     console.log(`[Places API] Request URL: ${url}`);

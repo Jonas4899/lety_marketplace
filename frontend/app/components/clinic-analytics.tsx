@@ -195,6 +195,7 @@ export function ClinicAnalytics() {
   // Get clinic ID from auth store
   const { user, userType } = useAuthStore();
   const clinicId = userType === "vet" && user ? (user as any).id_clinica : null;
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
   // Date range state
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -275,7 +276,7 @@ export function ClinicAnalytics() {
       const fromDate = formatDateForApi(dateRange.from);
       const toDate = formatDateForApi(dateRange.to);
       // Use the full backend URL instead of relative paths
-      const baseUrl = "http://localhost:3001";
+      const baseUrl = API_URL;
 
       try {
         // Fetch all data in parallel

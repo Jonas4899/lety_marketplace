@@ -66,6 +66,7 @@ export function VetClinicSignup({
   onOpenChange,
   onBack,
 }: VetClinicSignupProps) {
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
   const [step, setStep] = useState(1);
   const [services, setServices] = useState<Service[]>([
     { id: uuidv4(), name: "", price: "", category: "general" },
@@ -265,7 +266,7 @@ export function VetClinicSignup({
       ); // Log FormData content for debugging
 
       const response = await fetch(
-        `http://localhost:3001/register/veterinary`, // Consider using environment variables for API URL
+        `${API_URL}/register/veterinary`, // Consider using environment variables for API URL
         {
           method: "POST",
           body: apiFormData,
