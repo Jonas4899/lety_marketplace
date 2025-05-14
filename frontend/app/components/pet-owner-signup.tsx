@@ -396,7 +396,7 @@ export function PetOwnerSignup({
 
         setIsLoading(true);
 
-        // Enviar solicitud al backend
+        //modificar url para utilizar la del backend en render
         const response = await fetch(`${API_URL}/register/user`, {
           method: "POST",
           body: formData,
