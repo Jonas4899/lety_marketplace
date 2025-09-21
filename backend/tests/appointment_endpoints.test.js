@@ -1,92 +1,15 @@
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
+import { describe, test, expect, beforeEach } from '@jest/globals';
 import {
-  describe,
-  test,
-  expect,
-  beforeEach,
-} from '@jest/globals';
+  setupSupabaseMock,
+  setupUtilsMock,
+  setSupabaseHandler,
+  clearSupabaseHandlers,
+} from './helpers/supabaseMock.js';
 
-const tableHandlers = new Map();
-
-const setSupabaseHandler = (table, operation, handler) => {
-  if (!tableHandlers.has(table)) {
-    tableHandlers.set(table, {});
-  }
-  tableHandlers.get(table)[operation] = handler;
-};
-
-const clearSupabaseHandlers = () => {
-  tableHandlers.clear();
-};
-
-const runHandler = (table, operation, context) => {
-  const handlers = tableHandlers.get(table) || {};
-  const handler = handlers[operation];
-  if (!handler) {
-    return { data: null, error: null };
-  }
-  return handler(context);
-};
-
-const createBuilder = (table) => {
-  const context = {
-    table,
-    operation: 'select',
-    filters: [],
-    payload: null,
-    selectArgs: null,
-    orderArgs: null,
-    modifier: null,
-  };
-
-  const builder = {
-    select(args) {
-      context.operation = 'select';
-      context.selectArgs = args;
-      return builder;
-    },
-    insert(payload) {
-      context.operation = 'insert';
-      context.payload = payload;
-      return builder;
-    },
-    update(payload) {
-      context.operation = 'update';
-      context.payload = payload;
-      return builder;
-    },
-    eq(column, value) {
-      context.filters.push({ column, value });
-      return builder;
-    },
-    order(column, options) {
-      context.orderArgs = { column, options };
-      return builder;
-    },
-    single() {
-      context.modifier = 'single';
-      return Promise.resolve(runHandler(table, 'single', context));
-    },
-    then(onFulfilled, onRejected) {
-      const operation = context.modifier === 'single' ? 'single' : context.operation;
-      return Promise.resolve(runHandler(table, operation, context)).then(
-        onFulfilled,
-        onRejected,
-      );
-    },
-  };
-
-  return builder;
-};
-
-const supabaseMock = {
-  from: (table) => createBuilder(table),
-};
-
-jest.unstable_mockModule('@supabase/supabase-js', () => ({
-  createClient: () => supabaseMock,
-}));
+await setupSupabaseMock();
+await setupUtilsMock();
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-secret';
@@ -107,7 +30,9 @@ beforeEach(() => {
 describe('Citas/Appointments API Tests con Jest y Supertest', () => {
   test('Agendar nueva cita', async () => {
     setSupabaseHandler('mascotas', 'single', (context) => {
-      expect(context.filters).toEqual([{ column: 'id_mascota', value: 22 }]);
+      expect(context.filters).toEqual([
+        { type: 'eq', column: 'id_mascota', value: 22 },
+      ]);
       return { data: { id_usuario: 'owner-123' }, error: null };
     });
 
@@ -178,7 +103,9 @@ describe('Citas/Appointments API Tests con Jest y Supertest', () => {
 
   test('Obtener citas para una clínica', async () => {
     setSupabaseHandler('citas', 'select', (context) => {
-      expect(context.filters).toEqual([{ column: 'id_clinica', value: 'clinic-456' }]);
+      expect(context.filters).toEqual([
+        { type: 'eq', column: 'id_clinica', value: 'clinic-456' },
+      ]);
       return {
         data: [
           {
@@ -215,8 +142,8 @@ describe('Citas/Appointments API Tests con Jest y Supertest', () => {
   test('Obtener detalles de una cita específica', async () => {
     setSupabaseHandler('citas', 'single', (context) => {
       expect(context.filters).toEqual([
-        { column: 'id_usuario', value: 'owner-123' },
-        { column: 'id_cita', value: '101' },
+        { type: 'eq', column: 'id_usuario', value: 'owner-123' },
+        { type: 'eq', column: 'id_cita', value: '101' },
       ]);
       return {
         data: {
@@ -262,8 +189,8 @@ describe('Citas/Appointments API Tests con Jest y Supertest', () => {
   test('Actualizar estado de una cita (confirmar)', async () => {
     setSupabaseHandler('citas', 'single', (context) => {
       expect(context.filters).toEqual([
-        { column: 'id_cita', value: '202' },
-        { column: 'id_clinica', value: 'clinic-456' },
+        { type: 'eq', column: 'id_cita', value: '202' },
+        { type: 'eq', column: 'id_clinica', value: 'clinic-456' },
       ]);
       return {
         data: { id_cita: '202', id_clinica: 'clinic-456', trazabilidad: [] },
@@ -307,7 +234,9 @@ describe('Citas/Appointments API Tests con Jest y Supertest', () => {
 
   test('Reprogramar una cita', async () => {
     setSupabaseHandler('citas', 'single', (context) => {
-      expect(context.filters).toEqual([{ column: 'id_cita', value: '303' }]);
+      expect(context.filters).toEqual([
+        { type: 'eq', column: 'id_cita', value: '303' },
+      ]);
       return {
         data: { id_usuario: 'owner-123', estado: 'pendiente' },
         error: null,
